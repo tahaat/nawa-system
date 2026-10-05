@@ -1,6 +1,8 @@
 import Chart from 'chart.js/auto';
 import { db, ui, sync, load, save, project, backupJSON, restoreJSON } from './store.js';
 import { createSync } from '../core/sync.js';
+import { TEMPLATES, buildForm, xlsformBuffer } from '../core/forms.js';
+import { importResponses, computeOutcomes } from '../core/outcomes.js';
 import { demo } from './demo.js';
 import { uid, GROUPS, AGE_BANDS, ageAt, bandOf, iso } from '../core/model.js';
 import { dashboard, sttRows, sessionCats, sumCats, context } from '../core/aggregate.js';
@@ -15,7 +17,7 @@ const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const view = () => $('#view');
 const toast = (m) => { const t = $('#toast'); t.textContent = m; t.style.display = 'block'; setTimeout(() => (t.style.display = 'none'), 3500); };
-const ROUTES = { dash: ['لوحة القيادة', vDash], sessions: ['الجلسات (STT)', vSessions], bnf: ['المستفيدون (BTT)', vBnf], projects: ['المشاريع (PTT)', vProjects], centers: ['المراكز', vCenters], check: ['التحقق والتكامل', vCheck], cloud: ['السحابة والمزامنة', vCloud], export: ['التصدير والنسخ', vExport] };
+const ROUTES = { dash: ['لوحة القيادة', vDash], sessions: ['الجلسات (STT)', vSessions], bnf: ['المستفيدون (BTT)', vBnf], projects: ['المشاريع (PTT)', vProjects], centers: ['المراكز', vCenters], check: ['التحقق والتكامل', vCheck], surveys: ['الاستبيانات (KoBo)', vSurveys], cloud: ['السحابة والمزامنة', vCloud], export: ['التصدير والنسخ', vExport] };
 let route = 'dash', charts = [], sess = { mode: 'roll', att: new Set(), q: '', bands: false };
 
 function nav() {
@@ -56,6 +58,7 @@ function vDash() {
     <div class="card kpi"><b class="${rec.length + nErr ? '' : ''}">${rec.length + nErr ? rec.length + nErr : '✔'}</b><span>${rec.length + nErr ? 'ملاحظات تحتاج معالجة (انظر التحقق)' : 'الأدوات الثلاث متطابقة'}</span></div>
   </div>
   ${d.unclassified ? `<div class="card"><span class="badge b-warn">تنبيه</span> ${d.unclassified} مشارك بلا فئة عمرية (جلسات بالأعداد دون توزيع عمري) لا يدخلون في جدول الفئات العمرية.</div>` : ''}
+  ${outcomeBlock(p)}
   <div class="grid g2">
     <div class="card"><h3>الحضور حسب الجنس والإعاقة</h3><canvas id="c1"></canvas></div>
     <div class="card"><h3>الأنشطة: المنفذ مقابل المخطط</h3><canvas id="c2"></canvas></div>
@@ -76,6 +79,12 @@ function vDash() {
   mk('c5', { type: 'bar', data: { labels: cn, datasets: [{ label: 'الحضور', data: cn.map((k) => d.byCenter[k].att), backgroundColor: RED }, { label: 'الجلسات', data: cn.map((k) => d.byCenter[k].sessions), backgroundColor: GOLD }] } });
   const gk = Object.keys(d.byGroup);
   mk('c6', { type: 'doughnut', data: { labels: gk.map((k) => GROUPS[k] || k), datasets: [{ data: gk.map((k) => d.byGroup[k]), backgroundColor: [RED, GOLD, PINK, DK, GR] }] } });
+}
+function outcomeBlock(p) {
+  const os = computeOutcomes(p, db); if (!os.length) return '';
+  const pct = (n, d) => (d ? Math.round((100 * n) / d) + '%' : '—');
+  return `<div class="card"><h3>مؤشرات النتائج (من الاستبيانات)</h3><table><tr><th>المؤشر</th><th>ذكور</th><th>إناث</th><th>ذكور (إعاقة)</th><th>إناث (إعاقة)</th><th>الإجمالي</th></tr>${os.map((o) => { const N = { M: 0, F: 0, CWD_M: 0, CWD_F: 0 }, D = { ...N }; o.quarters.forEach((q) => Object.keys(N).forEach((k) => { N[k] += q.N[k]; D[k] += q.D[k]; })); const tn = Object.values(N).reduce((a, b) => a + b, 0), td = Object.values(D).reduce((a, b) => a + b, 0);
+    return `<tr><td>${esc(o.ind.name)}${o.issues.length ? ` <span class="badge b-warn" title="${esc(o.issues.slice(0, 5).join(' | '))}">${o.issues.length}</span>` : ''}</td>${['M', 'F', 'CWD_M', 'CWD_F'].map((k) => `<td>${N[k]}/${D[k]} (${pct(N[k], D[k])})</td>`).join('')}<td><b>${tn}/${td} (${pct(tn, td)})</b></td></tr>`; }).join('')}</table></div>`;
 }
 const empty = () => (view().innerHTML = `<div class="card"><h2>ابدأ</h2><p>لا يوجد مشروع بعد.</p><button data-act="newProject">إنشاء مشروع</button> <button class="sec" data-act="demo">تحميل مشروع تجريبي</button></div>`);
 
@@ -116,7 +125,16 @@ function vProjects() {
     <td><select multiple size="3" data-bind="outputIndicators|${k}|activityIds">${p.activities.map((a) => `<option value="${a.id}" ${o.activityIds.includes(a.id) ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select></td>
     <td><select data-bind="outputIndicators|${k}|measure">${sel([['unique', 'أفراد فريدون في الشهر'], ['sessions-attendance', 'مشاركات (كل حضور)']], o.measure)}</select></td>
     <td><button class="x" data-act="delOut" data-i="${k}">حذف</button></td></tr>`).join('')}</table><button class="sec" data-act="addOut">+ مؤشر</button>
-  <p class="small">قيود القالب: output 1 = 3 مؤشرات، output 2 = 4، output 3 = 6.</p></div>`;
+  <p class="small">قيود القالب: output 1 = 3 مؤشرات، output 2 = 4، output 3 = 6.</p></div>
+  <div class="card"><h2>مؤشرات النتائج (Outcome indicators)</h2><p class="small">تُحسب من ردود الاستبيانات وتُكتب في ورقة Outcome indicators (البسط والمقام لكل ربع وفئة).</p>
+  <table><tr><th>الصف</th><th>المؤشر</th><th>الاستبيان</th><th>النوع</th><th>الحد (% من الدرجة)</th><th>المرحلة</th><th></th></tr>${(p.outcomeIndicators || []).map((o, k) => `<tr>
+    <td><select data-bind="outcomeIndicators|${k}|row">${sel([4, 5, 7, 8, 9, 10, 11, 12].map((x) => [x, x === 4 || x === 5 ? 'هدف عام ' + x : 'نتيجة ' + x]), String(o.row))}</select></td>
+    <td><input data-bind="outcomeIndicators|${k}|name" value="${esc(o.name)}" style="width:100%"></td>
+    <td><select data-bind="outcomeIndicators|${k}|formId">${sel(TEMPLATES.map((t) => [t.id, t.ar]), o.formId)}</select></td>
+    <td><select data-bind="outcomeIndicators|${k}|kind" data-re="1">${sel([['threshold', 'نسبة من تجاوز حدًّا'], ['improvement', 'نسبة من تحسّنت درجته (قبلي→بعدي)']], o.kind)}</select></td>
+    <td>${o.kind === 'improvement' ? `<input type="number" style="width:70px" data-bind="outcomeIndicators|${k}|minGain" value="${o.minGain ?? 1}" title="أقل مكسب بالدرجات">` : `<input type="number" style="width:70px" data-bind="outcomeIndicators|${k}|valuePct" value="${o.valuePct ?? 70}">`}</td>
+    <td><select data-bind="outcomeIndicators|${k}|round">${sel(['endline', 'baseline', 'followup'].map((x) => [x, x]), o.round || 'endline')}</select></td>
+    <td><button class="x" data-act="delOutc" data-i="${k}">حذف</button></td></tr>`).join('')}</table><button class="sec" data-act="addOutc">+ مؤشر نتائج</button></div>`;
 }
 const planMonths = (a, k) => { const m = a.planMonths || [0, 11]; const o = (v) => Array.from({ length: 12 }, (_, i) => `<option value="${i}" ${i === v ? 'selected' : ''}>${i + 1}</option>`).join(''); return `<select class="pm" data-i="${k}" data-w="0">${o(m[0])}</select> – <select class="pm" data-i="${k}" data-w="1">${o(m[1])}</select>`; };
 document.addEventListener('change', (e) => { if (e.target.classList?.contains('pm')) { const a = project().activities[+e.target.dataset.i]; a.planMonths = a.planMonths || [0, 11]; a.planMonths[+e.target.dataset.w] = +e.target.value; save(); } });
@@ -192,6 +210,16 @@ function vExport() {
 const dl = (data, name, type = 'application/octet-stream') => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], { type })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); };
 const XL = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
+// ======================= الاستبيانات =======================
+function vSurveys() {
+  const p = project(); const cnt = (id) => db.surveyResponses.filter((r) => r.formId === id);
+  view().innerHTML = `<div class="card"><h2>نماذج جاهزة (XLSForm)</h2><p class="small">نزّل النموذج وارفعه في KoboToolbox (Deploy). كل نموذج يحوي رمز المستفيد ومرحلة القياس والمركز ودرجة كلية محسوبة، لربط الردّ بسجل المستفيدين.</p>
+  <table><tr><th>النموذج</th><th>الفئة</th><th>الأسئلة</th><th>الردود</th><th></th></tr>${TEMPLATES.map((t) => `<tr><td>${esc(t.ar)}<div class="small">${esc(t.en)}</div></td><td>${{ child: 'أطفال', parent: 'أهالي', educator: 'منشّطون' }[t.audience]}</td><td>${t.items.length}</td><td>${cnt(t.id).length}</td><td><button data-act="dlForm" data-id="${t.id}">تنزيل XLSForm</button></td></tr>`).join('')}</table></div>
+  <div class="card"><h2>استيراد الردود من KoBo</h2><p class="small">من KoBo: Data → Downloads → XLSX، بصيغة «قيم XML» (XML values and headers). يُتخطّى المكرر تلقائيًا.</p>
+  <div class="row"><label>النموذج<select id="sf">${TEMPLATES.map((t) => `<option value="${t.id}">${esc(t.ar)}</option>`).join('')}</select></label><label>الملف<input type="file" id="sfile" accept=".xlsx"></label><button data-act="impResp">استيراد</button></div>
+  <p id="smsg"></p></div>
+  <div class="card"><h2>ملخص الردود</h2><table><tr><th>النموذج</th><th>المرحلة</th><th>عدد</th><th>متوسط الدرجة %</th></tr>${TEMPLATES.flatMap((t) => ['baseline', 'endline', 'followup', undefined].map((r) => [t, r])).map(([t, r]) => { const rs = cnt(t.id).filter((x) => (r ? x.round === r : false)); if (!rs.length) return ''; const sc = rs.filter((x) => x.score != null && x.max); return `<tr><td>${esc(t.ar)}</td><td>${r}</td><td>${rs.length}</td><td>${sc.length ? Math.round((100 * sc.reduce((a, x) => a + x.score / x.max, 0)) / sc.length) + '%' : '—'}</td></tr>`; }).join('')}</table></div>`;
+}
 // ======================= السحابة =======================
 let syncing = false, syncMsg = '';
 const engine = () => createSync({ db, meta: sync.meta, cfg: sync.cfg });
@@ -213,6 +241,14 @@ function vCloud() {
 }
 // ======================= الإجراءات =======================
 const actions = {
+  addOutc() { const p = project(); (p.outcomeIndicators ||= []).push({ id: uid('x'), row: 7, name: 'مؤشر نتيجة جديد', formId: TEMPLATES[0].id, kind: 'threshold', valuePct: 70, round: 'endline' }); save(); rerender(); },
+  delOutc(t) { project().outcomeIndicators.splice(+t.dataset.i, 1); save(); rerender(); },
+  async dlForm(t) { const tpl = TEMPLATES.find((x) => x.id === t.dataset.id); dl(await xlsformBuffer(buildForm(tpl, { projectId: ui.projectId, centers: db.centers })), `${tpl.id}.xlsx`, XL); },
+  async impResp() {
+    const f = $('#sfile').files[0]; if (!f) return toast('اختر ملف KoBo'); const wb = new ExcelJS.Workbook(); await wb.xlsx.load(await f.arrayBuffer()); const ws = wb.worksheets[0];
+    const head = ws.getRow(1).values.map((v) => String(v?.result ?? v ?? '')); const rows = []; ws.eachRow((r, i) => { if (i === 1) return; const o = {}; head.forEach((h, c) => { if (h) { const v = r.getCell(c).value; o[h] = v?.result ?? v?.text ?? v; } }); rows.push(o); });
+    const r = importResponses(db, rows, $('#sf').value); save(); $('#smsg').innerHTML = `<span class="badge b-ok">أُضيف ${r.added}</span> مكرر ${r.dup} · بلا رمز مستفيد ${r.noId}`; setTimeout(vSurveys, 1500);
+  },
   async cloudSave() {
     sync.cfg.url = $('#cu').value.trim(); sync.cfg.token = $('#ct').value.trim(); sync.cfg.auto = $('#ca').checked; save();
     try { const me = await engine().me(); syncMsg = `متصل كـ «${me.name}» (${me.role})`; const first = sync.meta.cursor == null && (me.seq > 0) && db.projects.length; if (first) { const rep = confirm('الخادم يحوي بيانات وهذا الجهاز يحوي بيانات أيضًا.\nموافق = استبدال بيانات هذا الجهاز بنسخة الخادم\nإلغاء = دمج الاثنين'); await doSync({ firstMode: rep ? 'replace' : 'merge' }); } else await doSync(); }

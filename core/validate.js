@@ -57,6 +57,13 @@ export function validateEntry(db) {
     if (seenKey.has(key)) out.push(issue('warn', 'S13', `جلسة مكررة محتملة: ${a?.name} ${s.date} (${s.educator})`, s.id));
     seenKey.set(key, s.id);
   }
+  const dupR = new Map();
+  for (const r of db.surveyResponses || []) {
+    if (!cx.bnf.get(r.bnfId)) out.push(issue('error', 'O01', `ردّ استبيان لرمز غير موجود في السجل: ${r.bnfId}`, r.id));
+    const k = `${r.formId}|${r.bnfId}|${r.round}`; if (dupR.has(k)) out.push(issue('warn', 'O02', `ردّ مكرر (${r.formId} / ${r.bnfId} / ${r.round})`, r.id)); dupR.set(k, 1);
+    if (!r.date) out.push(issue('warn', 'O03', `ردّ بلا تاريخ: ${r.bnfId}`, r.id));
+  }
+  for (const p of db.projects) for (const o of p.outcomeIndicators || []) if (!o.formId) out.push(issue('warn', 'O04', `مؤشر نتائج «${o.name}» غير مرتبط باستبيان`, o.id));
   // مستفيد في جلستين لنفس النشاط في اليوم نفسه
   const dd = new Map();
   for (const s of db.sessions) if (s.mode === 'roll') for (const id of new Set(s.attendance || [])) { const k = `${id}|${s.activityId}|${s.date}`; dd.set(k, (dd.get(k) || 0) + 1); }

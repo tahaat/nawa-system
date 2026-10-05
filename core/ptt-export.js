@@ -1,6 +1,7 @@
 import { openXlsx, colName, excelSerial } from './xlsx-patch.js';
 import { outputMonthly, breakdown, workplanActual, directBeneficiaries } from './aggregate.js';
 import { CATS } from './model.js';
+import { computeOutcomes } from './outcomes.js';
 
 const monthStart = (project, i) => { const s = new Date(`${project.start}T00:00:00Z`); return new Date(Date.UTC(s.getUTCFullYear(), s.getUTCMonth() + i, 1)).toISOString().slice(0, 10); };
 const OUT_SLOTS = { 'output 1': [4, 5, 6], 'output 2': [7, 8, 9, 10], 'output 3': [11, 12, 13, 14, 15, 16] };
@@ -56,11 +57,12 @@ export async function exportPTT(templateBuf, project, db, DOMParserCtor, XMLSeri
   if (placed > uq) warnings.push(`قالب PTT يجمع المستفيدين ربعًا بربع، فيُكرَّر من حضر في أكثر من ربع: مجموع الأرباع في القالب ${placed}، بينما الأفراد الفريدون المسجّلون بالأسماء ${uq} (إضافة إلى المشاركين بالأعداد فقط). الرقم الفريد في لوحة النظام.`);
   if (bd.unclassified) warnings.push(`${bd.unclassified} مشارك بلا فئة عمرية لم يدخلوا في تفصيل المستفيدين`);
   // 5) مؤشرات النتائج (من الاستبيانات) إن وُجدت
-  if (opts.outcomes) {
-    const cells = {};
-    for (const o of opts.outcomes) { // {row, q, N:{M,F,CWD_M,CWD_F}, D:{...}}
-      const base = 3 + (o.q - 1) * 8; CATS.forEach((c, j) => { cells[colName(base + j) + o.row] = o.N[c] ?? null; cells[colName(base + 4 + j) + o.row] = o.D[c] ?? null; });
-    }
+  {
+    const cells = {}, OUT_ROWS = [4, 5, 7, 8, 9, 10, 11, 12];
+    for (const r of OUT_ROWS) { cells['B' + r] = null; for (let i = 0; i < 32; i++) cells[colName(3 + i) + r] = null; }
+    for (const o of computeOutcomes(project, db)) { if (!o.ind.row || !OUT_ROWS.includes(o.ind.row)) { warnings.push(`مؤشر النتائج «${o.ind.name}»: الصف ${o.ind.row ?? '—'} غير صالح (المسموح 4،5،7–12)`); continue; }
+      cells['B' + o.ind.row] = o.ind.name; for (const s of o.issues.slice(0, 3)) warnings.push(`«${o.ind.name}»: ${s}`); if (o.issues.length > 3) warnings.push(`«${o.ind.name}»: و${o.issues.length - 3} ملاحظات أخرى (انظر التحقق)`);
+      o.quarters.forEach((qq, qi) => { const base = 3 + qi * 8; CATS.forEach((c, j) => { cells[colName(base + j) + o.ind.row] = qq.N[c] || null; cells[colName(base + 4 + j) + o.ind.row] = qq.D[c] || null; }); }); }
     await x.set('Outcome indicators', cells);
   }
   return { data: await x.save(), warnings };
