@@ -3,7 +3,7 @@ import { openDb, addUser, createApp } from '../server/server.js'; import { creat
 import { newDb } from '../core/model.js'; import { tiny } from './fixture.js'; import { reconcile } from '../core/validate.js';
 
 async function setup() {
-  const sdb = openDb(':memory:'), tokA = addUser(sdb, 'a', 'entry'), tokB = addUser(sdb, 'b', 'meal');
+  const sdb = openDb(':memory:'), tokA = addUser(sdb, 'a', 'meal'), tokB = addUser(sdb, 'b', 'meal');
   const srv = http.createServer(createApp(sdb)); await new Promise((r) => srv.listen(0, r));
   const url = 'http://127.0.0.1:' + srv.address().port;
   const mk = (tok, db = newDb()) => { const meta = newMeta(); return { db, meta, s: createSync({ db, meta, cfg: { url, token: tok } }) }; };
@@ -28,7 +28,7 @@ test('جهازان: دفع وسحب وتعديل وحذف وتكامل', async (
   srv.close();
 });
 test('تعارض على نفس السجل: الأحدث يفوز ويتقارب الجهازان', async () => {
-  let t = 1000; const { srv, url, sdb, tokA } = await setup(); const tokB = (await import('../server/server.js')).addUser(sdb, 'c', 'entry');
+  let t = 1000; const { srv, url, sdb, tokA } = await setup(); const tokB = (await import('../server/server.js')).addUser(sdb, 'c', 'meal');
   const mk = (tok, tick) => { const db = newDb(), meta = newMeta(); return { db, meta, s: createSync({ db, meta, cfg: { url, token: tok }, now: () => tick() }) }; };
   const A = mk(tokA, () => (t += 1)), B = mk(tokB, () => (t += 1));
   A.db.centers.push({ id: 'c1', name: 'أصل' }); await A.s.sync(); await B.s.sync();

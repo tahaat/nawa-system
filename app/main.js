@@ -17,15 +17,18 @@ const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const view = () => $('#view');
 const toast = (m) => { const t = $('#toast'); t.textContent = m; t.style.display = 'block'; setTimeout(() => (t.style.display = 'none'), 3500); };
-const ROUTES = { dash: ['لوحة القيادة', vDash], sessions: ['الجلسات (STT)', vSessions], bnf: ['المستفيدون (BTT)', vBnf], projects: ['المشاريع (PTT)', vProjects], centers: ['المراكز', vCenters], check: ['التحقق والتكامل', vCheck], surveys: ['الاستبيانات (KoBo)', vSurveys], cloud: ['السحابة والمزامنة', vCloud], export: ['التصدير والنسخ', vExport] };
+const ROUTES = { dash: ['لوحة القيادة', vDash], sessions: ['الجلسات (STT)', vSessions], bnf: ['المستفيدون (BTT)', vBnf], projects: ['المشاريع (PTT)', vProjects], centers: ['المراكز', vCenters], check: ['التحقق والتكامل', vCheck], surveys: ['الاستبيانات (KoBo)', vSurveys], users: ['المستخدمون والصلاحيات', vUsers], cloud: ['السحابة والمزامنة', vCloud], export: ['التصدير والنسخ', vExport] };
+const me = () => sync.cfg.me || null;
+const allowed = (r) => { const p = me()?.policy; if (r === 'users') return !!p?.manageUsers; return !p || p.routes === '*' || p.routes.includes(r); };
+const myCenters = () => { const x = me(); return x?.role === 'coordinator' || x?.policy?.write?.sessions === 'own' ? db.centers.filter((c) => x.centers.includes(c.id)) : db.centers; };
 let route = 'dash', charts = [], sess = { mode: 'roll', att: new Set(), q: '', bands: false };
 
 function nav() {
-  $('#nav').innerHTML = Object.entries(ROUTES).map(([k, [t]]) => `<a data-go="${k}" class="${k === route ? 'on' : ''}">${t}</a>`).join('');
+  $('#nav').innerHTML = Object.entries(ROUTES).filter(([k]) => allowed(k)).map(([k, [t]]) => `<a data-go="${k}" class="${k === route ? 'on' : ''}">${t}</a>`).join('');
   const opts = db.projects.map((p) => `<option value="${p.id}" ${p.id === ui.projectId ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
   $('#top').innerHTML = `<h1>${ROUTES[route][0]}</h1><label>المشروع<select id="pj">${opts || '<option>— لا مشاريع —</option>'}</select></label>`;
 }
-function go(r) { route = r; charts.forEach((c) => c.destroy()); charts = []; nav(); ROUTES[r][1](); }
+function go(r) { if (!allowed(r)) r = 'dash'; route = r; charts.forEach((c) => c.destroy()); charts = []; nav(); ROUTES[r][1](); }
 const rerender = () => go(route);
 
 document.addEventListener('click', async (e) => {
@@ -170,7 +173,7 @@ function vSessions() {
   view().innerHTML = `
   <div class="card"><h2>جلسة جديدة</h2><div class="row">
     <label>النشاط<select id="sa">${acts.map((x) => `<option value="${x.id}" ${x.id === a?.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></label>
-    <label>المركز<select id="sc">${db.centers.map((c) => `<option value="${c.id}" ${c.id === sess.center ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>
+    <label>المركز<select id="sc">${myCenters().map((c) => `<option value="${c.id}" ${c.id === sess.center ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>
     <label>التاريخ<input type="date" id="sd" value="${sess.date || today}"></label>
     <label>المنشّط<input id="se" value="${esc(sess.educator || '')}" list="eds"></label><datalist id="eds">${[...new Set(db.sessions.map((s) => s.educator).filter(Boolean))].map((e) => `<option>${esc(e)}</option>`).join('')}</datalist>
     <label>عدد وحدات الجلسة<input type="number" id="su" min="1" value="${sess.units || 1}" style="width:90px"></label></div>
@@ -203,7 +206,7 @@ function vCheck() {
 function vExport() {
   const p = project();
   view().innerHTML = `<div class="card"><h2>تصدير Excel</h2><div class="row">
-   <button data-act="xPTT">PTT — قالب Annex 5 معبأ</button><button data-act="xSTT" class="gold">STT — الجلسات</button><button data-act="xBTT" class="gold">BTT — المستفيدون</button><button data-act="xSum" class="sec">ملخص المشروع</button></div>
+   ${!me() || ['admin', 'meal'].includes(me().role) ? '<button data-act="xPTT">PTT — قالب Annex 5 معبأ</button>' : ''}<button data-act="xSTT" class="gold">STT — الجلسات</button><button data-act="xBTT" class="gold">BTT — المستفيدون</button><button data-act="xSum" class="sec">ملخص المشروع</button></div>
    <p class="small">PTT يُعبَّأ داخل القالب الأصلي (مع بقاء المخططات والمعادلات) وتُعاد حساباته عند فتحه في Excel.</p><div id="xw"></div></div>
   <div class="card"><h2>نسخة احتياطية</h2><div class="row"><button data-act="backup">حفظ نسخة JSON</button><label>استرجاع<input type="file" id="rf" accept=".json"></label><button class="sec" data-act="restore">استرجاع</button></div></div>`;
 }
@@ -220,14 +223,38 @@ function vSurveys() {
   <p id="smsg"></p></div>
   <div class="card"><h2>ملخص الردود</h2><table><tr><th>النموذج</th><th>المرحلة</th><th>عدد</th><th>متوسط الدرجة %</th></tr>${TEMPLATES.flatMap((t) => ['baseline', 'endline', 'followup', undefined].map((r) => [t, r])).map(([t, r]) => { const rs = cnt(t.id).filter((x) => (r ? x.round === r : false)); if (!rs.length) return ''; const sc = rs.filter((x) => x.score != null && x.max); return `<tr><td>${esc(t.ar)}</td><td>${r}</td><td>${rs.length}</td><td>${sc.length ? Math.round((100 * sc.reduce((a, x) => a + x.score / x.max, 0)) / sc.length) + '%' : '—'}</td></tr>`; }).join('')}</table></div>`;
 }
+// ======================= المستخدمون والصلاحيات =======================
+const capi = async (path, method = 'GET', body) => { const r = await fetch(sync.cfg.url.replace(/\/$/, '') + path, { method, headers: { authorization: 'Bearer ' + sync.cfg.token, 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }); if (!r.ok) throw new Error('رفض الخادم ' + r.status); return r.json(); };
+const ROLE_AR = { admin: 'مدير', meal: 'MEAL', entry: 'مدخل بيانات (المكتب)', coordinator: 'منسق مركز' };
+async function vUsers() {
+  view().innerHTML = '<div class="card">…</div>'; let us, pol;
+  try { us = (await capi('/api/users')).users; pol = (await capi('/api/policy')).policy; } catch (e) { view().innerHTML = `<div class="card">تعذّر التحميل: ${esc(e.message)}</div>`; return; }
+  const routesAll = Object.entries(ROUTES).filter(([k]) => k !== 'users');
+  view().innerHTML = `<div class="card"><h2>المستخدمون</h2><table><tr><th>المستخدم</th><th>الدور</th><th>المراكز</th><th>الحالة</th><th></th></tr>${us.map((u) => `<tr><td>${esc(u.name)}</td><td>${ROLE_AR[u.role] || u.role}</td><td>${u.centers.map((id) => esc(db.centers.find((c) => c.id === id)?.name || id)).join('، ')}</td><td>${u.active ? '<span class="badge b-ok">فعّال</span>' : '<span class="badge b-error">معطّل</span>'}</td><td>${u.name === me()?.name ? '' : `<button class="sec" data-act="uToggle" data-n="${esc(u.name)}" data-a="${u.active ? 0 : 1}">${u.active ? 'تعطيل' : 'تفعيل'}</button>`}</td></tr>`).join('')}</table>
+  <h3>إضافة مستخدم</h3><div class="row"><label>الاسم<input id="un"></label><label>الدور<select id="ur">${Object.entries(ROLE_AR).map(([k, t]) => `<option value="${k}">${t}</option>`).join('')}</select></label>
+  <label>المراكز (للمنسق)<select id="uc" multiple size="3">${db.centers.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></label><button data-act="uAdd">إضافة</button></div><p id="utok"></p></div>
+  <div class="card"><h2>صلاحيات الأدوار</h2><p class="small">تُفرض على الخادم. «مراكزه فقط» تعني أن المستخدم يرى ويكتب جلسات وردود مراكزه فقط. الحقول المخفية لا تصل جهازه أصلًا وتبقى محفوظة كما هي عند تعديله للسجل.</p>
+  ${['entry', 'coordinator', 'meal'].map((r) => { const p = pol[r]; return `<h3>${ROLE_AR[r]}</h3><div class="row">
+    <label>الجلسات<select data-pol="${r}|sessions">${[['all', 'كل المراكز'], ['own', 'مراكزه فقط']].map(([v, t]) => `<option value="${v}" ${p.read.sessions === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+    <label>الشاشات<span class="row">${routesAll.map(([k, [t]]) => `<label style="flex-direction:row;align-items:center;color:inherit"><input type="checkbox" data-polr="${r}|${k}" ${p.routes === '*' || p.routes.includes(k) ? 'checked' : ''}> ${t}</label>`).join('')}</span></label></div>
+    <div class="row"><span class="small">إخفاء من بيانات المستفيد (الجنس والعمر وكون المستفيد من ذوي الإعاقة لا تُخفى لأن الحسابات تعتمد عليها):</span>${['phone', 'disabilityType'].map((f) => `<label style="flex-direction:row;align-items:center;color:inherit"><input type="checkbox" data-polh="${r}|${f}" ${(p.hidden?.beneficiaries || []).includes(f) ? 'checked' : ''}> ${{ phone: 'الهاتف', disabilityType: 'نوع الإعاقة' }[f]}</label>`).join('')}</div>`; }).join('')}
+  <div class="row" style="margin-top:12px"><button data-act="polSave">حفظ الصلاحيات</button></div><p id="pmsg"></p></div>`;
+  window.__pol = pol;
+}
+document.addEventListener('change', (e) => {
+  const t = e.target, P = window.__pol; if (!P) return;
+  if (t.dataset?.pol) { const [r, c] = t.dataset.pol.split('|'); P[r].read[c] = t.value; if (P[r].write[c]) P[r].write[c] = t.value; }
+  if (t.dataset?.polr) { const [r, k] = t.dataset.polr.split('|'); const cur = P[r].routes === '*' ? Object.keys(ROUTES).filter((x) => x !== 'users') : P[r].routes; P[r].routes = t.checked ? [...new Set([...cur, k])] : cur.filter((x) => x !== k); }
+  if (t.dataset?.polh) { const [r, f] = t.dataset.polh.split('|'); const h = (P[r].hidden ||= {}); const a = new Set(h.beneficiaries || []); t.checked ? a.add(f) : a.delete(f); h.beneficiaries = [...a]; }
+});
 // ======================= السحابة =======================
 let syncing = false, syncMsg = '';
 const engine = () => createSync({ db, meta: sync.meta, cfg: sync.cfg });
 async function doSync(opts) {
   if (syncing || !sync.cfg.url || !sync.cfg.token) return; syncing = true; setSyncBadge('⟳ مزامنة…');
-  try { const r = await engine().sync(opts); if (!project()) ui.projectId = db.projects[0]?.id || null; save(); syncMsg = `تمت المزامنة: دُفع ${r.pushed} وسُحب ${r.pulled} (${new Date().toLocaleTimeString('ar')})`; if (r.pulled && ['dash', 'sessions', 'bnf', 'check'].includes(route) && !document.activeElement?.closest('#view input,#view select')) rerender(); }
+  try { try { sync.cfg.me = await engine().me(); } catch (e) { if (/رمز/.test(e.message)) throw e; } const r = await engine().sync(opts); if (!project()) ui.projectId = db.projects[0]?.id || null; save(); syncMsg = `تمت المزامنة: دُفع ${r.pushed} وسُحب ${r.pulled} (${new Date().toLocaleTimeString('ar')})`; if (r.pulled && ['dash', 'sessions', 'bnf', 'check'].includes(route) && !document.activeElement?.closest('#view input,#view select')) rerender(); }
   catch (e) { syncMsg = 'تعذّرت المزامنة: ' + e.message + ' — البيانات محفوظة محليًا وستُرسل لاحقًا'; }
-  syncing = false; setSyncBadge(); if (route === 'cloud') vCloud();
+  syncing = false; nav(); setSyncBadge(); if (route === 'cloud') vCloud();
 }
 function setSyncBadge(t) { const el = $('#sync'); if (!el) return; const pend = sync.cfg.url ? engine().pending().length : 0; el.textContent = t || (!sync.cfg.url ? 'غير مرتبط بالسحابة' : syncMsg.startsWith('تعذّر') ? `⚠ غير متصل — ${pend} تغيير معلّق` : `☁ ${pend ? pend + ' تغيير معلّق' : 'متزامن'}`); }
 function vCloud() {
@@ -241,6 +268,9 @@ function vCloud() {
 }
 // ======================= الإجراءات =======================
 const actions = {
+  async uAdd() { const name = $('#un').value.trim(); if (!name) return toast('الاسم مطلوب'); const r = await capi('/api/users', 'POST', { name, role: $('#ur').value, centers: [...$('#uc').selectedOptions].map((o) => o.value) }); $('#utok').innerHTML = `<span class="badge b-ok">تم</span> رمز دخول <b>${esc(name)}</b> (يظهر مرة واحدة، سلّمه له بشكل آمن): <code>${esc(r.token)}</code>`; },
+  async uToggle(t) { await capi('/api/users/disable', 'POST', { name: t.dataset.n, active: t.dataset.a === '1' }); vUsers(); },
+  async polSave() { await capi('/api/policy', 'PUT', { policy: window.__pol }); $('#pmsg').innerHTML = '<span class="badge b-ok">حُفظت</span>'; },
   addOutc() { const p = project(); (p.outcomeIndicators ||= []).push({ id: uid('x'), row: 7, name: 'مؤشر نتيجة جديد', formId: TEMPLATES[0].id, kind: 'threshold', valuePct: 70, round: 'endline' }); save(); rerender(); },
   delOutc(t) { project().outcomeIndicators.splice(+t.dataset.i, 1); save(); rerender(); },
   async dlForm(t) { const tpl = TEMPLATES.find((x) => x.id === t.dataset.id); dl(await xlsformBuffer(buildForm(tpl, { projectId: ui.projectId, centers: db.centers })), `${tpl.id}.xlsx`, XL); },
@@ -251,7 +281,7 @@ const actions = {
   },
   async cloudSave() {
     sync.cfg.url = $('#cu').value.trim(); sync.cfg.token = $('#ct').value.trim(); sync.cfg.auto = $('#ca').checked; save();
-    try { const me = await engine().me(); syncMsg = `متصل كـ «${me.name}» (${me.role})`; const first = sync.meta.cursor == null && (me.seq > 0) && db.projects.length; if (first) { const rep = confirm('الخادم يحوي بيانات وهذا الجهاز يحوي بيانات أيضًا.\nموافق = استبدال بيانات هذا الجهاز بنسخة الخادم\nإلغاء = دمج الاثنين'); await doSync({ firstMode: rep ? 'replace' : 'merge' }); } else await doSync(); }
+    try { const me = await engine().me(); sync.cfg.me = me; syncMsg = `متصل كـ «${me.name}» (${me.role})`; const first = sync.meta.cursor == null && (me.seq > 0) && db.projects.length; if (first) { const rep = confirm('الخادم يحوي بيانات وهذا الجهاز يحوي بيانات أيضًا.\nموافق = استبدال بيانات هذا الجهاز بنسخة الخادم\nإلغاء = دمج الاثنين'); await doSync({ firstMode: rep ? 'replace' : 'merge' }); } else await doSync(); }
     catch (e) { syncMsg = 'فشل الاتصال: ' + e.message; } vCloud(); setSyncBadge();
   },
   async cloudSync() { await doSync(); },
@@ -287,7 +317,7 @@ const actions = {
   mode(t) { sess.rd?.(); sess.mode = t.dataset.m; vSessions(); },
   toggleBands(t) { sess.rd?.(); sess.bands = t.checked; vSessions(); },
   saveSession() {
-    sess.rd(); const p = project(); const s = { id: uid('s'), projectId: p.id, activityId: sess.act, centerId: sess.center || db.centers[0]?.id, date: sess.date, educator: (sess.educator || '').trim(), mode: sess.mode, units: sess.units || 1, notes: sess.notes || '' };
+    sess.rd(); const p = project(); const s = { id: uid('s'), projectId: p.id, activityId: sess.act, centerId: sess.center || myCenters()[0]?.id, date: sess.date, educator: (sess.educator || '').trim(), mode: sess.mode, units: sess.units || 1, notes: sess.notes || '' };
     if (s.mode === 'roll') s.attendance = [...sess.att]; else { s.counts = sess.counts; if (sess.bands) s.bandCounts = sess.bandCounts; }
     const v = validateEntry({ ...db, sessions: [s] }).filter((i) => i.ref === s.id || i.ref === s.activityId || i.ref === sess.act);
     const errs = v.filter((i) => i.level === 'error');

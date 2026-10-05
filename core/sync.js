@@ -31,6 +31,8 @@ export function createSync({ db, meta, cfg, fetchFn = globalThis.fetch, now = ()
       for (const x of r.results) { const c = byKey.get(x.coll + '|' + x.id); if (!c || x.error) continue; if (c.data == null) { delete H(c.coll)[c.id]; delete S(c.coll)[c.id]; } else { H(c.coll)[c.id] = c.h; S(c.coll)[c.id] = x.seq; } sent++; }
       // المرفوضة: السيرفر أحدث؛ سيصل بالسحب ويستبدل النسخة المحلية. نُصفّر البصمة لتُطبَّق نسخة السيرفر دون إعادة دفع.
       for (const x of r.rejected) { H(x.coll)[x.id] = '__stale__'; S(x.coll)[x.id] = 0; }
+      // ممنوعة بالصلاحيات: نسحب السجل المحلي ونوقف إعادة المحاولة
+      for (const x of r.forbidden || []) { const a = db[x.coll]; const i = a.findIndex((o) => o.id === x.id); if (x.server) { if (i >= 0) a[i] = x.server; else a.push(x.server); H(x.coll)[x.id] = hash(x.server); S(x.coll)[x.id] = x.seq; } else { if (i >= 0) a.splice(i, 1); delete H(x.coll)[x.id]; delete S(x.coll)[x.id]; } meta.forbidden = (meta.forbidden || 0) + 1; }
     }
     return sent;
   }
@@ -42,9 +44,10 @@ export function createSync({ db, meta, cfg, fetchFn = globalThis.fetch, now = ()
         const arr = (db[x.coll] ||= []); const i = arr.findIndex((o) => o.id === x.id);
         if (x.data == null) { if (i >= 0) arr.splice(i, 1); delete H(x.coll)[x.id]; delete S(x.coll)[x.id]; }
         else { if (i >= 0) arr[i] = x.data; else arr.push(x.data); H(x.coll)[x.id] = hash(x.data); S(x.coll)[x.id] = x.seq; }
-        meta.cursor = Math.max(meta.cursor || 0, x.seq); got++;
+        got++;
       }
-      if (!r.more) { meta.cursor = Math.max(meta.cursor || 0, r.records.length ? meta.cursor : r.seq); break; }
+      meta.cursor = Math.max(meta.cursor || 0, r.more ? r.next : r.seq);
+      if (!r.more) break;
     }
     return got;
   }
