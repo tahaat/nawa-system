@@ -6,6 +6,7 @@ import { dirFromHandle, folderSupported } from './fsdir.js';
 import { TEMPLATES, buildForm, xlsformBuffer } from '../core/forms.js';
 import { importResponses, computeOutcomes } from '../core/outcomes.js';
 import { demo } from './demo.js';
+import { france } from './sim_france.js';
 import { uid, GROUPS, AGE_BANDS, ageAt, bandOf, iso } from '../core/model.js';
 import { dashboard, sttRows, sessionCats, sumCats, context } from '../core/aggregate.js';
 import { validateEntry, reconcile } from '../core/validate.js';
@@ -91,7 +92,7 @@ function outcomeBlock(p) {
   return `<div class="card"><h3>مؤشرات النتائج (من الاستبيانات)</h3><table><tr><th>المؤشر</th><th>ذكور</th><th>إناث</th><th>ذكور (إعاقة)</th><th>إناث (إعاقة)</th><th>الإجمالي</th></tr>${os.map((o) => { const N = { M: 0, F: 0, CWD_M: 0, CWD_F: 0 }, D = { ...N }; o.quarters.forEach((q) => Object.keys(N).forEach((k) => { N[k] += q.N[k]; D[k] += q.D[k]; })); const tn = Object.values(N).reduce((a, b) => a + b, 0), td = Object.values(D).reduce((a, b) => a + b, 0);
     return `<tr><td>${esc(o.ind.name)}${o.issues.length ? ` <span class="badge b-warn" title="${esc(o.issues.slice(0, 5).join(' | '))}">${o.issues.length}</span>` : ''}</td>${['M', 'F', 'CWD_M', 'CWD_F'].map((k) => `<td>${N[k]}/${D[k]} (${pct(N[k], D[k])})</td>`).join('')}<td><b>${tn}/${td} (${pct(tn, td)})</b></td></tr>`; }).join('')}</table></div>`;
 }
-const empty = () => (view().innerHTML = `<div class="card"><h2>ابدأ</h2><p>لا يوجد مشروع بعد.</p><button data-act="newProject">إنشاء مشروع</button> <button class="sec" data-act="demo">تحميل مشروع تجريبي</button></div>`);
+const empty = () => (view().innerHTML = `<div class="card"><h2>ابدأ</h2><p>لا يوجد مشروع بعد.</p><button data-act="newProject">إنشاء مشروع</button> <button class="sec" data-act="demo">تحميل مشروع تجريبي</button> <button class="sec" data-act="demoFr">محاكاة مشروع واقعي (FRANCE)</button></div>`);
 
 // ======================= المشاريع =======================
 const sel = (opts, v) => opts.map(([k, t]) => `<option value="${esc(k)}" ${k === v ? 'selected' : ''}>${esc(t)}</option>`).join('');
@@ -99,7 +100,7 @@ function vProjects() {
   const p = project(); if (!p) return empty();
   const iv = p.interventions.map((i) => [i.id, `${i.result} — ${i.name}`]);
   view().innerHTML = `
-  <div class="card row"><button data-act="newProject">+ مشروع جديد</button><button class="sec" data-act="demo">مشروع تجريبي</button><button class="sec" data-act="delProject">حذف هذا المشروع</button></div>
+  <div class="card row"><button data-act="newProject">+ مشروع جديد</button><button class="sec" data-act="demo">مشروع تجريبي</button><button class="sec" data-act="demoFr">محاكاة FRANCE</button><button class="sec" data-act="delProject">حذف هذا المشروع</button></div>
   <div class="card"><h2>بيانات المشروع</h2><div class="row">
     <label>الاسم<input data-bind="p|name" value="${esc(p.name)}" style="width:280px"></label>
     <label>الممول<input data-bind="p|donor" value="${esc(p.donor)}"></label>
@@ -327,6 +328,7 @@ const actions = {
     await doSyncFolder({ firstMode: mode }, true); vCloud();
   },
   newProject() { const p = { id: uid('p'), name: 'مشروع جديد', donor: '', start: iso(new Date()).slice(0, 4) + '-01-01', end: iso(new Date()).slice(0, 4) + '-12-31', directRule: { mode: 'once' }, interventions: [], activities: [], outputIndicators: [] }; db.projects.push(p); ui.projectId = p.id; save(); go('projects'); },
+  demoFr() { const d = france(); for (const k of Object.keys(d)) db[k].push(...d[k]); ui.projectId = d.projects[0].id; save(); toast('تم تحميل محاكاة مشروع FRANCE'); go('dash'); },
   demo() { const p = demo(db); ui.projectId = p.id; save(); toast('تم تحميل المشروع التجريبي'); go('dash'); },
   delProject() { if (!confirm('حذف المشروع وكل جلساته؟')) return; const id = ui.projectId; db.projects = db.projects.filter((p) => p.id !== id); db.sessions = db.sessions.filter((s) => s.projectId !== id); ui.projectId = db.projects[0]?.id; save(); rerender(); },
   addIv() { project().interventions.push({ id: uid('i'), result: 'R1', name: 'بند جديد', group: 'child' }); save(); rerender(); },

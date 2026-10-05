@@ -1,4 +1,4 @@
-import { context, sessionCats, sumCats, sttRows, bttRows, outputMonthly, breakdown, workplanActual, dashboard } from './aggregate.js';
+import { inferBands, context, sessionCats, sumCats, sttRows, bttRows, outputMonthly, breakdown, workplanActual, dashboard } from './aggregate.js';
 import { ageAt, monthIdx, bandOf, CATS } from './model.js';
 
 const issue = (level, code, msg, ref) => ({ level, code, msg, ref });
@@ -44,8 +44,8 @@ export function validateEntry(db) {
     } else {
       const c = s.counts || {};
       if (![c.M, c.F, c.MWD, c.FWD].every((n) => Number.isInteger(n || 0) && (n || 0) >= 0)) out.push(issue('error', 'S09', `أعداد غير صحيحة (${s.date})`, s.id));
-      if (!s.bandCounts) out.push(issue('info', 'S10', `جلسة بالأعداد بلا توزيع عمري: لن تدخل في تفصيل الفئات العمرية (${a?.name} ${s.date})`, s.id));
-      else {
+      if (!s.bandCounts && !inferBands(a || {}, s.counts || {})) out.push(issue('info', 'S10', `جلسة بالأعداد بلا توزيع عمري: لن تدخل في تفصيل الفئات العمرية (${a?.name} ${s.date})`, s.id));
+      else if (s.bandCounts) {
         for (const [k, kk] of [['M', 'M'], ['F', 'F'], ['MWD', 'MWD'], ['FWD', 'FWD']]) {
           const sum = (s.bandCounts[k] || []).reduce((x, y) => x + y, 0);
           if (sum !== (c[kk] || 0)) out.push(issue('error', 'S11', `مجموع الفئات العمرية (${k}) لا يساوي العدد (${sum} ≠ ${c[kk] || 0}) في ${s.date}`, s.id));

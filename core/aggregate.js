@@ -98,6 +98,13 @@ export function outputMonthly(project, db) {
 
 // ---- تفصيل المستفيدين حسب الربع/الجنس/الإعاقة/الفئة العمرية ----
 // الناتج: بند (intervention) × ربع × فئة (M,F,CWD_M,CWD_F) × [7 فئات عمرية]
+// جلسة بالأعداد بلا توزيع عمري: إن وقع عمر النشاط كله ضمن فئة عمرية واحدة نضع الأعداد فيها
+export function inferBands(a, c) {
+  if (a.ageMin == null || a.ageMax == null) return null;
+  const lo = bandOf(a.ageMin), hi = bandOf(a.ageMax); if (!lo || lo !== hi) return null;
+  const f = (n) => Object.assign(Array(7).fill(0), { [lo.col]: n || 0 });
+  return { M: f(c.M), F: f(c.F), MWD: f(c.MWD), FWD: f(c.FWD) };
+}
 export function breakdown(project, db) {
   const cx = context(db), out = {};
   const get = (q, iv, cat) => (out[`${q}|${iv}|${cat}`] ||= Array(7).fill(0));
@@ -115,7 +122,7 @@ export function breakdown(project, db) {
         get(q, a.interventionId, catOf(b.sex, b.disability))[band.col]++;
       }
     } else {
-      const c = s.counts || {}, bands = s.bandCounts; // bandCounts اختياري: {M:[7],F:[7],MWD:[7],FWD:[7]}
+      const c = s.counts || {}, bands = s.bandCounts || inferBands(a, c); // bandCounts اختياري: {M:[7],F:[7],MWD:[7],FWD:[7]}
       if (!bands) { noAge += (c.M || 0) + (c.F || 0) + (c.MWD || 0) + (c.FWD || 0); continue; }
       for (const [key, cat] of [['M', 'M'], ['F', 'F'], ['MWD', 'CWD_M'], ['FWD', 'CWD_F']]) (bands[key] || []).forEach((n, i) => { get(q, a.interventionId, cat)[i] += n; });
     }

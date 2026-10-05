@@ -1,0 +1,12 @@
+import fs from 'node:fs'; import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
+import { france } from './sim_france.js'; import { validateEntry, reconcile } from '../core/validate.js';
+import { dashboard, directBeneficiaries, outputMonthly } from '../core/aggregate.js'; import { exportPTT } from '../core/ptt-export.js'; import { exportSTT, exportBTT, exportSummary } from '../core/xlsx-export.js';
+const db = france(), p = db.projects[0];
+fs.mkdirSync('out/sim', { recursive: true }); fs.writeFileSync('out/sim/france_sim.json', JSON.stringify(db));
+console.log('جلسات', db.sessions.length, 'مستفيدون', db.beneficiaries.length);
+const v = validateEntry(db), r = reconcile(db); console.log('validate:', v.length, v.slice(0, 5).map((x) => x.code + ' ' + (x.msg || x.message || '')));
+console.log('reconcile:', r.length, r.slice(0, 8).map((x) => x.code + ' ' + (x.msg || x.message || '')));
+console.log('direct', directBeneficiaries(p, db).direct.size, 'of', directBeneficiaries(p, db).all.size);
+for (const o of outputMonthly(p, db)) console.log(o.ind.output, o.ind.name, JSON.stringify(Object.fromEntries(['M','F','CWD_M','CWD_F'].map((c) => [c, o.months.reduce((a, m) => a + m[c], 0)]))));
+const t = fs.readFileSync('assets/ptt.xlsx'); const x = await exportPTT(t, p, db, DOMParser, XMLSerializer); fs.writeFileSync('out/sim/France_PTT.xlsx', x.data); console.log('PTT warnings', x.warnings);
+fs.writeFileSync('out/sim/France_STT.xlsx', Buffer.from(await exportSTT(db, p.id))); fs.writeFileSync('out/sim/France_BTT.xlsx', Buffer.from(await exportBTT(db, p.id))); fs.writeFileSync('out/sim/France_Summary.xlsx', Buffer.from(await exportSummary(db, p)));
