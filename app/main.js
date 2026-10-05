@@ -6,10 +6,9 @@ import { dirFromHandle, folderSupported } from './fsdir.js';
 import { TEMPLATES, allForms, buildForm, xlsformBuffer } from '../core/forms.js';
 import { initBuilder, builderCard } from './form-builder.js';
 import { importResponses, computeOutcomes } from '../core/outcomes.js';
-import { demo } from './demo.js';
 import { france } from './sim_france.js';
 import { vPlan, initPlan } from './plan-view.js';
-import { uid, GROUPS, AGE_BANDS, ageAt, bandOf, iso } from '../core/model.js';
+import { purgeDemo, uid, GROUPS, AGE_BANDS, ageAt, bandOf, iso } from '../core/model.js';
 import { dashboard, sttRows, sessionCats, sumCats, context } from '../core/aggregate.js';
 import { validateEntry, reconcile } from '../core/validate.js';
 import { exportPTT } from '../core/ptt-export.js';
@@ -71,7 +70,7 @@ function vDash() {
     <div class="card"><h3>الحضور حسب الجنس والإعاقة</h3><canvas id="c1"></canvas></div>
     <div class="card"><h3>الأنشطة: المنفذ مقابل المخطط</h3><canvas id="c2"></canvas></div>
     <div class="card"><h3>الجلسات والحضور شهريًا</h3><canvas id="c3"></canvas></div>
-    <div class="card"><h3>الفئات العمرية (فريد لكل ربع وبند)</h3><canvas id="c4"></canvas></div>
+    <div class="card"><h3>الفئات العمرية</h3><p class="small" style="margin:0">الأحمر: أفراد فريدون لكل ربع وبند (جلسات الأسماء). الذهبي: مشاركات جلسات الأعداد (غير فريدة).</p><canvas id="c4"></canvas></div>
     <div class="card"><h3>الحضور حسب المركز</h3><canvas id="c5"></canvas></div>
     <div class="card"><h3>الحضور حسب الفئة المستهدفة</h3><canvas id="c6"></canvas></div>
   </div>`;
@@ -82,7 +81,7 @@ function vDash() {
   mk('c2', { type: 'bar', data: { labels: an, datasets: [{ label: 'منفذ', data: an.map((k) => d.byAct[k].sessions), backgroundColor: RED }, { label: 'مخطط', data: an.map((k) => d.byAct[k].planned), backgroundColor: GOLD }] } });
   const ml = Array.from({ length: 12 }, (_, i) => { const x = new Date(Date.UTC(+p.start.slice(0, 4), +p.start.slice(5, 7) - 1 + i, 1)); return x.toISOString().slice(0, 7); });
   mk('c3', { type: 'line', data: { labels: ml, datasets: [{ label: 'الحضور', data: d.byMonth.map((m) => m.att), borderColor: RED, backgroundColor: RED }, { label: 'الجلسات', data: d.byMonth.map((m) => m.sessions), borderColor: GOLD, backgroundColor: GOLD }] } });
-  mk('c4', { type: 'bar', data: { labels: AGE_BANDS.map((b) => b.key), datasets: [{ label: 'مستفيدون', data: d.byBand, backgroundColor: PINK, borderColor: RED, borderWidth: 1 }] } });
+  mk('c4', { type: 'bar', data: { labels: AGE_BANDS.map((b) => b.key), datasets: [{ label: 'أفراد فريدون (أسماء)', data: d.byBand.map((n, i) => n - d.byBandCounts[i]), backgroundColor: PINK, borderColor: RED, borderWidth: 1 }, { label: 'مشاركات (أعداد)', data: d.byBandCounts, backgroundColor: GOLD, borderColor: GOLD, borderWidth: 1 }] }, options: { scales: { x: { stacked: true }, y: { stacked: true } } } });
   const cn = Object.keys(d.byCenter);
   mk('c5', { type: 'bar', data: { labels: cn, datasets: [{ label: 'الحضور', data: cn.map((k) => d.byCenter[k].att), backgroundColor: RED }, { label: 'الجلسات', data: cn.map((k) => d.byCenter[k].sessions), backgroundColor: GOLD }] } });
   const gk = Object.keys(d.byGroup);
@@ -94,7 +93,8 @@ function outcomeBlock(p) {
   return `<div class="card"><h3>مؤشرات النتائج (من الاستبيانات)</h3><table><tr><th>المؤشر</th><th>ذكور</th><th>إناث</th><th>ذكور (إعاقة)</th><th>إناث (إعاقة)</th><th>الإجمالي</th></tr>${os.map((o) => { const N = { M: 0, F: 0, CWD_M: 0, CWD_F: 0 }, D = { ...N }; o.quarters.forEach((q) => Object.keys(N).forEach((k) => { N[k] += q.N[k]; D[k] += q.D[k]; })); const tn = Object.values(N).reduce((a, b) => a + b, 0), td = Object.values(D).reduce((a, b) => a + b, 0);
     return `<tr><td>${esc(o.ind.name)}${o.issues.length ? ` <span class="badge b-warn" title="${esc(o.issues.slice(0, 5).join(' | '))}">${o.issues.length}</span>` : ''}</td>${['M', 'F', 'CWD_M', 'CWD_F'].map((k) => `<td>${N[k]}/${D[k]} (${pct(N[k], D[k])})</td>`).join('')}<td><b>${tn}/${td} (${pct(tn, td)})</b></td></tr>`; }).join('')}</table></div>`;
 }
-const empty = () => (view().innerHTML = `<div class="card"><h2>ابدأ</h2><p>لا يوجد مشروع بعد.</p><button data-act="newProject">إنشاء مشروع</button> <button class="sec" data-act="demo">تحميل مشروع تجريبي</button> <button class="sec" data-act="demoFr">محاكاة مشروع واقعي (FRANCE)</button></div>`);
+const hasDemo = () => ['projects', 'centers', 'beneficiaries', 'sessions', 'surveyResponses'].some((k) => db[k].some((r) => r.demo));
+const empty = () => (view().innerHTML = `<div class="card"><h2>ابدأ</h2><p>لا يوجد مشروع بعد.</p><button data-act="newProject">إنشاء مشروع</button> <button class="sec" data-act="demo">تحميل مشروع تجريبي</button></div>`);
 
 // ======================= المشاريع =======================
 const sel = (opts, v) => opts.map(([k, t]) => `<option value="${esc(k)}" ${k === v ? 'selected' : ''}>${esc(t)}</option>`).join('');
@@ -102,7 +102,7 @@ function vProjects() {
   const p = project(); if (!p) return empty();
   const iv = p.interventions.map((i) => [i.id, `${i.result} — ${i.name}`]);
   view().innerHTML = `
-  <div class="card row"><button data-act="newProject">+ مشروع جديد</button><button class="sec" data-act="demo">مشروع تجريبي</button><button class="sec" data-act="demoFr">محاكاة FRANCE</button><button class="sec" data-act="delProject">حذف هذا المشروع</button></div>
+  <div class="card row"><button data-act="newProject">+ مشروع جديد</button><button class="sec" data-act="demo">مشروع تجريبي</button>${hasDemo() ? '<button class="x" data-act="purgeDemo">مسح بيانات المحاكاة كلها</button>' : ''}<button class="sec" data-act="delProject">حذف هذا المشروع</button></div>
   <div class="card"><h2>بيانات المشروع</h2><div class="row">
     <label>الاسم<input data-bind="p|name" value="${esc(p.name)}" style="width:280px"></label>
     <label>الممول<input data-bind="p|donor" value="${esc(p.donor)}"></label>
@@ -180,7 +180,7 @@ function vSessions() {
     <label>النشاط<select id="sa">${acts.map((x) => `<option value="${x.id}" ${x.id === a?.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></label>
     <label>المركز<select id="sc">${myCenters().map((c) => `<option value="${c.id}" ${c.id === sess.center ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>
     <label>التاريخ<input type="date" id="sd" value="${sess.date || today}"></label>
-    <label>المنشّط<input id="se" value="${esc(sess.educator || '')}" list="eds"></label><datalist id="eds">${[...new Set(db.sessions.map((s) => s.educator).filter(Boolean))].map((e) => `<option>${esc(e)}</option>`).join('')}</datalist>
+    <label>المنشّط<input id="se" value="${esc(sess.educator || '')}" list="eds"></label><label>المجموعة/الشعبة<input id="sg" value="${esc(sess.grp || '')}" placeholder="اختياري (أ، ب…)" style="width:110px"></label><datalist id="eds">${[...new Set(db.sessions.map((s) => s.educator).filter(Boolean))].map((e) => `<option>${esc(e)}</option>`).join('')}</datalist>
     <label>عدد وحدات الجلسة<input type="number" id="su" min="1" value="${sess.units || 1}" style="width:90px"></label></div>
   <div class="tabs" style="margin-top:12px"><button data-act="mode" data-m="roll" class="${sess.mode === 'roll' ? 'on' : ''}">كشف بالأسماء</button><button data-act="mode" data-m="counts" class="${sess.mode === 'counts' ? 'on' : ''}">أعداد فقط</button></div>
   ${sess.mode === 'roll' ? `<div class="row"><label>بحث في السجل<input id="sq" value="${esc(sess.q)}"></label><span class="small">المحدد: <b id="sel-n">${sess.att.size}</b> — ${a ? `فئة النشاط ${a.ageMin ?? '؟'}–${a.ageMax ?? '؟'} سنة` : ''}</span><button class="sec" data-act="quickBnf">+ مستفيد جديد سريع</button></div>
@@ -192,7 +192,7 @@ function vSessions() {
   <div class="card"><h2>آخر الجلسات</h2><div class="tw"><table><tr><th>التاريخ</th><th>النشاط</th><th>المركز</th><th>المنشّط</th><th>النمط</th><th>ذ</th><th>إ</th><th>ذ-إ</th><th>إ-إ</th><th>المجموع</th><th>تحقق</th><th></th></tr>
   ${db.sessions.filter((s) => s.projectId === p.id).sort((x, y) => y.date.localeCompare(x.date)).slice(0, 150).map((s) => { const c = sessionCats(s, cx), v = validateEntry({ ...db, sessions: [s] }).filter((i) => i.ref === s.id || i.ref === s.activityId); const lv = v.some((i) => i.level === 'error') ? 'error' : v.some((i) => i.level === 'warn') ? 'warn' : 'ok';
     return `<tr><td>${s.date}</td><td>${esc(cx.act.get(s.activityId)?.name)}</td><td>${esc(cx.ctr.get(s.centerId)?.name)}</td><td>${esc(s.educator)}</td><td>${s.mode === 'roll' ? 'أسماء' : 'أعداد'}</td><td>${c.M}</td><td>${c.F}</td><td>${c.CWD_M}</td><td>${c.CWD_F}</td><td><b>${sumCats(c)}</b></td><td><span class="badge b-${lv}" title="${esc(v.map((i) => i.msg).join(' | '))}">${lv === 'ok' ? '✔' : v.length}</span></td><td><button class="x" data-act="delSess" data-id="${s.id}">حذف</button></td></tr>`; }).join('')}</table></div></div>`;
-  const rd = () => { sess.center = $('#sc')?.value; sess.date = $('#sd')?.value; sess.educator = $('#se')?.value; sess.units = +$('#su')?.value || 1; sess.notes = $('#sn')?.value; sess.act = $('#sa')?.value; if (sess.mode === 'counts') { sess.counts = Object.fromEntries(['M', 'F', 'MWD', 'FWD'].map((k) => [k, +$('#n-' + k)?.value || 0])); if (sess.bands) sess.bandCounts = Object.fromEntries(['M', 'F', 'MWD', 'FWD'].map((k) => [k, AGE_BANDS.map((_, i) => +$(`#bd-${k}-${i}`)?.value || 0)])); } };
+  const rd = () => { sess.center = $('#sc')?.value; sess.date = $('#sd')?.value; sess.educator = $('#se')?.value; sess.grp = $('#sg')?.value; sess.units = +$('#su')?.value || 1; sess.notes = $('#sn')?.value; sess.act = $('#sa')?.value; if (sess.mode === 'counts') { sess.counts = Object.fromEntries(['M', 'F', 'MWD', 'FWD'].map((k) => [k, +$('#n-' + k)?.value || 0])); if (sess.bands) sess.bandCounts = Object.fromEntries(['M', 'F', 'MWD', 'FWD'].map((k) => [k, AGE_BANDS.map((_, i) => +$(`#bd-${k}-${i}`)?.value || 0)])); } };
   sess.rd = rd;
   $('#sa').onchange = () => { rd(); vSessions(); };
   $('#sd').onchange = () => { rd(); vSessions(); };
@@ -330,8 +330,8 @@ const actions = {
     await doSyncFolder({ firstMode: mode }, true); vCloud();
   },
   newProject() { const p = { id: uid('p'), name: 'مشروع جديد', donor: '', start: iso(new Date()).slice(0, 4) + '-01-01', end: iso(new Date()).slice(0, 4) + '-12-31', directRule: { mode: 'once' }, interventions: [], activities: [], outputIndicators: [] }; db.projects.push(p); ui.projectId = p.id; save(); go('projects'); },
-  demoFr() { const d = france(); for (const k of Object.keys(d)) db[k].push(...d[k]); ui.projectId = d.projects[0].id; save(); toast('تم تحميل محاكاة مشروع FRANCE'); go('dash'); },
-  demo() { const p = demo(db); ui.projectId = p.id; save(); toast('تم تحميل المشروع التجريبي'); go('dash'); },
+  demo() { if (db.projects.some((x) => x.id === 'p_fr')) { toast('المشروع التجريبي محمّل مسبقًا'); ui.projectId = 'p_fr'; save(); return go('dash'); } const d = france(); for (const k of Object.keys(d)) db[k].push(...d[k]); ui.projectId = 'p_fr'; save(); toast('تم تحميل المشروع التجريبي (بيانات محاكاة)'); go('dash'); },
+  purgeDemo() { if (!confirm('سيُحذف المشروع التجريبي وكل بياناته (جلسات، مستفيدون، مراكز، ردود استبيان) نهائيًا. بياناتك الحقيقية لا تتأثر. متابعة؟')) return; const r = purgeDemo(db); ui.projectId = db.projects[0]?.id || null; save(); toast(`تم مسح المحاكاة: ${r.sessions} جلسة، ${r.beneficiaries} مستفيد`); go('projects'); },
   delProject() { if (!confirm('حذف المشروع وكل جلساته؟')) return; const id = ui.projectId; db.projects = db.projects.filter((p) => p.id !== id); db.sessions = db.sessions.filter((s) => s.projectId !== id); ui.projectId = db.projects[0]?.id; save(); rerender(); },
   addIv() { project().interventions.push({ id: uid('i'), result: 'R1', name: 'بند جديد', group: 'child' }); save(); rerender(); },
   delIv(t) { const p = project(), i = p.interventions[+t.dataset.i]; if (p.activities.some((a) => a.interventionId === i.id)) return toast('البند مرتبط بأنشطة'); p.interventions.splice(+t.dataset.i, 1); save(); rerender(); },
@@ -362,7 +362,7 @@ const actions = {
   mode(t) { sess.rd?.(); sess.mode = t.dataset.m; vSessions(); },
   toggleBands(t) { sess.rd?.(); sess.bands = t.checked; vSessions(); },
   saveSession() {
-    sess.rd(); const p = project(); const s = { id: uid('s'), projectId: p.id, activityId: sess.act, centerId: sess.center || myCenters()[0]?.id, date: sess.date, educator: (sess.educator || '').trim(), mode: sess.mode, units: sess.units || 1, notes: sess.notes || '' };
+    sess.rd(); const p = project(); const s = { id: uid('s'), projectId: p.id, activityId: sess.act, centerId: sess.center || myCenters()[0]?.id, date: sess.date, educator: (sess.educator || '').trim(), ...(sess.grp?.trim() ? { grp: sess.grp.trim() } : {}), mode: sess.mode, units: sess.units || 1, notes: sess.notes || '' };
     if (s.mode === 'roll') s.attendance = [...sess.att]; else { s.counts = sess.counts; if (sess.bands) s.bandCounts = sess.bandCounts; }
     const v = validateEntry({ ...db, sessions: [s] }).filter((i) => i.ref === s.id || i.ref === s.activityId || i.ref === sess.act);
     const errs = v.filter((i) => i.level === 'error');

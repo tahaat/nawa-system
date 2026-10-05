@@ -55,7 +55,7 @@ export async function exportPTT(templateBuf, project, db, DOMParserCtor, XMLSeri
   }
   await x.set('Beneficiaries Breakdown', bc);
   const placed = Object.values(bd.cells).reduce((a, arr) => a + arr.reduce((x, y) => x + y, 0), 0), uq = directBeneficiaries(project, db).all.size;
-  if (placed > uq) warnings.push(`قالب PTT يجمع المستفيدين ربعًا بربع، فيُكرَّر من حضر في أكثر من ربع: مجموع الأرباع في القالب ${placed}، بينما الأفراد الفريدون المسجّلون بالأسماء ${uq} (إضافة إلى المشاركين بالأعداد فقط). الرقم الفريد في لوحة النظام.`);
+  if (placed > uq) warnings.push(`تفصيل المستفيدين (PTT): مجموع الصفوف ${placed} يشمل تكرار من حضر في أكثر من ربع (القالب يجمع الأرباع) ومشاركات جلسات الأعداد؛ أما الأفراد الفريدون المسجّلون بالأسماء فهم ${uq}. الرقم الفريد الدقيق في لوحة القيادة.`);
   if (bd.unclassified) warnings.push(`${bd.unclassified} مشارك بلا فئة عمرية لم يدخلوا في تفصيل المستفيدين`);
   // 5) مؤشرات النتائج (من الاستبيانات) إن وُجدت
   {

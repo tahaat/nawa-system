@@ -53,7 +53,7 @@ export function validateEntry(db) {
       }
     }
     if (sumCats(sessionCats(s, cx)) === 0) out.push(issue('error', 'S12', `جلسة بلا حضور (${a?.name} ${s.date})`, s.id));
-    const key = [s.projectId, s.activityId, s.centerId, s.date, s.educator].join('|');
+    const key = [s.projectId, s.activityId, s.centerId, s.date, s.educator, s.grp || ''].join('|');
     if (seenKey.has(key)) out.push(issue('warn', 'S13', `جلسة مكررة محتملة: ${a?.name} ${s.date} (${s.educator})`, s.id));
     seenKey.set(key, s.id);
   }

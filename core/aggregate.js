@@ -28,7 +28,7 @@ export function sttRows(db, projectId) {
     const a = cx.act.get(s.activityId) || {}, p = cx.proj.get(s.projectId) || {};
     const c = sessionCats(s, cx);
     return { id: s.id, date: s.date, year: s.date.slice(0, 4), center: cx.ctr.get(s.centerId)?.name || '', project: p.name || '', donor: p.donor || '',
-      activity: a.name || '', type: a.type || '', group: a.group || '', sessions: s.units || 1, male: c.M, female: c.F, mwd: c.CWD_M, fwd: c.CWD_F, total: sumCats(c), educator: s.educator || '', mode: s.mode, notes: s.notes || '' };
+      activity: a.name || '', type: a.type || '', group: a.group || '', sessions: s.units || 1, male: c.M, female: c.F, mwd: c.CWD_M, fwd: c.CWD_F, total: sumCats(c), educator: s.educator || '', mode: s.mode, notes: [s.grp ? `مجموعة ${s.grp}` : '', s.notes || ''].filter(Boolean).join(' — ') };
   });
 }
 
@@ -157,6 +157,9 @@ export function dashboard(project, db) {
   }
   const bd = breakdown(project, db);
   for (const [k, arr] of Object.entries(bd.cells)) arr.forEach((n, i) => (byBand[i] += n));
+  const byBandCounts = Array(7).fill(0);
+  for (const s of ss) { if (s.mode !== 'counts') continue; const a = cx.act.get(s.activityId), m = monthIdx(project, s.date); if (!a || m < 0 || m > 11) continue;
+    const bands = s.bandCounts || inferBands(a, s.counts || {}); if (!bands) continue; for (const arr of Object.values(bands)) arr.forEach((n, i) => (byBandCounts[i] += n)); }
   const d = directBeneficiaries(project, db);
-  return { project, sessions: ss.length, attendance: sumCats(tot), cats: tot, byAct, byMonth, byCenter, byBand, byGroup, directCount: d.direct.size, uniqueRolled: d.all.size, unclassified: bd.unclassified };
+  return { byBandCounts, project, sessions: ss.length, attendance: sumCats(tot), cats: tot, byAct, byMonth, byCenter, byBand, byGroup, directCount: d.direct.size, uniqueRolled: d.all.size, unclassified: bd.unclassified };
 }

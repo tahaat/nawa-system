@@ -40,3 +40,10 @@ export const emptyCats = () => ({ M: 0, F: 0, CWD_M: 0, CWD_F: 0 });
 export function newDb() {
   return { projects: [], centers: [], beneficiaries: [], sessions: [], enrollments: [], surveyResponses: [] };
 }
+
+// يحذف كل سجلات المحاكاة (الموسومة demo) ويعيد عددها
+export function purgeDemo(db) {
+  const out = {};
+  for (const k of ['sessions', 'surveyResponses', 'enrollments', 'beneficiaries', 'centers', 'projects']) { const before = db[k].length; db[k] = db[k].filter((r) => !r.demo); out[k] = before - db[k].length; }
+  return out;
+}

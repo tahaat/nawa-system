@@ -1,6 +1,6 @@
 // يصدّر PTT ببيانات المحاكاة، يعيد حسابه بـ LibreOffice، ويتحقق من الأوراق اليدوية
 import fs from 'node:fs'; import { execSync } from 'node:child_process'; import { DOMParser, XMLSerializer } from '@xmldom/xmldom'; import ExcelJS from 'exceljs';
-import { france } from './sim_france.js'; import { exportPTT } from '../core/ptt-export.js';
+import { france } from './sim_france.js'; import { directBeneficiaries } from '../core/aggregate.js'; import { exportPTT } from '../core/ptt-export.js';
 const db = france(), p = db.projects[0], { data, warnings } = await exportPTT(fs.readFileSync('assets/ptt.xlsx'), p, db, DOMParser, XMLSerializer);
 fs.mkdirSync('out/lo4', { recursive: true }); fs.writeFileSync('out/sim/France_PTT_full.xlsx', data); execSync('soffice --headless --convert-to xlsx --outdir out/lo4 out/sim/France_PTT_full.xlsx', { stdio: 'ignore' });
 const wb = new ExcelJS.Workbook(); await wb.xlsx.readFile('out/lo4/France_PTT_full.xlsx');
@@ -13,7 +13,7 @@ eq('lf impact', v('Log frame', 'B3'), 'مساهمة في رفاه الأطفال
 eq('ip outcome', v('Indicator Profile', 'C5'), p.outcomeIndicators[0].name); eq('ip def', v('Indicator Profile', 'D5'), 'نسبة الأطفال فوق العتبة'); eq('ip output', v('Indicator Profile', 'C13'), p.outputIndicators[0].name); eq('ip out freq', v('Indicator Profile', 'H13'), 'Monthly');
 const P = 'Project Tracking Table -PTT';
 eq('ptt out name', v(P, 'C13'), p.outputIndicators[0].name); eq('ptt row15 fix', v(P, 'P15'), v('Output indicators', 'AZ6') || 0); eq('ptt oc target', v(P, 'K7'), 60); eq('ptt oc base', v(P, 'F7'), 30); eq('ptt oc name', v(P, 'C7'), p.outcomeIndicators[0].name);
-eq('direct actual', ['P', 'Q', 'R', 'S'].map((c) => v(P, c + 5)).reduce((a, b) => a + b, 0), 101);
+eq('direct actual', ['P', 'Q', 'R', 'S'].map((c) => v(P, c + 5)).reduce((a, b) => a + b, 0), directBeneficiaries(p, db).direct.size);
 const M = 'MEAL Calendar';
 eq('meal plan', v(M, 'K7'), 1); eq('meal plan2', v(M, 'L7'), null); eq('meal actual', v(M, 'K8'), 1); eq('meal ach %', Math.round(v(M, 'F7') * 100), 50); eq('meal group sum H5..', v(M, 'K5'), 1); eq('meal 63', v(M, 'BC63') ?? 'x', 'x');
 eq('meal month hdr', v(M, 'H1'), +new Date('2026-01-01T00:00:00Z'));
