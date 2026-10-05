@@ -1,6 +1,8 @@
 import Chart from 'chart.js/auto';
-import { db, ui, sync, load, save, project, backupJSON, restoreJSON } from './store.js';
+import { db, ui, sync, saveHandle, load, save, project, backupJSON, restoreJSON } from './store.js';
 import { createSync } from '../core/sync.js';
+import { createFolderSync } from '../core/sync-folder.js';
+import { dirFromHandle, folderSupported } from './fsdir.js';
 import { TEMPLATES, buildForm, xlsformBuffer } from '../core/forms.js';
 import { importResponses, computeOutcomes } from '../core/outcomes.js';
 import { demo } from './demo.js';
@@ -250,21 +252,52 @@ document.addEventListener('change', (e) => {
 // ======================= السحابة =======================
 let syncing = false, syncMsg = '';
 const engine = () => createSync({ db, meta: sync.meta, cfg: sync.cfg });
+let fsync = null, fsyncFor = null;
+const folderEngine = () => { if (!sync.handle) return null; if (!fsync || fsyncFor !== sync.handle) { fsync = createFolderSync({ db, meta: sync.fmeta, dir: dirFromHandle(sync.handle) }); fsyncFor = sync.handle; } return fsync; };
+const isFolder = () => sync.cfg.mode === 'folder';
+let fstate = '';   // granted | prompt | none
+async function folderPerm(ask) { if (!sync.handle) return (fstate = 'none'); try { let p = await sync.handle.queryPermission({ mode: 'readwrite' }); if (p !== 'granted' && ask) p = await sync.handle.requestPermission({ mode: 'readwrite' }); return (fstate = p); } catch { return (fstate = 'none'); } }
+async function doSyncFolder(opts, ask) {
+  if (syncing || !sync.handle) return; if ((await folderPerm(ask)) !== 'granted') { syncMsg = 'يلزم تفعيل صلاحية المجلد (اضغط «مزامنة الآن»)'; setSyncBadge(); return; }
+  syncing = true; setSyncBadge('⟳ مزامنة…');
+  try { const r = await folderEngine().sync(opts); if (!project()) ui.projectId = db.projects[0]?.id || null; save(); syncMsg = `تمت المزامنة: كُتب ${r.wrote} ملف وطُبّق ${r.applied} سجل${r.deleted ? ` وحُذف ${r.deleted}` : ''} (${new Date().toLocaleTimeString('ar')})${r.errors.length ? ' — ⚠ ' + r.errors.join(' | ') : ''}`; if ((r.applied || r.deleted) && ['dash', 'sessions', 'bnf', 'check'].includes(route) && !document.activeElement?.closest('#view input,#view select')) rerender(); }
+  catch (e) { syncMsg = 'تعذّرت المزامنة: ' + e.message; }
+  syncing = false; setSyncBadge(); if (route === 'cloud') vCloud();
+}
 async function doSync(opts) {
+  if (isFolder()) return doSyncFolder(opts);
   if (syncing || !sync.cfg.url || !sync.cfg.token) return; syncing = true; setSyncBadge('⟳ مزامنة…');
   try { try { sync.cfg.me = await engine().me(); } catch (e) { if (/رمز/.test(e.message)) throw e; } const r = await engine().sync(opts); if (!project()) ui.projectId = db.projects[0]?.id || null; save(); syncMsg = `تمت المزامنة: دُفع ${r.pushed} وسُحب ${r.pulled} (${new Date().toLocaleTimeString('ar')})`; if (r.pulled && ['dash', 'sessions', 'bnf', 'check'].includes(route) && !document.activeElement?.closest('#view input,#view select')) rerender(); }
   catch (e) { syncMsg = 'تعذّرت المزامنة: ' + e.message + ' — البيانات محفوظة محليًا وستُرسل لاحقًا'; }
   syncing = false; nav(); setSyncBadge(); if (route === 'cloud') vCloud();
 }
-function setSyncBadge(t) { const el = $('#sync'); if (!el) return; const pend = sync.cfg.url ? engine().pending().length : 0; el.textContent = t || (!sync.cfg.url ? 'غير مرتبط بالسحابة' : syncMsg.startsWith('تعذّر') ? `⚠ غير متصل — ${pend} تغيير معلّق` : `☁ ${pend ? pend + ' تغيير معلّق' : 'متزامن'}`); }
-function vCloud() {
-  view().innerHTML = `<div class="card"><h2>ربط السحابة</h2><p class="small">يعمل النظام دون إنترنت دائمًا؛ عند الاتصال تُدمج تغييراتك مع باقي الأجهزة (المكتب الرئيسي والمراكز). إن عدّل جهازان السجل نفسه فالأحدث يفوز.</p>
+function setSyncBadge(t) { const el = $('#sync'); if (!el) return; const pend = isFolder() ? (folderEngine()?.pending() || 0) : (sync.cfg.url ? engine().pending().length : 0); el.textContent = t || ((isFolder() ? !sync.handle : !sync.cfg.url) ? 'غير مرتبط بالسحابة' : syncMsg.startsWith('تعذّر') ? `⚠ غير متصل — ${pend} تغيير معلّق` : `☁ ${pend ? pend + ' تغيير معلّق' : 'متزامن'}`); }
+async function vCloud() {
+  const f = isFolder();
+  const tabs = `<div class="tabs"><button data-act="setMode" data-m="folder" class="${f ? 'on' : ''}">مجلد OneDrive (موصى به)</button><button data-act="setMode" data-m="server" class="${!f ? 'on' : ''}">خادم مزامنة</button></div>`;
+  if (f) {
+    const perm = await folderPerm(false); let chs = []; if (perm === 'granted') { try { chs = await dirFromHandle(sync.handle).channels(); } catch {} }
+    view().innerHTML = `${tabs}<div class="card"><h2>المزامنة عبر مجلد OneDrive</h2>
+    ${!folderSupported() ? '<p><span class="badge b-error">غير مدعوم</span> افتح النظام في Microsoft Edge أو Google Chrome على الحاسوب.</p>' : ''}
+    <p class="small">يتولى برنامج OneDrive نقل الملفات بين الأجهزة، والنظام يدمجها دون تعارض ويعمل دون إنترنت. اختر المجلد المتزامن مرة واحدة على كل جهاز.</p>
+    <div class="row"><button data-act="pickFolder" ${folderSupported() ? '' : 'disabled'}>اختيار مجلد المزامنة</button><button class="gold" data-act="cloudSync" ${sync.handle ? '' : 'disabled'}>مزامنة الآن</button>
+    <label style="flex-direction:row;align-items:center"><input type="checkbox" id="ca" data-act="autoTog" ${sync.cfg.auto ? 'checked' : ''}> مزامنة تلقائية</label></div>
+    <p>${sync.handle ? `المجلد: <b>${esc(sync.handle.name)}</b> — الصلاحية: ${perm === 'granted' ? '<span class="badge b-ok">مفعّلة</span>' : '<span class="badge b-warn">تحتاج تفعيلًا (اضغط مزامنة الآن)</span>'}` : '<span class="badge b-warn">لم يُختَر مجلد</span>'}</p>
+    <p>القنوات المتزامنة إلى هذا الجهاز: ${chs.length ? chs.map((c) => `<span class="badge b-info">${esc(c === 'core' ? 'core (البيانات الأساسية)' : c === 'pii' ? 'pii (حقول حساسة)' : c.startsWith('c-') ? 'مركز: ' + (db.centers.find((x) => x.id === c.slice(2))?.name || c.slice(2)) : c)}</span>`).join(' ') : '—'}</p>
+    <p id="cmsg">${esc(syncMsg)}</p><p class="small">آخر مزامنة: ${sync.fmeta.lastSync ? new Date(sync.fmeta.lastSync).toLocaleString('ar') : '—'} · تغييرات معلّقة: ${folderEngine()?.pending() ?? 0} · معرّف الجهاز: ${esc(sync.fmeta.deviceId)}</p></div>
+    <div class="card"><h2>إعداد المجلدات والصلاحيات (مرة واحدة، من حساب OneDrive للمؤسسة)</h2>
+    <ol class="small"><li>أنشئ مجلدًا باسم <code>NawaSync</code> وداخله مجلدات: <code>core</code> و<code>pii</code> و<code>c-&lt;رمز المركز&gt;</code> لكل مركز (الرمز يظهر أعلاه بعد أول مزامنة، أو اتركه ينشئها النظام على جهازك ثم شاركها).</li>
+    <li><b>core</b>: شاركه (تحرير) مع كل من يستخدم النظام. <b>pii</b> (الهواتف ونوع الإعاقة): مع المكتب الرئيسي وMEAL فقط. <b>c-المركز</b>: مع منسق ذلك المركز ومع المكتب الرئيسي فقط.</li>
+    <li>على جهاز المنسق: أضف المجلدات المشاركة إلى OneDrive («إضافة اختصار إلى ملفاتي»)، ثم اختر مجلد <code>NawaSync</code> الذي يحويها.</li>
+    <li>الصلاحيات تُفرض بمشاركة OneDrive نفسها: الجهاز لا يستلم إلا المجلدات المشاركة معه.</li></ol></div>`;
+    return;
+  }
+  view().innerHTML = `${tabs}<div class="card"><h2>الاتصال بخادم مزامنة</h2><p class="small">خيار متقدّم يتطلب تشغيل خادم (انظر README).</p>
   <div class="row"><label>عنوان الخادم<input id="cu" style="width:300px" placeholder="https://sync.example.org" value="${esc(sync.cfg.url)}"></label>
   <label>رمز الدخول<input id="ct" type="password" style="width:300px" value="${esc(sync.cfg.token)}"></label>
   <label style="flex-direction:row;align-items:center"><input type="checkbox" id="ca" ${sync.cfg.auto ? 'checked' : ''}> مزامنة تلقائية</label></div>
   <div class="row" style="margin-top:10px"><button data-act="cloudSave">حفظ واختبار الاتصال</button><button class="gold" data-act="cloudSync">مزامنة الآن</button></div>
-  <p id="cmsg">${esc(syncMsg)}</p><p class="small">آخر مزامنة: ${sync.meta.lastSync ? new Date(sync.meta.lastSync).toLocaleString('ar') : '—'} · تغييرات معلّقة: ${sync.cfg.url ? engine().pending().length : 0}</p></div>
-  <div class="card"><h2>تشغيل الخادم</h2><p class="small">على جهاز/خادم سحابتك (Node 22+): <code>node server/server.js</code> أو Docker (انظر README). يطبع رمز المدير مرة واحدة عند أول تشغيل. أضف مستخدمين: <code>node server/cli.js add اسم entry</code>. ضعه خلف HTTPS.</p></div>`;
+  <p id="cmsg">${esc(syncMsg)}</p><p class="small">آخر مزامنة: ${sync.meta.lastSync ? new Date(sync.meta.lastSync).toLocaleString('ar') : '—'} · تغييرات معلّقة: ${sync.cfg.url ? engine().pending().length : 0}</p></div>`;
 }
 // ======================= الإجراءات =======================
 const actions = {
@@ -284,7 +317,15 @@ const actions = {
     try { const me = await engine().me(); sync.cfg.me = me; syncMsg = `متصل كـ «${me.name}» (${me.role})`; const first = sync.meta.cursor == null && (me.seq > 0) && db.projects.length; if (first) { const rep = confirm('الخادم يحوي بيانات وهذا الجهاز يحوي بيانات أيضًا.\nموافق = استبدال بيانات هذا الجهاز بنسخة الخادم\nإلغاء = دمج الاثنين'); await doSync({ firstMode: rep ? 'replace' : 'merge' }); } else await doSync(); }
     catch (e) { syncMsg = 'فشل الاتصال: ' + e.message; } vCloud(); setSyncBadge();
   },
-  async cloudSync() { await doSync(); },
+  async cloudSync() { if (isFolder()) await doSyncFolder({}, true); else await doSync(); vCloud(); },
+  setMode(t) { sync.cfg.mode = t.dataset.m; save(); nav(); setSyncBadge(); vCloud(); },
+  autoTog(t) { sync.cfg.auto = t.checked; save(); },
+  async pickFolder() {
+    const h = await window.showDirectoryPicker({ mode: 'readwrite', id: 'nawasync' }); sync.handle = h; fsync = null; await saveHandle(h);
+    const first = !sync.fmeta.lastSync && db.projects.length; let mode = 'merge';
+    if (first) { const chs = await dirFromHandle(h).channels(); const has = chs.length && (await Promise.all(chs.map(async (c) => (await dirFromHandle(h).list(c)).length))).some((n) => n > 0); if (has) mode = confirm('المجلد يحوي بيانات وهذا الجهاز يحوي بيانات أيضًا.\nموافق = استبدال بيانات هذا الجهاز بما في المجلد\nإلغاء = دمج الاثنين') ? 'replace' : 'merge'; }
+    await doSyncFolder({ firstMode: mode }, true); vCloud();
+  },
   newProject() { const p = { id: uid('p'), name: 'مشروع جديد', donor: '', start: iso(new Date()).slice(0, 4) + '-01-01', end: iso(new Date()).slice(0, 4) + '-12-31', directRule: { mode: 'once' }, interventions: [], activities: [], outputIndicators: [] }; db.projects.push(p); ui.projectId = p.id; save(); go('projects'); },
   demo() { const p = demo(db); ui.projectId = p.id; save(); toast('تم تحميل المشروع التجريبي'); go('dash'); },
   delProject() { if (!confirm('حذف المشروع وكل جلساته؟')) return; const id = ui.projectId; db.projects = db.projects.filter((p) => p.id !== id); db.sessions = db.sessions.filter((s) => s.projectId !== id); ui.projectId = db.projects[0]?.id; save(); rerender(); },
@@ -339,9 +380,9 @@ const actions = {
 };
 
 $('.logo').src = logoUrl; { const l = document.createElement('link'); l.rel = 'icon'; l.href = logoUrl; document.head.append(l); }
-await load(); nav(); go('dash'); setSyncBadge();
+await load(); nav(); go('dash'); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
 setInterval(() => { if (sync.cfg.auto) doSync(); else setSyncBadge(); }, 60000);
 window.addEventListener('online', () => sync.cfg.auto && doSync());
 let st; document.addEventListener('change', () => { clearTimeout(st); st = setTimeout(() => sync.cfg.auto && doSync(), 4000); });
 if ('serviceWorker' in navigator && location.protocol !== 'file:' && import.meta.env?.PROD) navigator.serviceWorker.register('./sw.js').catch(() => {});
-window.__nawa = { db, ui, go };
+window.__nawa = { db, ui, go, sync, useHandle: async (h) => { sync.handle = h; fsync = null; await saveHandle(h); } };
