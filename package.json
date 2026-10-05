@@ -1,0 +1,1 @@
+{"name":"nawa-system","version":"0.1.0","private":true,"type":"module","scripts":{"dev":"vite","build":"vite build","test":"node --test test/*.test.js"},"dependencies":{"@xmldom/xmldom":"^0.9.12","chart.js":"^4.5.1","dexie":"^4.4.6","exceljs":"^4.4.0","jszip":"^3.10.2"},"devDependencies":{"vite":"^8.3.2","vite-plugin-singlefile":"^2.3.3"}}
