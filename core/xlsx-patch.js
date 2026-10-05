@@ -45,7 +45,9 @@ export async function openXlsx(buf, DOMParserCtor, XMLSerializerCtor) {
         while (cell.firstChild) cell.removeChild(cell.firstChild);
         cell.removeAttribute('t');
         if (v === null || v === undefined || v === '') continue;
-        if (typeof v === 'number') { const e = doc.createElementNS(NS, 'v'); e.appendChild(doc.createTextNode(String(v))); cell.appendChild(e); }
+        if (typeof v === 'boolean') { cell.setAttribute('t', 'b'); const e = doc.createElementNS(NS, 'v'); e.appendChild(doc.createTextNode(v ? '1' : '0')); cell.appendChild(e); }
+        else if (typeof v === 'object' && v.f) { const e = doc.createElementNS(NS, 'f'); e.appendChild(doc.createTextNode(v.f)); cell.appendChild(e); } // معادلة
+        else if (typeof v === 'number') { const e = doc.createElementNS(NS, 'v'); e.appendChild(doc.createTextNode(String(v))); cell.appendChild(e); }
         else { cell.setAttribute('t', 'inlineStr'); const is = doc.createElementNS(NS, 'is'), t = doc.createElementNS(NS, 't'); t.setAttribute('xml:space', 'preserve'); t.appendChild(doc.createTextNode(String(v))); is.appendChild(t); cell.appendChild(is); }
       }
     },

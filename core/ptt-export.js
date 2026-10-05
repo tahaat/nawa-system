@@ -2,6 +2,7 @@ import { openXlsx, colName, excelSerial } from './xlsx-patch.js';
 import { outputMonthly, breakdown, workplanActual, directBeneficiaries } from './aggregate.js';
 import { CATS } from './model.js';
 import { computeOutcomes } from './outcomes.js';
+import { exportPlanSheets } from './plan.js';
 
 const monthStart = (project, i) => { const s = new Date(`${project.start}T00:00:00Z`); return new Date(Date.UTC(s.getUTCFullYear(), s.getUTCMonth() + i, 1)).toISOString().slice(0, 10); };
 const OUT_SLOTS = { 'output 1': [4, 5, 6], 'output 2': [7, 8, 9, 10], 'output 3': [11, 12, 13, 14, 15, 16] };
@@ -65,6 +66,7 @@ export async function exportPTT(templateBuf, project, db, DOMParserCtor, XMLSeri
       o.quarters.forEach((qq, qi) => { const base = 3 + qi * 8; CATS.forEach((c, j) => { cells[colName(base + j) + o.ind.row] = qq.N[c] || null; cells[colName(base + 4 + j) + o.ind.row] = qq.D[c] || null; }); }); }
     await x.set('Outcome indicators', cells);
   }
+  warnings.push(...(await exportPlanSheets(x, project, db)));
   return { data: await x.save(), warnings };
 }
 const GROUP_LABEL = { child: 'Children', youth: 'Youth', parent: 'Parents', localEducator: 'Local Educator', nawaEducator: 'NAWA educators' };

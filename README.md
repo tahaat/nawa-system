@@ -29,3 +29,14 @@
 3. في تبويب «السحابة» اختر «مجلد OneDrive» ثم «اختيار المجلد» (متصفح Edge/Chrome) ثم «مزامنة».
 - كل جهاز يكتب ملفه الخاص `<deviceId>.json` فلا تتعارض الملفات؛ الدمج بآخر تعديل (ts).
 - القيد: يعتمد على ساعة الجهاز، ويلزم عميل OneDrive المكتبي.
+
+## تغطية أوراق قالب PTT (Annex 5)
+| الورقة | المصدر |
+|---|---|
+| Output indicators / Beneficiaries Breakdown / Project Work plan | تلقائي من الجلسات والمستفيدين |
+| Outcome indicators | تلقائي من ردود KoBo |
+| Project Tracking Table | خطوط الأساس والمستهدفات يدويًا (تبويب «المستهدفات»)، والفعلي تلقائي، والمستفيدون المباشرون من محرك النظام |
+| Poject Info. Sheet / Log frame / Indicator Profile / MEAL Calendar / Assumptions / Learning Management | شاشة «ملف PTT الكامل» |
+| Overview Dashboard | معادلات القالب؛ المصروف من «معلومات المشروع» |
+- أُصلح خطأ في القالب: صف 15 في جدول PTT كان يشير إلى خلية خاطئة.
+- فحص التصدير: `node test/plan_lo.mjs` و `node test/ptt_lo.mjs` (إعادة حساب بـ LibreOffice).

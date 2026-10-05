@@ -1,0 +1,22 @@
+// يصدّر PTT ببيانات المحاكاة، يعيد حسابه بـ LibreOffice، ويتحقق من الأوراق اليدوية
+import fs from 'node:fs'; import { execSync } from 'node:child_process'; import { DOMParser, XMLSerializer } from '@xmldom/xmldom'; import ExcelJS from 'exceljs';
+import { france } from './sim_france.js'; import { exportPTT } from '../core/ptt-export.js';
+const db = france(), p = db.projects[0], { data, warnings } = await exportPTT(fs.readFileSync('assets/ptt.xlsx'), p, db, DOMParser, XMLSerializer);
+fs.mkdirSync('out/lo4', { recursive: true }); fs.writeFileSync('out/sim/France_PTT_full.xlsx', data); execSync('soffice --headless --convert-to xlsx --outdir out/lo4 out/sim/France_PTT_full.xlsx', { stdio: 'ignore' });
+const wb = new ExcelJS.Workbook(); await wb.xlsx.readFile('out/lo4/France_PTT_full.xlsx');
+const v = (s, a) => { let c = wb.getWorksheet(s).getCell(a).value; if (c && typeof c === 'object' && !(c instanceof Date)) { if (c.richText) return c.richText.map((x) => x.text).join(''); if ('formula' in c) { if (c.formula === 'FALSE()') return false; if (c.formula === 'TRUE()') return true; return c.result ?? 0; } return c.text ?? JSON.stringify(c); } if (c instanceof Date) return +c; return c; };
+let bad = 0; const eq = (n, a, b) => { const ok = String(a) === String(b) || (b instanceof Date && a instanceof Date && +a === +b); if (!ok) { bad++; console.log('✗', n, '→', a, '≠', b); } };
+const I = 'Poject Info. Sheet';
+eq('code', v(I, 'C2'), 'FR-2026-01'); eq('budget', v(I, 'C8'), 120000); eq('direct planned', v(I, 'C11'), 7595); eq('amend', v(I, 'C12'), false); eq('sector Edu', !!v(I, 'H16'), true); eq('sector Cult', !!v(I, 'H14'), true); eq('partner NGO', !!v(I, 'G19'), true); eq('partner INGO', v(I, 'G18'), false); eq('tg parents', !!v(I, 'G27'), true); eq('rep resp', v(I, 'H32'), 'MEAL Officer');
+eq('start', v(I, 'C6'), +new Date('2026-01-01T00:00:00Z')); eq('duration', v(I, 'H7'), '12 months');
+eq('lf impact', v('Log frame', 'B3'), 'مساهمة في رفاه الأطفال'); eq('lf risk', v('Log frame', 'F5'), 'استمرار الوصول'); eq('lf act', v('Log frame', 'B8'), 'جلسات لغة عربية ورياضيات');
+eq('ip outcome', v('Indicator Profile', 'C5'), p.outcomeIndicators[0].name); eq('ip def', v('Indicator Profile', 'D5'), 'نسبة الأطفال فوق العتبة'); eq('ip output', v('Indicator Profile', 'C13'), p.outputIndicators[0].name); eq('ip out freq', v('Indicator Profile', 'H13'), 'Monthly');
+const P = 'Project Tracking Table -PTT';
+eq('ptt out name', v(P, 'C13'), p.outputIndicators[0].name); eq('ptt row15 fix', v(P, 'P15'), v('Output indicators', 'AZ6') || 0); eq('ptt oc target', v(P, 'K7'), 60); eq('ptt oc base', v(P, 'F7'), 30); eq('ptt oc name', v(P, 'C7'), p.outcomeIndicators[0].name);
+eq('direct actual', ['P', 'Q', 'R', 'S'].map((c) => v(P, c + 5)).reduce((a, b) => a + b, 0), 101);
+const M = 'MEAL Calendar';
+eq('meal plan', v(M, 'K7'), 1); eq('meal plan2', v(M, 'L7'), null); eq('meal actual', v(M, 'K8'), 1); eq('meal ach %', Math.round(v(M, 'F7') * 100), 50); eq('meal group sum H5..', v(M, 'K5'), 1); eq('meal 63', v(M, 'BC63') ?? 'x', 'x');
+eq('meal month hdr', v(M, 'H1'), +new Date('2026-01-01T00:00:00Z'));
+eq('assump', v('Assumptions Monitoring', 'C2'), 'ONLY PARTLY'); eq('learn', v('Learning Managment Process', 'F2'), 'زيادة الحصص للمجموعات المتأخرة'); eq('learn status', v('Learning Managment Process', 'K2'), 'in progress');
+eq('overview spent', v('Overview Dashboard', 'D3'), 54000); 
+console.log('warnings:', warnings.length); console.log(bad ? 'فشل ' + bad : 'كل فحوص الأوراق اليدوية سليمة ✔'); process.exit(bad ? 1 : 0);

@@ -24,7 +24,14 @@ export function france() {
       { id: 'o3', output: 'output 2', name: 'أطفال في أنشطة الدعم النفسي', activityIds: ['a_ha', 'a_hs', 'a_hp'], measure: 'unique' },
       { id: 'o4', output: 'output 2', name: 'فتيان في الأنشطة الثقافية', activityIds: ['a_dr', 'a_ca'], measure: 'unique' },
       { id: 'o5', output: 'output 3', name: 'حضور الأهالي لجلسات التوعية', activityIds: ['a_aw'], measure: 'sessions-attendance' }],
-    outcomeIndicators: [] }];
+    outcomeIndicators: [{ id: 'oc1', name: '% من الأطفال الذين حققوا مستوى الكفاءة في الرياضيات', row: 7, kind: 'threshold', target: { M: 60, F: 60, CWD_M: 50, CWD_F: 50 }, baseline: { M: 30, F: 32, CWD_M: 20, CWD_F: 20 } }],
+    impact: { text: 'تحسين رفاه الأطفال وتعلمهم في دير البلح', indicator: 'نسبة الأطفال الذين يظهرون تحسنًا في الرفاه' },
+    info: { code: 'FR-2026-01', title: "FRANCE: A Response to Gaza's Trauma and Education Needs", objective: 'تعزيز التعلم والتعافي النفسي للأطفال المتضررين', summary: 'جلسات تعليمية ونفسية-اجتماعية للأطفال والفتيان والأهالي', manager: 'منسق المشروع', budget: 120000, currency: 'EUR', donorShare: 100000, nawaShare: 20000, directPlanned: 7595, amend: false, sectors: ['Educational', 'Psychosocial Support (Mental Health)', 'Cultural'], partners: ['NGO'], targetGroups: ['Children- School age', 'children pre school', 'Parents'], geo: 'Deir Al Balah', budgetSpent: 54000, reports: [{ from: '2026-01-01', to: '2026-06-30', submit: '2026-07-31', resp: 'MEAL Officer' }] },
+    logframe: { 3: { text: 'مساهمة في رفاه الأطفال', ind: 'مؤشر الرفاه', target: '60%', src: 'استبيان', risk: 'استقرار الوضع الأمني' }, 5: { text: 'تحسن التعلم', ind: '% كفاءة رياضيات', target: '60%', src: 'KoBo', risk: 'استمرار الوصول' }, 7: { text: 'خدمات تعليمية للأطفال', ind: 'عدد المستفيدين', target: '5000', src: 'STT', risk: '' }, 8: { text: 'جلسات لغة عربية ورياضيات' } },
+    profile: { oc1: { definition: 'نسبة الأطفال فوق العتبة' } },
+    meal: { 7: { planned: [4, 8, 12, 16, 20, 24], actual: [4, 8, 12] }, 63: { planned: [26], actual: [26] }, 65: { planned: [48] } },
+    assumptions: [{ text: 'استمرار إمكانية الوصول للمراكز', mitigation: 'الجلسات عن بعد', fulfilled: 'ONLY PARTLY', strategy: 'جلسات مدمجة' }],
+    learning: [{ result: 'R1', activity: 'Arabic Education', source: 'PDM', rec: 'زيادة الحصص للمجموعات المتأخرة', date: '2026-04-01', action: 'إضافة حصتين', deadline: '2026-05-01', resp: 'المنسق', status: 'in progress' }] }];
   const mk = (n, g, a0, a1, fSh) => { for (let i = 0; i < n; i++) { const sex = rnd() < fSh ? 'F' : 'M', dis = rnd() < 0.06;
     db.beneficiaries.push({ id: `b${db.beneficiaries.length + 1}`, name: `${sex === 'M' ? pick(F1) : pick(F2)} ${pick(F1)} ${pick(F1)} ${pick(FAM)}`, sex, age: ri(a0, a1), disability: dis, ...(dis ? { disabilityType: pick(['حركية', 'سمعية', 'ذهنية']) } : {}), phone: '059' + ri(1e6, 9e6), status: pick(['نازح', 'مقيم']), center: 'c_hub' }); } };
   mk(70, 'c7', 7, 12, 0.64); mk(14, 'c4', 4, 6, 0.5); mk(26, 'y', 13, 15, 0.8); mk(32, 'p', 24, 48, 1);

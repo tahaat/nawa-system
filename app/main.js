@@ -7,6 +7,7 @@ import { TEMPLATES, buildForm, xlsformBuffer } from '../core/forms.js';
 import { importResponses, computeOutcomes } from '../core/outcomes.js';
 import { demo } from './demo.js';
 import { france } from './sim_france.js';
+import { vPlan, initPlan } from './plan-view.js';
 import { uid, GROUPS, AGE_BANDS, ageAt, bandOf, iso } from '../core/model.js';
 import { dashboard, sttRows, sessionCats, sumCats, context } from '../core/aggregate.js';
 import { validateEntry, reconcile } from '../core/validate.js';
@@ -20,7 +21,7 @@ const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const view = () => $('#view');
 const toast = (m) => { const t = $('#toast'); t.textContent = m; t.style.display = 'block'; setTimeout(() => (t.style.display = 'none'), 3500); };
-const ROUTES = { dash: ['لوحة القيادة', vDash], sessions: ['الجلسات (STT)', vSessions], bnf: ['المستفيدون (BTT)', vBnf], projects: ['المشاريع (PTT)', vProjects], centers: ['المراكز', vCenters], check: ['التحقق والتكامل', vCheck], surveys: ['الاستبيانات (KoBo)', vSurveys], users: ['المستخدمون والصلاحيات', vUsers], cloud: ['السحابة والمزامنة', vCloud], export: ['التصدير والنسخ', vExport] };
+const ROUTES = { dash: ['لوحة القيادة', vDash], sessions: ['الجلسات (STT)', vSessions], bnf: ['المستفيدون (BTT)', vBnf], projects: ['المشاريع (PTT)', vProjects], plan: ['ملف PTT الكامل', vPlan], centers: ['المراكز', vCenters], check: ['التحقق والتكامل', vCheck], surveys: ['الاستبيانات (KoBo)', vSurveys], users: ['المستخدمون والصلاحيات', vUsers], cloud: ['السحابة والمزامنة', vCloud], export: ['التصدير والنسخ', vExport] };
 const me = () => sync.cfg.me || null;
 const allowed = (r) => { const p = me()?.policy; if (r === 'users') return !!p?.manageUsers; return !p || p.routes === '*' || p.routes.includes(r); };
 const myCenters = () => { const x = me(); return x?.role === 'coordinator' || x?.policy?.write?.sessions === 'own' ? db.centers.filter((c) => x.centers.includes(c.id)) : db.centers; };
@@ -382,7 +383,7 @@ const actions = {
 };
 
 $('.logo').src = logoUrl; { const l = document.createElement('link'); l.rel = 'icon'; l.href = logoUrl; document.head.append(l); }
-await load(); nav(); go('dash'); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
+initPlan({ project, save, rerender, view, empty }); await load(); nav(); go('dash'); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
 setInterval(() => { if (sync.cfg.auto) doSync(); else setSyncBadge(); }, 60000);
 window.addEventListener('online', () => sync.cfg.auto && doSync());
 let st; document.addEventListener('change', () => { clearTimeout(st); st = setTimeout(() => sync.cfg.auto && doSync(), 4000); });
