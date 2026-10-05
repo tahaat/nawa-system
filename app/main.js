@@ -4,6 +4,7 @@ import { createSync } from '../core/sync.js';
 import { createFolderSync } from '../core/sync-folder.js';
 import { dirFromHandle, folderSupported } from './fsdir.js';
 import { TEMPLATES, allForms, buildForm, xlsformBuffer } from '../core/forms.js';
+import { ask, askText } from './dialogs.js';
 import { initBuilder, builderCard } from './form-builder.js';
 import { importResponses, computeOutcomes } from '../core/outcomes.js';
 import { france } from './sim_france.js';
@@ -215,7 +216,12 @@ function vExport() {
    <p class="small">PTT يُعبَّأ داخل القالب الأصلي (مع بقاء المخططات والمعادلات) وتُعاد حساباته عند فتحه في Excel.</p><div id="xw"></div></div>
   <div class="card"><h2>نسخة احتياطية</h2><div class="row"><button data-act="backup">حفظ نسخة JSON</button><label>استرجاع<input type="file" id="rf" accept=".json"></label><button class="sec" data-act="restore">استرجاع</button></div></div>`;
 }
-const dl = (data, name, type = 'application/octet-stream') => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], { type })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); };
+const IN_ARTIFACT = () => typeof window.claude?.use === 'function';
+const dl = async (data, name, type = 'application/octet-stream') => {
+  name = name.replace(/[\\/:*?"<>|]+/g, '-');
+  if (IN_ARTIFACT()) { try { const d = await window.claude.use('downloads'); if (d) { await d.save({ filename: name, data: data instanceof Blob || typeof data === 'string' || data instanceof ArrayBuffer || ArrayBuffer.isView(data) ? data : new Blob([data], { type }) }); return; } } catch (e) { if (e?.code === 'declined') return; toast('تعذّر الحفظ: ' + (e?.message || e?.code || '')); return; } }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], { type })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+};
 const XL = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 // ======================= الاستبيانات =======================
@@ -276,6 +282,7 @@ async function doSync(opts) {
 }
 function setSyncBadge(t) { const el = $('#sync'); if (!el) return; const pend = isFolder() ? (folderEngine()?.pending() || 0) : (sync.cfg.url ? engine().pending().length : 0); el.textContent = t || ((isFolder() ? !sync.handle : !sync.cfg.url) ? 'غير مرتبط بالسحابة' : syncMsg.startsWith('تعذّر') ? `⚠ غير متصل — ${pend} تغيير معلّق` : `☁ ${pend ? pend + ' تغيير معلّق' : 'متزامن'}`); }
 async function vCloud() {
+  if (IN_ARTIFACT()) { view().innerHTML = '<div class="card"><h2>السحابة والمزامنة</h2><p>أنت تستخدم نسخة الرابط: البيانات تُحفظ داخل هذا المتصفح فقط، والمزامنة مع مجلد OneDrive أو الخادم غير متاحة هنا.</p><p class="small">لنقل بياناتك بين الأجهزة أو المتصفحات: من «التصدير والنسخ» اختر «حفظ نسخة JSON» ثم «استرجاع» في الجهاز الآخر. وللمزامنة التلقائية استخدم نسخة الملف (Nawa_System.html).</p></div>'; return; }
   const f = isFolder();
   const tabs = `<div class="tabs"><button data-act="setMode" data-m="folder" class="${f ? 'on' : ''}">مجلد OneDrive (موصى به)</button><button data-act="setMode" data-m="server" class="${!f ? 'on' : ''}">خادم مزامنة</button></div>`;
   if (f) {
@@ -317,7 +324,7 @@ const actions = {
   },
   async cloudSave() {
     sync.cfg.url = $('#cu').value.trim(); sync.cfg.token = $('#ct').value.trim(); sync.cfg.auto = $('#ca').checked; save();
-    try { const me = await engine().me(); sync.cfg.me = me; syncMsg = `متصل كـ «${me.name}» (${me.role})`; const first = sync.meta.cursor == null && (me.seq > 0) && db.projects.length; if (first) { const rep = confirm('الخادم يحوي بيانات وهذا الجهاز يحوي بيانات أيضًا.\nموافق = استبدال بيانات هذا الجهاز بنسخة الخادم\nإلغاء = دمج الاثنين'); await doSync({ firstMode: rep ? 'replace' : 'merge' }); } else await doSync(); }
+    try { const me = await engine().me(); sync.cfg.me = me; syncMsg = `متصل كـ «${me.name}» (${me.role})`; const first = sync.meta.cursor == null && (me.seq > 0) && db.projects.length; if (first) { const rep = await ask('الخادم يحوي بيانات وهذا الجهاز يحوي بيانات أيضًا.\nموافق = استبدال بيانات هذا الجهاز بنسخة الخادم\nإلغاء = دمج الاثنين'); await doSync({ firstMode: rep ? 'replace' : 'merge' }); } else await doSync(); }
     catch (e) { syncMsg = 'فشل الاتصال: ' + e.message; } vCloud(); setSyncBadge();
   },
   async cloudSync() { if (isFolder()) await doSyncFolder({}, true); else await doSync(); vCloud(); },
@@ -326,13 +333,13 @@ const actions = {
   async pickFolder() {
     const h = await window.showDirectoryPicker({ mode: 'readwrite', id: 'nawasync' }); sync.handle = h; fsync = null; await saveHandle(h);
     const first = !sync.fmeta.lastSync && db.projects.length; let mode = 'merge';
-    if (first) { const chs = await dirFromHandle(h).channels(); const has = chs.length && (await Promise.all(chs.map(async (c) => (await dirFromHandle(h).list(c)).length))).some((n) => n > 0); if (has) mode = confirm('المجلد يحوي بيانات وهذا الجهاز يحوي بيانات أيضًا.\nموافق = استبدال بيانات هذا الجهاز بما في المجلد\nإلغاء = دمج الاثنين') ? 'replace' : 'merge'; }
+    if (first) { const chs = await dirFromHandle(h).channels(); const has = chs.length && (await Promise.all(chs.map(async (c) => (await dirFromHandle(h).list(c)).length))).some((n) => n > 0); if (has) mode = await ask('المجلد يحوي بيانات وهذا الجهاز يحوي بيانات أيضًا.\nموافق = استبدال بيانات هذا الجهاز بما في المجلد\nإلغاء = دمج الاثنين') ? 'replace' : 'merge'; }
     await doSyncFolder({ firstMode: mode }, true); vCloud();
   },
   newProject() { const p = { id: uid('p'), name: 'مشروع جديد', donor: '', start: iso(new Date()).slice(0, 4) + '-01-01', end: iso(new Date()).slice(0, 4) + '-12-31', directRule: { mode: 'once' }, interventions: [], activities: [], outputIndicators: [] }; db.projects.push(p); ui.projectId = p.id; save(); go('projects'); },
   demo() { if (db.projects.some((x) => x.id === 'p_fr')) { toast('المشروع التجريبي محمّل مسبقًا'); ui.projectId = 'p_fr'; save(); return go('dash'); } const d = france(); for (const k of Object.keys(d)) db[k].push(...d[k]); ui.projectId = 'p_fr'; save(); toast('تم تحميل المشروع التجريبي (بيانات محاكاة)'); go('dash'); },
-  purgeDemo() { if (!confirm('سيُحذف المشروع التجريبي وكل بياناته (جلسات، مستفيدون، مراكز، ردود استبيان) نهائيًا. بياناتك الحقيقية لا تتأثر. متابعة؟')) return; const r = purgeDemo(db); ui.projectId = db.projects[0]?.id || null; save(); toast(`تم مسح المحاكاة: ${r.sessions} جلسة، ${r.beneficiaries} مستفيد`); go('projects'); },
-  delProject() { if (!confirm('حذف المشروع وكل جلساته؟')) return; const id = ui.projectId; db.projects = db.projects.filter((p) => p.id !== id); db.sessions = db.sessions.filter((s) => s.projectId !== id); ui.projectId = db.projects[0]?.id; save(); rerender(); },
+  async purgeDemo() { if (!(await ask('سيُحذف المشروع التجريبي وكل بياناته (جلسات، مستفيدون، مراكز، ردود استبيان) نهائيًا. بياناتك الحقيقية لا تتأثر. متابعة؟'))) return; const r = purgeDemo(db); ui.projectId = db.projects[0]?.id || null; save(); toast(`تم مسح المحاكاة: ${r.sessions} جلسة، ${r.beneficiaries} مستفيد`); go('projects'); },
+  async delProject() { if (!(await ask('حذف المشروع وكل جلساته؟'))) return; const id = ui.projectId; db.projects = db.projects.filter((p) => p.id !== id); db.sessions = db.sessions.filter((s) => s.projectId !== id); ui.projectId = db.projects[0]?.id; save(); rerender(); },
   addIv() { project().interventions.push({ id: uid('i'), result: 'R1', name: 'بند جديد', group: 'child' }); save(); rerender(); },
   delIv(t) { const p = project(), i = p.interventions[+t.dataset.i]; if (p.activities.some((a) => a.interventionId === i.id)) return toast('البند مرتبط بأنشطة'); p.interventions.splice(+t.dataset.i, 1); save(); rerender(); },
   addAct() { const p = project(); p.activities.push({ id: uid('a'), name: 'نشاط جديد', type: '', interventionId: p.interventions[0].id, group: p.interventions[0].group, ageMin: 4, ageMax: 15, plannedSessions: 0 }); save(); rerender(); },
@@ -341,14 +348,14 @@ const actions = {
   delOut(t) { project().outputIndicators.splice(+t.dataset.i, 1); save(); rerender(); },
   addCenter() { const v = $('#cn').value.trim(); if (!v) return; db.centers.push({ id: uid('c'), name: v }); save(); rerender(); },
   delCenter(t) { if (db.sessions.some((s) => s.centerId === t.dataset.id)) return toast('للمركز جلسات مسجّلة'); db.centers = db.centers.filter((c) => c.id !== t.dataset.id); save(); rerender(); },
-  addBnf() {
+  async addBnf() {
     const b = { id: uid('b'), name: $('#bn').value.trim(), sex: $('#bs').value, age: $('#ba').value === '' ? null : +$('#ba').value, dob: $('#bd').value || null, disability: $('#bdis').value === '1', disabilityType: $('#bdt').value.trim(), phone: $('#bp').value.trim() };
     if (b.dob) b.age = null; if (!b.name) return toast('الاسم مطلوب');
-    const dup = db.beneficiaries.find((x) => x.name.trim() === b.name && x.sex === b.sex); if (dup && !confirm('يوجد مستفيد بنفس الاسم والجنس. إضافة رغم ذلك؟')) return;
+    const dup = db.beneficiaries.find((x) => x.name.trim() === b.name && x.sex === b.sex); if (dup && !(await ask('يوجد مستفيد بنفس الاسم والجنس. إضافة رغم ذلك؟'))) return;
     db.beneficiaries.push(b); save(); rerender();
   },
-  quickBnf() { const n = prompt('الاسم الرباعي؟'); if (!n) return; const age = prompt('العمر؟'); const sx = confirm('هل هو ذكر؟ (إلغاء = أنثى)') ? 'M' : 'F'; const b = { id: uid('b'), name: n.trim(), sex: sx, age: +age || null, disability: confirm('هل لديه إعاقة؟'), disabilityType: '' }; db.beneficiaries.push(b); sess.att.add(b.id); save(); sess.rd?.(); vSessions(); },
-  delBnf(t) { if (db.sessions.some((s) => s.attendance?.includes(t.dataset.id)) && !confirm('للمستفيد حضور مسجّل؛ سيُحذف من الجلسات أيضًا. متابعة؟')) return; db.sessions.forEach((s) => s.attendance && (s.attendance = s.attendance.filter((x) => x !== t.dataset.id))); db.beneficiaries = db.beneficiaries.filter((b) => b.id !== t.dataset.id); save(); rerender(); },
+  async quickBnf() { const n = await askText('الاسم الرباعي؟'); if (!n) return; const age = await askText('العمر؟'); const sx = await ask('هل هو ذكر؟ (إلغاء = أنثى)') ? 'M' : 'F'; const b = { id: uid('b'), name: n.trim(), sex: sx, age: +age || null, disability: await ask('هل لديه إعاقة؟'), disabilityType: '' }; db.beneficiaries.push(b); sess.att.add(b.id); save(); sess.rd?.(); vSessions(); },
+  async delBnf(t) { if (db.sessions.some((s) => s.attendance?.includes(t.dataset.id)) && !(await ask('للمستفيد حضور مسجّل؛ سيُحذف من الجلسات أيضًا. متابعة؟'))) return; db.sessions.forEach((s) => s.attendance && (s.attendance = s.attendance.filter((x) => x !== t.dataset.id))); db.beneficiaries = db.beneficiaries.filter((b) => b.id !== t.dataset.id); save(); rerender(); },
   async impBnf() {
     const f = $('#bimp').files[0]; if (!f) return toast('اختر ملفًا'); const wb = new ExcelJS.Workbook(); await wb.xlsx.load(await f.arrayBuffer()); const ws = wb.worksheets[0];
     const head = ws.getRow(1).values.map((v) => String(v?.result ?? v ?? '').trim()); const col = (re) => head.findIndex((h) => re.test(h));
@@ -361,17 +368,17 @@ const actions = {
   },
   mode(t) { sess.rd?.(); sess.mode = t.dataset.m; vSessions(); },
   toggleBands(t) { sess.rd?.(); sess.bands = t.checked; vSessions(); },
-  saveSession() {
+  async saveSession() {
     sess.rd(); const p = project(); const s = { id: uid('s'), projectId: p.id, activityId: sess.act, centerId: sess.center || myCenters()[0]?.id, date: sess.date, educator: (sess.educator || '').trim(), ...(sess.grp?.trim() ? { grp: sess.grp.trim() } : {}), mode: sess.mode, units: sess.units || 1, notes: sess.notes || '' };
     if (s.mode === 'roll') s.attendance = [...sess.att]; else { s.counts = sess.counts; if (sess.bands) s.bandCounts = sess.bandCounts; }
     const v = validateEntry({ ...db, sessions: [s] }).filter((i) => i.ref === s.id || i.ref === s.activityId || i.ref === sess.act);
     const errs = v.filter((i) => i.level === 'error');
     if (errs.length) { $('#sres').innerHTML = errs.map((i) => `<span class="badge b-error">${esc(i.msg)}</span>`).join(' '); return; }
     const warn = v.filter((i) => i.level === 'warn' && !i.code.startsWith('B'));
-    if (warn.length && !confirm('تحذيرات:\n' + warn.map((i) => '• ' + i.msg).join('\n') + '\nحفظ رغم ذلك؟')) return;
+    if (warn.length && !(await ask('تحذيرات:\n' + warn.map((i) => '• ' + i.msg).join('\n') + '\nحفظ رغم ذلك؟'))) return;
     db.sessions.push(s); sess.att = new Set(); sess.counts = null; sess.bandCounts = null; save(); toast('تم حفظ الجلسة'); vSessions();
   },
-  delSess(t) { if (!confirm('حذف الجلسة؟')) return; db.sessions = db.sessions.filter((s) => s.id !== t.dataset.id); save(); rerender(); },
+  async delSess(t) { if (!(await ask('حذف الجلسة؟'))) return; db.sessions = db.sessions.filter((s) => s.id !== t.dataset.id); save(); rerender(); },
   async xPTT() {
     const p = project(), tpl = await (await fetch(pttTemplate)).arrayBuffer(); const { data, warnings } = await exportPTT(tpl, p, db, DOMParser, XMLSerializer);
     dl(data, `PTT_${p.name}.xlsx`, XL); $('#xw').innerHTML = warnings.length ? `<h3>ملاحظات على الملف المصدَّر</h3>${warnings.map((w) => `<p><span class="badge b-warn">!</span> ${esc(w)}</p>`).join('')}` : '<span class="badge b-ok">لا ملاحظات</span>';
@@ -380,7 +387,7 @@ const actions = {
   async xBTT() { dl(await exportBTT(db, ui.projectId), `BTT_${project().name}.xlsx`, XL); },
   async xSum() { dl(await exportSummary(db, project()), `ملخص_${project().name}.xlsx`, XL); },
   backup() { dl(backupJSON(), `nawa-backup-${iso(new Date())}.json`, 'application/json'); },
-  async restore() { const f = $('#rf').files[0]; if (!f) return toast('اختر ملفًا'); if (!confirm('سيُستبدل كل ما في النظام بالنسخة. متابعة؟')) return; restoreJSON(await f.text()); toast('تم الاسترجاع'); go('dash'); },
+  async restore() { const f = $('#rf').files[0]; if (!f) return toast('اختر ملفًا'); if (!(await ask('سيُستبدل كل ما في النظام بالنسخة. متابعة؟'))) return; restoreJSON(await f.text()); toast('تم الاسترجاع'); go('dash'); },
 };
 
 $('.logo').src = logoUrl; { const l = document.createElement('link'); l.rel = 'icon'; l.href = logoUrl; document.head.append(l); }

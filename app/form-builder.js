@@ -1,17 +1,18 @@
 // منشئ الاستبيانات: نماذج مخصصة تُحفظ داخل المشروع (p.forms) وتُنزَّل بصيغة XLSForm لـ KoBo
 import { TEMPLATES, QTYPES, SCALES, SCALE_NAMES, questionsOf } from '../core/forms.js';
+import { ask } from './dialogs.js';
 import { uid } from '../core/model.js';
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 let ctx, editing = null, bound = false;
 export function initBuilder(c) {
   ctx = c; if (bound) return; bound = true;
-  document.addEventListener('click', (e) => {
+  document.addEventListener('click', async (e) => {
     const t = e.target.closest?.('[data-fb]'); if (!t) return; const p = ctx.project(); if (!p) return; const a = t.dataset.fb, i = +t.dataset.i, f = p.forms?.[editing];
     if (a === 'new') { (p.forms ||= []).push({ id: 'f_' + uid('').slice(1, 9), ar: 'استبيان جديد', en: 'New survey', audience: 'child', mode: 'interviewer', seq: 0, questions: [] }); editing = p.forms.length - 1; }
     else if (a === 'copy') { const src = TEMPLATES.find((x) => x.id === document.getElementById('fbsrc').value); (p.forms ||= []).push({ id: 'f_' + uid('').slice(1, 9), ar: src.ar + ' (نسخة)', en: src.en + ' (copy)', audience: src.audience, mode: src.mode, noRound: !!src.noRound, questions: questionsOf(src), seq: src.items.length }); editing = p.forms.length - 1; }
     else if (a === 'edit') editing = i;
     else if (a === 'close') editing = null;
-    else if (a === 'delform') { if (!confirm('حذف هذا الاستبيان؟ (الردود المستوردة تبقى محفوظة)')) return; p.forms.splice(i, 1); editing = null; }
+    else if (a === 'delform') { if (!(await ask('حذف هذا الاستبيان؟ (الردود المستوردة تبقى محفوظة)'))) return; p.forms.splice(i, 1); editing = null; }
     else if (f && a === 'addq') { f.questions.push({ type: t.dataset.type || 'scale', scale: 'agree5', ar: '', en: '', name: 'q' + (f.seq = Math.max(f.seq || 0, ...f.questions.map((q) => +String(q.name).replace(/\D/g, '') || 0)) + 1), required: true }); }
     else if (f && a === 'delq') f.questions.splice(i, 1);
     else if (f && (a === 'up' || a === 'down')) { const j = a === 'up' ? i - 1 : i + 1; if (j >= 0 && j < f.questions.length) [f.questions[i], f.questions[j]] = [f.questions[j], f.questions[i]]; }
