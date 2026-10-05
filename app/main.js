@@ -1,5 +1,6 @@
 import Chart from 'chart.js/auto';
-import { db, ui, load, save, project, backupJSON, restoreJSON } from './store.js';
+import { db, ui, sync, load, save, project, backupJSON, restoreJSON } from './store.js';
+import { createSync } from '../core/sync.js';
 import { demo } from './demo.js';
 import { uid, GROUPS, AGE_BANDS, ageAt, bandOf, iso } from '../core/model.js';
 import { dashboard, sttRows, sessionCats, sumCats, context } from '../core/aggregate.js';
@@ -14,7 +15,7 @@ const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const view = () => $('#view');
 const toast = (m) => { const t = $('#toast'); t.textContent = m; t.style.display = 'block'; setTimeout(() => (t.style.display = 'none'), 3500); };
-const ROUTES = { dash: ['لوحة القيادة', vDash], sessions: ['الجلسات (STT)', vSessions], bnf: ['المستفيدون (BTT)', vBnf], projects: ['المشاريع (PTT)', vProjects], centers: ['المراكز', vCenters], check: ['التحقق والتكامل', vCheck], export: ['التصدير والنسخ', vExport] };
+const ROUTES = { dash: ['لوحة القيادة', vDash], sessions: ['الجلسات (STT)', vSessions], bnf: ['المستفيدون (BTT)', vBnf], projects: ['المشاريع (PTT)', vProjects], centers: ['المراكز', vCenters], check: ['التحقق والتكامل', vCheck], cloud: ['السحابة والمزامنة', vCloud], export: ['التصدير والنسخ', vExport] };
 let route = 'dash', charts = [], sess = { mode: 'roll', att: new Set(), q: '', bands: false };
 
 function nav() {
@@ -191,8 +192,33 @@ function vExport() {
 const dl = (data, name, type = 'application/octet-stream') => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], { type })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); };
 const XL = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
+// ======================= السحابة =======================
+let syncing = false, syncMsg = '';
+const engine = () => createSync({ db, meta: sync.meta, cfg: sync.cfg });
+async function doSync(opts) {
+  if (syncing || !sync.cfg.url || !sync.cfg.token) return; syncing = true; setSyncBadge('⟳ مزامنة…');
+  try { const r = await engine().sync(opts); if (!project()) ui.projectId = db.projects[0]?.id || null; save(); syncMsg = `تمت المزامنة: دُفع ${r.pushed} وسُحب ${r.pulled} (${new Date().toLocaleTimeString('ar')})`; if (r.pulled && ['dash', 'sessions', 'bnf', 'check'].includes(route) && !document.activeElement?.closest('#view input,#view select')) rerender(); }
+  catch (e) { syncMsg = 'تعذّرت المزامنة: ' + e.message + ' — البيانات محفوظة محليًا وستُرسل لاحقًا'; }
+  syncing = false; setSyncBadge(); if (route === 'cloud') vCloud();
+}
+function setSyncBadge(t) { const el = $('#sync'); if (!el) return; const pend = sync.cfg.url ? engine().pending().length : 0; el.textContent = t || (!sync.cfg.url ? 'غير مرتبط بالسحابة' : syncMsg.startsWith('تعذّر') ? `⚠ غير متصل — ${pend} تغيير معلّق` : `☁ ${pend ? pend + ' تغيير معلّق' : 'متزامن'}`); }
+function vCloud() {
+  view().innerHTML = `<div class="card"><h2>ربط السحابة</h2><p class="small">يعمل النظام دون إنترنت دائمًا؛ عند الاتصال تُدمج تغييراتك مع باقي الأجهزة (المكتب الرئيسي والمراكز). إن عدّل جهازان السجل نفسه فالأحدث يفوز.</p>
+  <div class="row"><label>عنوان الخادم<input id="cu" style="width:300px" placeholder="https://sync.example.org" value="${esc(sync.cfg.url)}"></label>
+  <label>رمز الدخول<input id="ct" type="password" style="width:300px" value="${esc(sync.cfg.token)}"></label>
+  <label style="flex-direction:row;align-items:center"><input type="checkbox" id="ca" ${sync.cfg.auto ? 'checked' : ''}> مزامنة تلقائية</label></div>
+  <div class="row" style="margin-top:10px"><button data-act="cloudSave">حفظ واختبار الاتصال</button><button class="gold" data-act="cloudSync">مزامنة الآن</button></div>
+  <p id="cmsg">${esc(syncMsg)}</p><p class="small">آخر مزامنة: ${sync.meta.lastSync ? new Date(sync.meta.lastSync).toLocaleString('ar') : '—'} · تغييرات معلّقة: ${sync.cfg.url ? engine().pending().length : 0}</p></div>
+  <div class="card"><h2>تشغيل الخادم</h2><p class="small">على جهاز/خادم سحابتك (Node 22+): <code>node server/server.js</code> أو Docker (انظر README). يطبع رمز المدير مرة واحدة عند أول تشغيل. أضف مستخدمين: <code>node server/cli.js add اسم entry</code>. ضعه خلف HTTPS.</p></div>`;
+}
 // ======================= الإجراءات =======================
 const actions = {
+  async cloudSave() {
+    sync.cfg.url = $('#cu').value.trim(); sync.cfg.token = $('#ct').value.trim(); sync.cfg.auto = $('#ca').checked; save();
+    try { const me = await engine().me(); syncMsg = `متصل كـ «${me.name}» (${me.role})`; const first = sync.meta.cursor == null && (me.seq > 0) && db.projects.length; if (first) { const rep = confirm('الخادم يحوي بيانات وهذا الجهاز يحوي بيانات أيضًا.\nموافق = استبدال بيانات هذا الجهاز بنسخة الخادم\nإلغاء = دمج الاثنين'); await doSync({ firstMode: rep ? 'replace' : 'merge' }); } else await doSync(); }
+    catch (e) { syncMsg = 'فشل الاتصال: ' + e.message; } vCloud(); setSyncBadge();
+  },
+  async cloudSync() { await doSync(); },
   newProject() { const p = { id: uid('p'), name: 'مشروع جديد', donor: '', start: iso(new Date()).slice(0, 4) + '-01-01', end: iso(new Date()).slice(0, 4) + '-12-31', directRule: { mode: 'once' }, interventions: [], activities: [], outputIndicators: [] }; db.projects.push(p); ui.projectId = p.id; save(); go('projects'); },
   demo() { const p = demo(db); ui.projectId = p.id; save(); toast('تم تحميل المشروع التجريبي'); go('dash'); },
   delProject() { if (!confirm('حذف المشروع وكل جلساته؟')) return; const id = ui.projectId; db.projects = db.projects.filter((p) => p.id !== id); db.sessions = db.sessions.filter((s) => s.projectId !== id); ui.projectId = db.projects[0]?.id; save(); rerender(); },
@@ -247,6 +273,9 @@ const actions = {
 };
 
 $('.logo').src = logoUrl; { const l = document.createElement('link'); l.rel = 'icon'; l.href = logoUrl; document.head.append(l); }
-await load(); nav(); go('dash');
+await load(); nav(); go('dash'); setSyncBadge();
+setInterval(() => { if (sync.cfg.auto) doSync(); else setSyncBadge(); }, 60000);
+window.addEventListener('online', () => sync.cfg.auto && doSync());
+let st; document.addEventListener('change', () => { clearTimeout(st); st = setTimeout(() => sync.cfg.auto && doSync(), 4000); });
 if ('serviceWorker' in navigator && location.protocol !== 'file:' && import.meta.env?.PROD) navigator.serviceWorker.register('./sw.js').catch(() => {});
 window.__nawa = { db, ui, go };
