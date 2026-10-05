@@ -46,3 +46,15 @@ test('مؤشرات النتائج تصل إلى ورقة Outcome indicators وت
   // النسب السنوية المحسوبة بمعادلات القالب
   assert.equal(v('AI7'), 1); assert.equal(v('AJ7'), 0.5); assert.equal(v('AK7'), 1);
 });
+
+test('نموذج مخصص بكل أنواع الأسئلة يمرّ على pyxform ويحسب الدرجة من أسئلة المقياس فقط', async () => {
+  const tpl = { id: 'custom_demo', ar: 'نموذج مخصص', en: 'Custom', audience: 'child', mode: 'interviewer', questions: [
+    { type: 'note', ar: 'مرحبًا', name: 'q1' }, { type: 'scale', scale: 'yn', ar: 'هل تحب القراءة؟', name: 'q2' }, { type: 'scale', scale: 'agree5', ar: 'أشعر بالأمان', name: 'q3' },
+    { type: 'select_one', ar: 'ماذا تفضل؟', name: 'q4', choices: ['قصص|Stories', 'رسم', 'ألعاب'] }, { type: 'select_multiple', ar: 'أين تلعب؟', name: 'q5', choices: ['البيت', 'المركز'], required: false },
+    { type: 'integer', ar: 'عدد الإخوة', name: 'q6', min: 0, max: 20 }, { type: 'text', ar: 'ملاحظات', name: 'q7', required: false }, { type: 'date', ar: 'التاريخ', name: 'q8' }, { type: 'decimal', ar: 'الطول', name: 'q9', min: 0.5 }] };
+  const f = buildForm(tpl, { projectId: 'p1' });
+  assert.equal(f.survey.find((r) => r.name === 'score_total').calculation, '${q2} + ${q3}'); assert.equal(f.survey.find((r) => r.name === 'score_max').calculation, '6');
+  fs.mkdirSync('out/forms', { recursive: true }); fs.writeFileSync('out/forms/custom_demo.xlsx', Buffer.from(await xlsformBuffer(f)));
+  execFileSync('python3', ['-m', 'pyxform.xls2xform', 'out/forms/custom_demo.xlsx', 'out/forms/custom_demo.xml'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  assert.ok(fs.statSync('out/forms/custom_demo.xml').size > 1000);
+});

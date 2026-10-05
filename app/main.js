@@ -3,7 +3,8 @@ import { db, ui, sync, saveHandle, load, save, project, backupJSON, restoreJSON 
 import { createSync } from '../core/sync.js';
 import { createFolderSync } from '../core/sync-folder.js';
 import { dirFromHandle, folderSupported } from './fsdir.js';
-import { TEMPLATES, buildForm, xlsformBuffer } from '../core/forms.js';
+import { TEMPLATES, allForms, buildForm, xlsformBuffer } from '../core/forms.js';
+import { initBuilder, builderCard } from './form-builder.js';
 import { importResponses, computeOutcomes } from '../core/outcomes.js';
 import { demo } from './demo.js';
 import { france } from './sim_france.js';
@@ -137,7 +138,7 @@ function vProjects() {
   <table><tr><th>الصف</th><th>المؤشر</th><th>الاستبيان</th><th>النوع</th><th>الحد (% من الدرجة)</th><th>المرحلة</th><th></th></tr>${(p.outcomeIndicators || []).map((o, k) => `<tr>
     <td><select data-bind="outcomeIndicators|${k}|row">${sel([4, 5, 7, 8, 9, 10, 11, 12].map((x) => [x, x === 4 || x === 5 ? 'هدف عام ' + x : 'نتيجة ' + x]), String(o.row))}</select></td>
     <td><input data-bind="outcomeIndicators|${k}|name" value="${esc(o.name)}" style="width:100%"></td>
-    <td><select data-bind="outcomeIndicators|${k}|formId">${sel(TEMPLATES.map((t) => [t.id, t.ar]), o.formId)}</select></td>
+    <td><select data-bind="outcomeIndicators|${k}|formId">${sel(allForms(p).map((t) => [t.id, t.ar]), o.formId)}</select></td>
     <td><select data-bind="outcomeIndicators|${k}|kind" data-re="1">${sel([['threshold', 'نسبة من تجاوز حدًّا'], ['improvement', 'نسبة من تحسّنت درجته (قبلي→بعدي)']], o.kind)}</select></td>
     <td>${o.kind === 'improvement' ? `<input type="number" style="width:70px" data-bind="outcomeIndicators|${k}|minGain" value="${o.minGain ?? 1}" title="أقل مكسب بالدرجات">` : `<input type="number" style="width:70px" data-bind="outcomeIndicators|${k}|valuePct" value="${o.valuePct ?? 70}">`}</td>
     <td><select data-bind="outcomeIndicators|${k}|round">${sel(['endline', 'baseline', 'followup'].map((x) => [x, x]), o.round || 'endline')}</select></td>
@@ -219,13 +220,13 @@ const XL = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 // ======================= الاستبيانات =======================
 function vSurveys() {
-  const p = project(); const cnt = (id) => db.surveyResponses.filter((r) => r.formId === id);
-  view().innerHTML = `<div class="card"><h2>نماذج جاهزة (XLSForm)</h2><p class="small">نزّل النموذج وارفعه في KoboToolbox (Deploy). كل نموذج يحوي رمز المستفيد ومرحلة القياس والمركز ودرجة كلية محسوبة، لربط الردّ بسجل المستفيدين.</p>
-  <table><tr><th>النموذج</th><th>الفئة</th><th>الأسئلة</th><th>الردود</th><th></th></tr>${TEMPLATES.map((t) => `<tr><td>${esc(t.ar)}<div class="small">${esc(t.en)}</div></td><td>${{ child: 'أطفال', parent: 'أهالي', educator: 'منشّطون' }[t.audience]}</td><td>${t.items.length}</td><td>${cnt(t.id).length}</td><td><button data-act="dlForm" data-id="${t.id}">تنزيل XLSForm</button></td></tr>`).join('')}</table></div>
+  const p = project(); if (!p) return empty(); const cnt = (id) => db.surveyResponses.filter((r) => r.formId === id);
+  view().innerHTML = builderCard(p) + `<div class="card"><h2>كل النماذج (الجاهزة والمخصصة)</h2><p class="small">نزّل النموذج وارفعه في KoboToolbox (Deploy). كل نموذج يحوي رمز المستفيد ومرحلة القياس والمركز ودرجة كلية محسوبة، لربط الردّ بسجل المستفيدين.</p>
+  <table><tr><th>النموذج</th><th>الفئة</th><th>الأسئلة</th><th>الردود</th><th></th></tr>${allForms(p).map((t) => `<tr><td>${esc(t.ar)}<div class="small">${esc(t.en)}</div></td><td>${{ child: 'أطفال', parent: 'أهالي', educator: 'منشّطون' }[t.audience]}</td><td>${(t.items || t.questions).length}</td><td>${cnt(t.id).length}</td><td><button data-act="dlForm" data-id="${t.id}">تنزيل XLSForm</button></td></tr>`).join('')}</table></div>
   <div class="card"><h2>استيراد الردود من KoBo</h2><p class="small">من KoBo: Data → Downloads → XLSX، بصيغة «قيم XML» (XML values and headers). يُتخطّى المكرر تلقائيًا.</p>
-  <div class="row"><label>النموذج<select id="sf">${TEMPLATES.map((t) => `<option value="${t.id}">${esc(t.ar)}</option>`).join('')}</select></label><label>الملف<input type="file" id="sfile" accept=".xlsx"></label><button data-act="impResp">استيراد</button></div>
+  <div class="row"><label>النموذج<select id="sf">${allForms(p).map((t) => `<option value="${t.id}">${esc(t.ar)}</option>`).join('')}</select></label><label>الملف<input type="file" id="sfile" accept=".xlsx"></label><button data-act="impResp">استيراد</button></div>
   <p id="smsg"></p></div>
-  <div class="card"><h2>ملخص الردود</h2><table><tr><th>النموذج</th><th>المرحلة</th><th>عدد</th><th>متوسط الدرجة %</th></tr>${TEMPLATES.flatMap((t) => ['baseline', 'endline', 'followup', undefined].map((r) => [t, r])).map(([t, r]) => { const rs = cnt(t.id).filter((x) => (r ? x.round === r : false)); if (!rs.length) return ''; const sc = rs.filter((x) => x.score != null && x.max); return `<tr><td>${esc(t.ar)}</td><td>${r}</td><td>${rs.length}</td><td>${sc.length ? Math.round((100 * sc.reduce((a, x) => a + x.score / x.max, 0)) / sc.length) + '%' : '—'}</td></tr>`; }).join('')}</table></div>`;
+  <div class="card"><h2>ملخص الردود</h2><table><tr><th>النموذج</th><th>المرحلة</th><th>عدد</th><th>متوسط الدرجة %</th></tr>${allForms(p).flatMap((t) => ['baseline', 'endline', 'followup', undefined].map((r) => [t, r])).map(([t, r]) => { const rs = cnt(t.id).filter((x) => (r ? x.round === r : false)); if (!rs.length) return ''; const sc = rs.filter((x) => x.score != null && x.max); return `<tr><td>${esc(t.ar)}</td><td>${r}</td><td>${rs.length}</td><td>${sc.length ? Math.round((100 * sc.reduce((a, x) => a + x.score / x.max, 0)) / sc.length) + '%' : '—'}</td></tr>`; }).join('')}</table></div>`;
 }
 // ======================= المستخدمون والصلاحيات =======================
 const capi = async (path, method = 'GET', body) => { const r = await fetch(sync.cfg.url.replace(/\/$/, '') + path, { method, headers: { authorization: 'Bearer ' + sync.cfg.token, 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }); if (!r.ok) throw new Error('رفض الخادم ' + r.status); return r.json(); };
@@ -308,7 +309,7 @@ const actions = {
   async polSave() { await capi('/api/policy', 'PUT', { policy: window.__pol }); $('#pmsg').innerHTML = '<span class="badge b-ok">حُفظت</span>'; },
   addOutc() { const p = project(); (p.outcomeIndicators ||= []).push({ id: uid('x'), row: 7, name: 'مؤشر نتيجة جديد', formId: TEMPLATES[0].id, kind: 'threshold', valuePct: 70, round: 'endline' }); save(); rerender(); },
   delOutc(t) { project().outcomeIndicators.splice(+t.dataset.i, 1); save(); rerender(); },
-  async dlForm(t) { const tpl = TEMPLATES.find((x) => x.id === t.dataset.id); dl(await xlsformBuffer(buildForm(tpl, { projectId: ui.projectId, centers: db.centers })), `${tpl.id}.xlsx`, XL); },
+  async dlForm(t) { const tpl = allForms(project()).find((x) => x.id === t.dataset.id); dl(await xlsformBuffer(buildForm(tpl, { projectId: ui.projectId, centers: db.centers })), `${tpl.id}.xlsx`, XL); },
   async impResp() {
     const f = $('#sfile').files[0]; if (!f) return toast('اختر ملف KoBo'); const wb = new ExcelJS.Workbook(); await wb.xlsx.load(await f.arrayBuffer()); const ws = wb.worksheets[0];
     const head = ws.getRow(1).values.map((v) => String(v?.result ?? v ?? '')); const rows = []; ws.eachRow((r, i) => { if (i === 1) return; const o = {}; head.forEach((h, c) => { if (h) { const v = r.getCell(c).value; o[h] = v?.result ?? v?.text ?? v; } }); rows.push(o); });
@@ -383,7 +384,7 @@ const actions = {
 };
 
 $('.logo').src = logoUrl; { const l = document.createElement('link'); l.rel = 'icon'; l.href = logoUrl; document.head.append(l); }
-initPlan({ project, save, rerender, view, empty }); await load(); nav(); go('dash'); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
+initPlan({ project, save, rerender, view, empty }); initBuilder({ project, save, rerender }); await load(); nav(); go('dash'); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
 setInterval(() => { if (sync.cfg.auto) doSync(); else setSyncBadge(); }, 60000);
 window.addEventListener('online', () => sync.cfg.auto && doSync());
 let st; document.addEventListener('change', () => { clearTimeout(st); st = setTimeout(() => sync.cfg.auto && doSync(), 4000); });

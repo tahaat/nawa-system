@@ -5,6 +5,8 @@ const L = { ar: 'label::Arabic (ar)', en: 'label::English (en)' };
 export const SCALES = {
   agree5: [['1', 'لا أوافق إطلاقًا', 'Strongly disagree'], ['2', 'لا أوافق', 'Disagree'], ['3', 'محايد', 'Neutral'], ['4', 'أوافق', 'Agree'], ['5', 'أوافق بشدة', 'Strongly agree']],
   freq4: [['1', 'أبدًا', 'Never'], ['2', 'أحيانًا', 'Sometimes'], ['3', 'غالبًا', 'Often'], ['4', 'دائمًا', 'Always']],
+  yn: [['1', 'نعم', 'Yes'], ['0', 'لا', 'No']],
+  rate3: [['1', 'ضعيف', 'Weak'], ['2', 'متوسط', 'Average'], ['3', 'جيد', 'Good']],
   skill5: [['1', 'مبتدئ', 'Beginner'], ['2', 'أساسي', 'Basic'], ['3', 'متوسط', 'Intermediate'], ['4', 'جيد', 'Good'], ['5', 'متمكّن', 'Proficient']],
 };
 export const ROUNDS = [['baseline', 'قبلي (Baseline)', 'Baseline'], ['endline', 'بعدي (Endline)', 'Endline'], ['followup', 'متابعة', 'Follow-up']];
@@ -23,6 +25,16 @@ export const TEMPLATES = [
     items: [['أعجبني النشاط اليوم', 'I liked today\'s activity'], ['فهمت ما طُلب مني', 'I understood what was asked'], ['أرغب في العودة للجلسة القادمة', 'I want to come back to the next session']] },
 ];
 
+export const QTYPES = [['scale', 'مقياس (يدخل في الدرجة)'], ['select_one', 'اختيار واحد'], ['select_multiple', 'اختيار متعدد'], ['text', 'نص'], ['integer', 'رقم صحيح'], ['decimal', 'رقم عشري'], ['date', 'تاريخ'], ['note', 'ملاحظة/عنوان']];
+export const SCALE_NAMES = { agree5: 'موافقة (5)', freq4: 'تكرار (4)', skill5: 'مهارة (5)', yn: 'نعم/لا', rate3: 'تقييم (3)' };
+export const allForms = (p) => [...TEMPLATES, ...((p && p.forms) || [])];
+// يوحّد الصيغتين: القوالب الجاهزة (items) والنماذج المخصصة (questions)
+export function questionsOf(tpl) {
+  if (tpl.questions) return tpl.questions.map((q, i) => ({ ...q, name: q.name || `q${i + 1}` }));
+  return tpl.items.map(([ar, en], i) => ({ type: 'scale', scale: tpl.scale, ar, en, name: `q${i + 1}`, required: true }));
+}
+const parseChoices = (q) => (q.choices || []).map((c, i) => (Array.isArray(c) ? c : String(c).split('|')).map((x) => String(x).trim())).map((c, i) => [String(i + 1), c[0], c[1] || c[0]]);
+
 export function buildForm(tpl, { projectId = '', centers = [], version } = {}) {
   const idn = tpl.id, V = version || new Date().toISOString().slice(0, 10).replace(/-/g, '');
   const survey = [], choices = [];
@@ -37,13 +49,20 @@ export function buildForm(tpl, { projectId = '', centers = [], version } = {}) {
   q('calculate', 'form_ref', '', '', { calculation: `'${idn}'` });
   q('end_group', '', '', '');
   q('begin_group', 'g_items', tpl.mode === 'self' ? 'قيّم نفسك' : 'اقرأ العبارة واختر الإجابة', 'Rate each statement', { appearance: tpl.scale === 'agree5' || tpl.scale === 'freq4' ? 'field-list' : undefined });
-  tpl.items.forEach(([ar, en], i) => q(`select_one ${tpl.scale}`, `q${i + 1}`, ar, en, { required: 'yes', appearance: tpl.scale === 'agree5' ? 'likert' : undefined }));
+  const Q = questionsOf(tpl), scored = Q.filter((x) => x.type === 'scale'), usedScales = new Set(), extraLists = [];
+  Q.forEach((x) => {
+    const base = { required: x.required === false ? undefined : 'yes', relevant: x.relevant || undefined };
+    if (x.type === 'scale') { usedScales.add(x.scale); q(`select_one ${x.scale}`, x.name, x.ar, x.en || x.ar, { ...base, appearance: x.scale === 'agree5' ? 'likert' : undefined }); }
+    else if (x.type === 'select_one' || x.type === 'select_multiple') { const ln = 'l_' + x.name; extraLists.push([ln, parseChoices(x)]); q(`${x.type} ${ln}`, x.name, x.ar, x.en || x.ar, base); }
+    else if (x.type === 'note') q('note', x.name, x.ar, x.en || x.ar, {});
+    else q(x.type, x.name, x.ar, x.en || x.ar, { ...base, constraint: x.min != null || x.max != null ? [x.min != null ? `. >= ${x.min}` : '', x.max != null ? `. <= ${x.max}` : ''].filter(Boolean).join(' and ') : undefined, cm_ar: x.min != null || x.max != null ? `القيمة بين ${x.min ?? '—'} و${x.max ?? '—'}` : undefined, cm_en: x.min != null || x.max != null ? `Value must be between ${x.min ?? '-'} and ${x.max ?? '-'}` : undefined });
+  });
   q('end_group', '', '', '');
-  q('calculate', 'score_total', '', '', { calculation: tpl.items.map((_, i) => `\${q${i + 1}}`).join(' + ') });
-  q('calculate', 'score_max', '', '', { calculation: String(tpl.items.length * Math.max(...SCALES[tpl.scale].map((x) => +x[0]))) });
+  q('calculate', 'score_total', '', '', { calculation: scored.length ? scored.map((x) => `\${${x.name}}`).join(' + ') : '0' });
+  q('calculate', 'score_max', '', '', { calculation: String(scored.reduce((a, x) => a + Math.max(...SCALES[x.scale].map((y) => +y[0])), 0)) });
   q('note', 'n_thanks', 'شكرًا لمشاركتك', 'Thank you', {});
   const addChoices = (list, rows) => rows.forEach(([n, ar, en]) => choices.push({ list, name: n, ar, en }));
-  addChoices(tpl.scale, SCALES[tpl.scale]); if (!tpl.noRound) addChoices('rounds', ROUNDS);
+  for (const k of usedScales) addChoices(k, SCALES[k]); for (const [ln, rows] of extraLists) addChoices(ln, rows); if (!tpl.noRound) addChoices('rounds', ROUNDS);
   if (centers.length) addChoices('centers', centers.map((c) => [c.id, c.name, c.name]));
   return { survey, choices, settings: { form_title: tpl.ar, form_id: `nawa_${idn}`, version: V, default_language: 'Arabic (ar)' } };
 }

@@ -16,7 +16,9 @@ export function initPlan(c) {
   ctx = c; if (bound) return; bound = true;
   document.addEventListener('change', (e) => {
     const t = e.target, p = ctx.project(); if (!p) return;
-    if (t.dataset?.p) { set(p, t.dataset.p, t.dataset.t === 'number' ? (t.value === '' ? null : +t.value) : t.value === '' ? undefined : t.value); ctx.save(); }
+    if (t.dataset?.pb) { set(p, t.dataset.pb, t.checked); ctx.save(); }
+    else if (t.dataset?.lines) { set(p, t.dataset.lines, t.value.split('\n').map((x) => x.trim()).filter(Boolean)); ctx.save(); }
+    else if (t.dataset?.p) { set(p, t.dataset.p, t.dataset.t === 'number' ? (t.value === '' ? null : +t.value) : t.value === '' ? undefined : t.value); ctx.save(); }
     else if (t.dataset?.pc) { const cur = new Set(get(p, t.dataset.pc) || []); t.checked ? cur.add(t.value) : cur.delete(t.value); set(p, t.dataset.pc, [...cur]); ctx.save(); }
     else if (t.dataset?.pw) { const [path, w] = t.dataset.pw.split('@'); const cur = new Set(get(p, path) || []); t.checked ? cur.add(+w) : cur.delete(+w); set(p, path, [...cur].sort((a, b) => a - b)); ctx.save(); }
   });
