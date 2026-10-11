@@ -118,3 +118,20 @@ button.cg.warn{border-color:var(--gold);color:var(--accent)}button.cg.warn:after
 #cardtools button{width:28px;height:28px;padding:0;background:none;border:0;color:var(--accent);border-radius:7px;display:grid;place-items:center}
 #cardtools button:hover{background:var(--tint)}
 #cardtools svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+
+/* ===== استجابة لكل المقاسات ===== */
+img,canvas,svg{max-width:100%}
+select,input,textarea{max-width:100%}
+.tools{max-width:100%;min-width:0}.tools label{min-width:0;max-width:100%}#pj{min-width:0;max-width:100%;text-overflow:ellipsis}
+.row>label,.row>button{max-width:100%}input[style*="width"],select[style*="width"],textarea[style*="width"]{max-width:100%}
+@media(max-width:800px){
+  .tools{width:100%;justify-content:flex-start}.tools label{flex:1 1 100%;display:flex;flex-direction:column}#pj{width:100%}
+  #top h1{font-size:1.25rem}.tl{min-width:0}.tl h1{overflow-wrap:anywhere}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .grid.g2{grid-template-columns:1fr}
+  .row{gap:8px}.row>label{flex:1 1 140px}
+  main{padding:0 12px 40px}.card{padding:14px}
+  table{font-size:14px}th,td{padding:6px 7px}.card table{min-width:540px}th:first-child,td:first-child{min-width:150px}
+  #cardtools{display:none!important}
+}
+@media(max-width:480px){body{font-size:15px}.dlg{width:calc(100vw - 24px)!important;max-width:none}}

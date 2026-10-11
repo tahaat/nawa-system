@@ -77,6 +77,8 @@ function bind(el) { // data-bind="list|idx|field"  أو "obj|field"
 // ======================= لوحة القيادة =======================
 const kpi = (to, ic, val, label, src, cls = '') => `<a class="card kpi ${cls}" data-go="${to}" tabindex="0" role="link" data-tip="${src}"><div class="kh"><span class="ki">${icon(ic)}</span><b>${val}</b></div><span class="kl">${label}</span></a>`;
 // ---- ضبط كل بطاقة بمفردها: مقياس المحور العمودي، محور ثانٍ، ارتفاع، شفافية، فترة (يُحفظ في المتصفح) ----
+const NARROW = () => window.innerWidth < 600;
+let _nw = NARROW(); window.addEventListener('resize', () => { clearTimeout(window.__rz); window.__rz = setTimeout(() => { if (NARROW() !== _nw) { _nw = NARROW(); if (route === 'dash') rerender(); } }, 250); });
 const CS_DEF = { max: '', min: '', log: false, y2: false, max2: '', h: '', alpha: 55, per: 'all' };
 const csAll = () => { try { return JSON.parse(localStorage.getItem('nawa.cards') || '{}'); } catch { return {}; } };
 const csGet = (id) => ({ ...CS_DEF, ...(csAll()[id] || {}) });
@@ -139,7 +141,7 @@ function vDash() {
       // قيم متباعدة جدًا: نبّه على أيقونة الضبط
       const vals = cfg.data.datasets.flatMap((ds) => ds.data).filter((v) => v > 0); if (vals.length > 1 && Math.max(...vals) / Math.min(...vals) >= 40 && !cs.log && !cs.y2 && cs.max === '') document.querySelector(`[data-cid=${id}] .cg`)?.classList.add('warn');
     }
-    const c = new Chart($('#' + id), { ...cfg, options: { responsive: true, maintainAspectRatio: !cs.h, plugins: { legend: { labels: { font: { family: 'Tajawal', size: 15 } } } }, scales }, data: cfg.data }); charts.push(c);
+    const c = new Chart($('#' + id), { ...cfg, options: { responsive: true, maintainAspectRatio: !cs.h, ...(NARROW() ? { aspectRatio: cfg.type === 'doughnut' ? 0.95 : 1.05 } : {}), plugins: { legend: { position: NARROW() && cfg.type === 'doughnut' ? 'bottom' : 'top', labels: { boxWidth: NARROW() ? 18 : 40, font: { family: 'Tajawal', size: NARROW() ? 12 : 15 } } } }, scales }, data: cfg.data }); charts.push(c);
   };
   { const d = dFor(csGet('c1').per); mk('c1', { type: 'doughnut', data: { labels: ['ذكور', 'إناث', 'ذكور (إعاقة)', 'إناث (إعاقة)'], datasets: [{ data: [d.cats.M, d.cats.F, d.cats.CWD_M, d.cats.CWD_F], backgroundColor: [RED, PINK, GOLD, DK] }] } }); }
   { const d = dFor(csGet('c2').per), an = Object.keys(d.byAct);
