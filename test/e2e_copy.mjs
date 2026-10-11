@@ -1,0 +1,14 @@
+// نسخ البطاقات: ملخص نصي وصورة PNG على مستوى البرنامج (يتطلب خادماً على 8765 يخدم dist)
+import { chromium } from '/opt/npm-tools/node_modules/playwright/index.mjs';
+const b = await chromium.launch(), ctx = await b.newContext({ viewport: { width: 1400, height: 900 }, permissions: ['clipboard-read', 'clipboard-write'] }), pg = await ctx.newPage(); const errs = [];
+pg.on('pageerror', (e) => errs.push(e.message)); pg.on('console', (m) => m.type() === 'error' && errs.push(m.text()));
+const log = (m, ok) => console.log(ok ? 'ok  ' : 'FAIL', m);
+await pg.goto('http://localhost:8765/'); await pg.waitForSelector('#nav'); await pg.click('[data-act=demoGiz]'); await pg.waitForTimeout(900); await pg.click('a[data-go=dash]'); await pg.waitForTimeout(700);
+const copy = async (sel, kind) => { await pg.hover(sel); await pg.waitForTimeout(200); await pg.mouse.move(...(await pg.locator(sel).first().evaluate((e) => { const r = e.getBoundingClientRect(); return [r.left + r.width / 2 + 3, r.top + r.height / 2 + 3]; }))); await pg.waitForSelector('#cardtools', { state: 'visible' }); await pg.click(`#cardtools [data-cc=${kind}]`); await pg.waitForTimeout(900); };
+await copy('a.kpi >> nth=0', 'txt'); let t = await pg.evaluate(() => navigator.clipboard.readText()); log(`بطاقة مؤشر: «${t.replace(/\n/g, ' | ')}»`, /25/.test(t) && /\S/.test(t));
+await copy('[data-cid=c5]', 'txt'); t = await pg.evaluate(() => navigator.clipboard.readText()); console.log(JSON.stringify(t)); log(`مخطط: ${t.split('\n').length} سطراً، يحوي أسماء المراكز وقيم الحضور`, t.split('\n').length >= 4 && /\t\d+/.test(t));
+await copy('.card:has(table) >> nth=0', 'txt'); t = await pg.evaluate(() => navigator.clipboard.readText()); console.log(JSON.stringify(t.slice(0,400))); log('جدول مؤشرات النتائج بصيغة TSV تُلصق في Excel', t.split('\n').filter((l) => l.includes('\t')).length >= 3);
+await copy('[data-cid=c1]', 'img'); const ty = await pg.evaluate(async () => { const it = await navigator.clipboard.read(); const k = it[0]?.types || []; const blob = k.includes('image/png') ? await it[0].getType('image/png') : null; return { k, size: blob?.size || 0 }; }); log(`صورة البطاقة في الحافظة: ${JSON.stringify(ty)}`, ty.k.includes('image/png') && ty.size > 4000);
+await pg.click('a[data-go=projects]'); await pg.waitForTimeout(500); await copy('.card:has(table) >> nth=0', 'txt'); t = await pg.evaluate(() => navigator.clipboard.readText()); log('بطاقة في شاشة أخرى (حقول وجداول تحرير)', t.length > 40);
+await pg.click('[data-act=lang]'); await pg.waitForTimeout(500); await pg.click('a[data-go=dash]'); await pg.waitForTimeout(600); await copy('a.kpi >> nth=0', 'txt'); t = await pg.evaluate(() => navigator.clipboard.readText()); log(`بالإنجليزية: «${t.replace(/\n/g, ' | ')}»`, /session/i.test(t));
+console.log('أخطاء الصفحة:', errs.length ? errs : 'لا شيء'); await b.close();

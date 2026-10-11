@@ -11,6 +11,7 @@ import { france } from './sim_france.js';
 import { giz, GIZ_ID } from './giz.js';
 import { vPlan, initPlan } from './plan-view.js';
 import { tr, getLang, toggleLang, applyDoc } from './i18n.js';
+import { initCopy } from './copy-card.js';
 import { icon, getTheme, toggleTheme, initTheme, initHints, openPanel, hintsHtml } from './ui-tools.js';
 import { vSheets, initSheets } from './sheets-view.js';
 import { vOps, initOps } from './ops-view.js';
@@ -463,7 +464,7 @@ const actions = {
 };
 
 $('.logo').src = logoUrl; { const l = document.createElement('link'); l.rel = 'icon'; l.href = logoUrl; document.head.append(l); }
-initPlan({ project, save, rerender, view, empty }); initSheets({ db, project, save, view, empty, ask, toast, myCenters, route: () => route }); initOps({ db, project, save, view, empty, ask, toast, myCenters }); initBuilder({ project, save, rerender }); await load(); try { if (localStorage.getItem('nawa.nonav')) document.body.classList.add('nonav'); } catch { /* خاص */ } initTheme(); applyDoc(); nav(); go('dash'); initHints(view); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
+initPlan({ project, save, rerender, view, empty }); initSheets({ db, project, save, view, empty, ask, toast, myCenters, route: () => route }); initOps({ db, project, save, view, empty, ask, toast, myCenters }); initBuilder({ project, save, rerender }); await load(); try { if (localStorage.getItem('nawa.nonav')) document.body.classList.add('nonav'); } catch { /* خاص */ } initTheme(); applyDoc(); nav(); go('dash'); initHints(view); initCopy({ toast }); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
 setInterval(() => { if (sync.cfg.auto) doSync(); else setSyncBadge(); }, 60000);
 window.addEventListener('online', () => sync.cfg.auto && doSync());
 let st; document.addEventListener('change', () => { clearTimeout(st); st = setTimeout(() => sync.cfg.auto && doSync(), 4000); });

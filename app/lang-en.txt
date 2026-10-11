@@ -896,3 +896,9 @@ PTT يُعبَّأ داخل القالب الأصلي (مع بقاء المخط�
 مثال: إن كانت أعلى قيمة 3000 وقيمة أخرى 5 فاستخدم المقياس اللوغاريتمي، أو محوراً ثانياً للسلسلة الأصغر، أو خفّض «أعلى قيمة». | Example: if the highest value is 3000 and another is 5, use the logarithmic scale, a second axis for the smaller series, or lower the "maximum".
 الفترة تُطبَّق على الجلسات والحضور (STT) في هذه البطاقة فقط. | The period applies to sessions and attendance (STT) in this card only.
 شفافية البطاقة: | Card transparency:
+نسخ كصورة | Copy as image
+نسخ الملخص (نص) | Copy summary (text)
+تم نسخ الصورة | Image copied
+تم نسخ الملخص | Summary copied
+تعذّر النسخ | Could not copy
+تعذّر النسخ إلى الحافظة، نُزّلت الصورة بدلاً منه | Could not copy to the clipboard, the image was downloaded instead
