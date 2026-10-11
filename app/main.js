@@ -21,7 +21,9 @@ import { kvGet } from './store.js';
 import { initOffline, offlineCard, offlineActions } from './offline.js';
 import { vBnf, initBnf, bnfActions } from './bnf-view.js';
 import { initPlaceholders, icon, getTheme, toggleTheme, initTheme, initHints, openPanel, hintsHtml } from './ui-tools.js';
-import { vSheets, initSheets } from './sheets-view.js';
+import { vSheets, initSheets, openSheet } from './sheets-view.js';
+import { openOp } from './ops-view.js';
+import { initFix, fixActions, render as fixRender, start as fixStart, end as fixEnd, issuesOf, HOW, resolve as fixResolve, active as fixActive } from './fix.js';
 import { vOps, initOps } from './ops-view.js';
 import { commitSheet } from '../core/sheets.js';
 import { purgeDemo, uid, GROUPS, AGE_BANDS, ageAt, bandOf, iso } from '../core/model.js';
@@ -55,8 +57,10 @@ function nav() {
     <button class="sec ic" data-act="theme" title="الوضع المظلم / الفاتح" aria-label="الوضع المظلم / الفاتح">${icon(getTheme() === 'dark' ? 'sun' : 'moon')}</button>
     <button class="sec lang" data-act="lang" title="Language / اللغة">${getLang() === 'en' ? 'العربية' : 'English'}</button></div>`;
 }
-function go(r) { chartTheme(); if (!allowed(r)) r = 'dash'; route = r; charts.forEach((c) => c.destroy()); charts = []; nav(); ROUTES[r][1](); }
+function go(r) { chartTheme(); if (!allowed(r)) r = 'dash'; route = r; charts.forEach((c) => c.destroy()); charts = []; nav(); ROUTES[r][1](); if (fixActive()) { if (r === 'check') fixEnd(false); else fixRender(); } }
 const rerender = () => go(route);
+const grpOf = (t) => { const f = (a) => { const m = new Map(); for (const i of a) { if (ckf !== 'all' && i.level !== ckf) continue; const k = i.level + i.code + i.msg; const e = m.get(k) || { ...i, items: [] }; e.items.push(i); m.set(k, e); } return [...m.values()].sort((a, b) => ['error', 'warn', 'info'].indexOf(a.level) - ['error', 'warn', 'info'].indexOf(b.level)); }; return f(t.dataset.s === 'r' ? reconcile(db) : validateEntry(db))[+t.dataset.k]; };
+function openSession(id) { const x = db.sessions.find((r) => r.id === id); if (!x || x.sheetId) return false; ui.projectId = x.projectId; Object.assign(sess, { editId: id, act: x.activityId, center: x.centerId, date: x.date, educator: x.educator || '', grp: x.grp || '', units: x.units || 1, notes: x.notes || '', mode: x.mode, att: new Set(x.attendance || []), counts: x.counts || null, bands: !!x.bandCounts, bandCounts: x.bandCounts || null }); vSessions(); scrollTo({ top: 0 }); return true; }
 
 document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches?.('a.kpi')) e.target.click(); });
 document.addEventListener('click', async (e) => {
@@ -230,7 +234,7 @@ function vSessions() {
   const list = db.beneficiaries.filter((b) => !sess.q || b.name.includes(sess.q)).slice(0, 300);
   const today = iso(new Date());
   view().innerHTML = `
-  <div class="card"><h2>جلسة جديدة</h2><div class="row">
+  <div class="card"><h2>${sess.editId ? 'تعديل جلسة' : 'جلسة جديدة'}</h2><div class="row">
     <label>النشاط<select id="sa">${acts.map((x) => `<option value="${x.id}" ${x.id === a?.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></label>
     <label>المركز<select id="sc">${myCenters().map((c) => `<option value="${c.id}" ${c.id === sess.center ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>
     <label>التاريخ<input type="date" id="sd" value="${sess.date || today}"></label>
@@ -242,10 +246,10 @@ function vSessions() {
   : `<div class="row">${[['M', 'ذكور'], ['F', 'إناث'], ['MWD', 'ذكور (إعاقة)'], ['FWD', 'إناث (إعاقة)']].map(([k, t]) => `<label>${t}<input type="number" min="0" id="n-${k}" style="width:100px" value="${sess.counts?.[k] ?? ''}"></label>`).join('')}
     <label style="flex-direction:row;align-items:center"><input type="checkbox" id="bandsOn" ${sess.bands ? 'checked' : ''} data-act="toggleBands"> توزيع الفئات العمرية</label></div>
     ${sess.bands ? `<table><tr><th></th>${AGE_BANDS.map((b) => `<th>${b.key}</th>`).join('')}</tr>${[['M', 'ذكور'], ['F', 'إناث'], ['MWD', 'ذكور (إعاقة)'], ['FWD', 'إناث (إعاقة)']].map(([k, t]) => `<tr><td>${t}</td>${AGE_BANDS.map((b, i) => `<td><input type="number" min="0" style="width:60px" id="bd-${k}-${i}" value="${sess.bandCounts?.[k]?.[i] ?? ''}"></td>`).join('')}</tr>`).join('')}</table>` : '<p class="small">بدون توزيع عمري لن تظهر هذه الجلسة في جدول الفئات العمرية (يظهر تنبيه).</p>'}`}
-  <div class="row" style="margin-top:10px"><label>ملاحظات<input id="sn" style="width:320px" value="${esc(sess.notes || '')}"></label><button data-act="saveSession">حفظ الجلسة</button><span id="sres"></span></div></div>
+  <div class="row" style="margin-top:10px"><label>ملاحظات<input id="sn" style="width:320px" value="${esc(sess.notes || '')}"></label><button data-act="saveSession">${sess.editId ? 'حفظ التعديل' : 'حفظ الجلسة'}</button>${sess.editId ? '<button class="sec" data-act="cancelEditSess">إلغاء التعديل</button>' : ''}<span id="sres"></span></div></div>
   <div class="card"><h2>آخر الجلسات</h2><div class="tw"><table><tr><th>التاريخ</th><th>النشاط</th><th>المركز</th><th>المنشّط</th><th>النمط</th><th>ذ</th><th>إ</th><th>ذ-إ</th><th>إ-إ</th><th>المجموع</th><th>تحقق</th><th></th></tr>
   ${db.sessions.filter((s) => s.projectId === p.id).sort((x, y) => y.date.localeCompare(x.date)).slice(0, 150).map((s) => { const c = sessionCats(s, cx), v = validateEntry({ ...db, sessions: [s] }).filter((i) => i.ref === s.id || i.ref === s.activityId); const lv = v.some((i) => i.level === 'error') ? 'error' : v.some((i) => i.level === 'warn') ? 'warn' : 'ok';
-    return `<tr><td>${s.date}</td><td>${esc(cx.act.get(s.activityId)?.name)}</td><td>${esc(cx.ctr.get(s.centerId)?.name)}</td><td>${esc(s.educator)}</td><td>${s.mode === 'roll' ? 'أسماء' : 'أعداد'}</td><td>${c.M}</td><td>${c.F}</td><td>${c.CWD_M}</td><td>${c.CWD_F}</td><td><b>${sumCats(c)}</b></td><td><span class="badge b-${lv}" title="${esc(v.map((i) => i.msg).join(' | '))}">${lv === 'ok' ? '✔' : v.length}</span></td><td><button class="x" data-act="delSess" data-id="${s.id}">حذف</button></td></tr>`; }).join('')}</table></div></div>`;
+    return `<tr><td>${s.date}</td><td>${esc(cx.act.get(s.activityId)?.name)}</td><td>${esc(cx.ctr.get(s.centerId)?.name)}</td><td>${esc(s.educator)}</td><td>${s.mode === 'roll' ? 'أسماء' : 'أعداد'}</td><td>${c.M}</td><td>${c.F}</td><td>${c.CWD_M}</td><td>${c.CWD_F}</td><td><b>${sumCats(c)}</b></td><td><span class="badge b-${lv}" title="${esc(v.map((i) => i.msg).join(' | '))}">${lv === 'ok' ? '✔' : v.length}</span></td><td>${s.sheetId ? `<button class="sec" data-act="openSheetOf" data-id="${s.sheetId}">فتح الكشف</button>` : `<button class="sec" data-act="editSess" data-id="${s.id}">تعديل</button>`} <button class="x" data-act="delSess" data-id="${s.id}">حذف</button></td></tr>`; }).join('')}</table></div></div>`;
   const rd = () => { sess.center = $('#sc')?.value; sess.date = $('#sd')?.value; sess.educator = $('#se')?.value; sess.grp = $('#sg')?.value; sess.units = +$('#su')?.value || 1; sess.notes = $('#sn')?.value; sess.act = $('#sa')?.value; if (sess.mode === 'counts') { sess.counts = Object.fromEntries(['M', 'F', 'MWD', 'FWD'].map((k) => [k, +$('#n-' + k)?.value || 0])); if (sess.bands) sess.bandCounts = Object.fromEntries(['M', 'F', 'MWD', 'FWD'].map((k) => [k, AGE_BANDS.map((_, i) => +$(`#bd-${k}-${i}`)?.value || 0)])); } };
   sess.rd = rd;
   $('#sa').onchange = () => { rd(); vSessions(); };
@@ -255,12 +259,18 @@ function vSessions() {
 }
 
 // ======================= التحقق =======================
+let ckf = 'all';
 function vCheck() {
-  const v = validateEntry(db), r = reconcile(db), grp = (arr) => { const m = new Map(); for (const i of arr) { const k = i.level + i.code + i.msg; const e = m.get(k) || { ...i, n: 0 }; e.n++; m.set(k, e); } arr = [...m.values()].sort((a, b) => ['error', 'warn', 'info'].indexOf(a.level) - ['error', 'warn', 'info'].indexOf(b.level)); return arr.length ? `<table><tr><th>المستوى</th><th>الرمز</th><th>الملاحظة</th><th>التكرار</th></tr>${arr.slice(0, 500).map((i) => `<tr><td><span class="badge b-${i.level}">${{ error: 'خطأ', warn: 'تحذير', info: 'للعلم' }[i.level]}</span></td><td>${i.code}</td><td>${esc(i.msg)}</td><td>${i.n}</td></tr>`).join('')}</table>` : '<span class="badge b-ok">لا ملاحظات ✔</span>'; };
-  view().innerHTML = `<div class="card"><h2>فحص التكامل بين الأدوات الثلاث</h2><p class="small">يتأكد أن STT = BTT = PTT = لوحة القيادة (الحضور، المؤشرات، الفئات العمرية، خطة العمل، المستفيد المباشر).</p>${grp(r)}</div>
-  <div class="card"><h2>التحقق من الإدخال</h2>${grp(v)}</div>`;
+  const v = validateEntry(db), r = reconcile(db), L = { error: 'خطأ', warn: 'تحذير', info: 'للعلم' };
+  const all = [...r.map((i) => ({ ...i, src: 'r' })), ...v.map((i) => ({ ...i, src: 'v' }))];
+  const cnt = (l) => all.filter((i) => i.level === l).length;
+  const grp = (arr) => { const m = new Map(); for (const i of arr) { if (ckf !== 'all' && i.level !== ckf) continue; const k = i.level + i.code + i.msg; const e = m.get(k) || { ...i, n: 0, items: [] }; e.n++; e.items.push(i); m.set(k, e); } arr = [...m.values()].sort((a, b) => ['error', 'warn', 'info'].indexOf(a.level) - ['error', 'warn', 'info'].indexOf(b.level));
+    return arr.length ? `<table><tr><th>المستوى</th><th>الرمز</th><th>الملاحظة / ما المطلوب</th><th>التكرار</th><th>الإجراء</th></tr>${arr.slice(0, 500).map((i, k) => `<tr><td><span class="badge b-${i.level}">${L[i.level]}</span></td><td>${i.code}</td><td>${esc(i.msg)}<div class="small">${esc(HOW[i.code] || '')}</div></td><td>${i.n}</td><td><button data-act="fixOne" data-s="${i.src}" data-k="${k}">${esc(fixResolve(i, db).label)}</button>${i.n > 1 ? ` <button class="sec" data-act="fixGroup" data-s="${i.src}" data-k="${k}">معالجة الكل (${i.n})</button>` : ''}</td></tr>`).join('')}</table>` : '<span class="badge b-ok">لا ملاحظات ✔</span>'; };
+  const tabs = `<div class="row"><button class="${ckf === 'all' ? '' : 'sec'}" data-act="ckf" data-f="all">الكل (${all.length})</button><button class="${ckf === 'error' ? '' : 'sec'}" data-act="ckf" data-f="error">أخطاء (${cnt('error')})</button><button class="${ckf === 'warn' ? '' : 'sec'}" data-act="ckf" data-f="warn">تحذيرات (${cnt('warn')})</button><button class="${ckf === 'info' ? '' : 'sec'}" data-act="ckf" data-f="info">للعلم (${cnt('info')})</button>${cnt('error') + cnt('warn') ? `<button class="gold" data-act="fixAll">ابدأ المعالجة المتتابعة (${cnt('error') + cnt('warn')})</button>` : ''}</div>`;
+  view().innerHTML = `<div class="card"><h2>معالجة الملاحظات</h2><p class="small">لكل ملاحظة زر يفتح السجل المعنيّ مباشرة لتعديله. «المعالجة المتتابعة» تمرّ بك على الأخطاء والتحذيرات واحدة واحدة، وتعيد الفحص بعد كل تعديل فلا تتراكم.</p>${tabs}</div>
+  <div class="card"><h2>فحص التكامل بين الأدوات الثلاث</h2><p class="small">يتأكد أن STT = BTT = PTT = لوحة القيادة (الحضور، المؤشرات، الفئات العمرية، خطة العمل، المستفيد المباشر).</p>${grp(all.filter((i) => i.src === 'r'))}</div>
+  <div class="card"><h2>التحقق من الإدخال</h2>${grp(all.filter((i) => i.src === 'v'))}</div>`;
 }
-
 // ======================= التصدير =======================
 function vExport() {
   const p = project();
@@ -420,15 +430,22 @@ const actions = {
   mode(t) { sess.rd?.(); sess.mode = t.dataset.m; vSessions(); },
   toggleBands(t) { sess.rd?.(); sess.bands = t.checked; vSessions(); },
   async saveSession() {
-    sess.rd(); const p = project(); const s = { id: uid('s'), projectId: p.id, activityId: sess.act, centerId: sess.center || myCenters()[0]?.id, date: sess.date, educator: (sess.educator || '').trim(), ...(sess.grp?.trim() ? { grp: sess.grp.trim() } : {}), mode: sess.mode, units: sess.units || 1, notes: sess.notes || '' };
+    sess.rd(); const p = project(); const s = { id: sess.editId || uid('s'), projectId: p.id, activityId: sess.act, centerId: sess.center || myCenters()[0]?.id, date: sess.date, educator: (sess.educator || '').trim(), ...(sess.grp?.trim() ? { grp: sess.grp.trim() } : {}), mode: sess.mode, units: sess.units || 1, notes: sess.notes || '' };
     if (s.mode === 'roll') s.attendance = [...sess.att]; else { s.counts = sess.counts; if (sess.bands) s.bandCounts = sess.bandCounts; }
     const v = validateEntry({ ...db, sessions: [s] }).filter((i) => i.ref === s.id || i.ref === s.activityId || i.ref === sess.act);
     const errs = v.filter((i) => i.level === 'error');
     if (errs.length) { $('#sres').innerHTML = errs.map((i) => `<span class="badge b-error">${esc(i.msg)}</span>`).join(' '); return; }
     const warn = v.filter((i) => i.level === 'warn' && !i.code.startsWith('B'));
     if (warn.length && !(await ask('تحذيرات:\n' + warn.map((i) => '• ' + i.msg).join('\n') + '\nحفظ رغم ذلك؟'))) return;
-    db.sessions.push(s); sess.att = new Set(); sess.counts = null; sess.bandCounts = null; save(); toast('تم حفظ الجلسة'); vSessions();
+    const ix = db.sessions.findIndex((x) => x.id === s.id); if (ix >= 0) db.sessions[ix] = s; else db.sessions.push(s); const was = sess.editId; sess.editId = null; sess.att = new Set(); sess.counts = null; sess.bandCounts = null; sess.bands = false; save(); toast(was ? 'تم حفظ التعديل' : 'تم حفظ الجلسة'); vSessions(); window.dispatchEvent(new CustomEvent('nawa:saved'));
   },
+  ckf(t) { ckf = t.dataset.f; vCheck(); },
+  fixOne(t) { const it = grpOf(t); if (it) fixStart([it.items[0]]); },
+  fixGroup(t) { const it = grpOf(t); if (it) fixStart(it.items); },
+  fixAll() { const seen = new Set(), items = [...reconcile(db), ...validateEntry(db)].filter((i) => (i.level === 'error' || i.level === 'warn') && !seen.has(i.code + '|' + i.ref) && seen.add(i.code + '|' + i.ref)).sort((a, b) => (a.level === 'error' ? 0 : 1) - (b.level === 'error' ? 0 : 1)); fixStart(items); },
+  editSess(t) { const x = db.sessions.find((r) => r.id === t.dataset.id); if (x) openSession(x.id); },
+  cancelEditSess() { sess.editId = null; sess.att = new Set(); sess.counts = null; sess.bandCounts = null; sess.bands = false; vSessions(); },
+  openSheetOf(t) { go('sheets'); openSheet(t.dataset.id); },
   async delSess(t) { if (db.sessions.find((x) => x.id === t.dataset.id)?.sheetId) return toast('هذه الجلسة من كشف حضور؛ عدّلها أو احذفها من شاشة «كشوفات الحضور»'); if (!(await ask('حذف الجلسة؟'))) return; db.sessions = db.sessions.filter((s) => s.id !== t.dataset.id); save(); rerender(); },
   async xPTT() {
     const p = project(), tpl = await (await fetch(pttTemplate)).arrayBuffer(); const { data, warnings } = await exportPTT(tpl, p, db, DOMParser, XMLSerializer);
@@ -442,7 +459,7 @@ const actions = {
 };
 
 $('.logo').src = logoUrl; { const l = document.createElement('link'); l.rel = 'icon'; l.href = logoUrl; document.head.append(l); }
-initPlan({ project, save, rerender, view, empty }); initSheets({ db, project, save, view, empty, ask, toast, myCenters, route: () => route }); initOps({ db, project, save, view, empty, ask, toast, myCenters }); initBuilder({ project, save, rerender }); initGloss({ view, ask }); initSettings({ view, db, ask, askText }); initBnf({ view, db, ask }); Object.assign(actions, offlineActions, bnfActions({ toast, ask, save, rerender, dl }), glossActions({ toast, dl }), settingsActions({ toast, dl, go, save, rerender, ui, ask })); loadConfig(await kvGet('config'), DTYPES); await load(); await loadGlossary(); try { if (localStorage.getItem('nawa.nonav')) document.body.classList.add('nonav'); } catch { /* خاص */ } initTheme(); applyDoc(); nav(); go('dash'); initHints(view); initCopy({ toast }); initOffline(); initPlaceholders(); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
+initPlan({ project, save, rerender, view, empty }); initSheets({ db, project, save, view, empty, ask, toast, myCenters, route: () => route }); initOps({ db, project, save, view, empty, ask, toast, myCenters }); initBuilder({ project, save, rerender }); initGloss({ view, ask }); initFix({ db, ui, go, toast, openSession, openOp, route: () => route }); Object.assign(actions, fixActions); initSettings({ view, db, ask, askText }); initBnf({ view, db, ask }); Object.assign(actions, offlineActions, bnfActions({ toast, ask, save, rerender, dl }), glossActions({ toast, dl }), settingsActions({ toast, dl, go, save, rerender, ui, ask })); loadConfig(await kvGet('config'), DTYPES); await load(); await loadGlossary(); try { if (localStorage.getItem('nawa.nonav')) document.body.classList.add('nonav'); } catch { /* خاص */ } initTheme(); applyDoc(); nav(); go('dash'); initHints(view); initCopy({ toast }); initOffline(); initPlaceholders(); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
 setInterval(() => { if (sync.cfg.auto) doSync(); else setSyncBadge(); }, 60000);
 window.addEventListener('online', () => sync.cfg.auto && doSync());
 let st; document.addEventListener('change', () => { clearTimeout(st); st = setTimeout(() => sync.cfg.auto && doSync(), 4000); });

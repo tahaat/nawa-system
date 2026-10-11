@@ -9,6 +9,7 @@ export function initSheets(c) { ctx = c; if (bound) return; bound = true; docume
 const live = () => ctx.route() === 'sheets' && cur;
 
 // ---------- القائمة ----------
+export function openSheet(id) { const x = ctx.db.sheets.find((s) => s.id === id); if (!x) return false; cur = JSON.parse(JSON.stringify(x)); editor(); return true; }
 export function vSheets() {
   const p = ctx.project(); if (!p) return ctx.empty();
   if (cur && cur.projectId !== p.id) cur = null;

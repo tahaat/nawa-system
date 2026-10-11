@@ -1097,3 +1097,41 @@ English (يُستعمل في تصدير PTT) | English (used in the PTT export)
 مثال: تعزيز الصحة النفسية للأطفال | Example: Promoting children's mental health
 مثال: وصف مختصر للتدخل | Example: a short description of the intervention
 مثال: مواد تعليمية | Example: educational materials
+معالجة الملاحظات | Fix issues
+لكل ملاحظة زر يفتح السجل المعنيّ مباشرة لتعديله. «المعالجة المتتابعة» تمرّ بك على الأخطاء والتحذيرات واحدة واحدة، وتعيد الفحص بعد كل تعديل فلا تتراكم. | Each issue has a button that opens the related record for editing. "Sequential fixing" walks you through errors and warnings one by one and re-checks after every edit so they do not pile up.
+الكل | All
+أخطاء | Errors
+تحذيرات | Warnings
+للعلم | Info
+ابدأ المعالجة المتتابعة | Start sequential fixing
+الملاحظة / ما المطلوب | Issue / what to do
+الإجراء | Action
+معالجة الكل | Fix all
+فتح المستفيد | Open beneficiary
+فتح المشروع | Open project
+فتح الأنشطة | Open activities
+فتح المؤشرات | Open indicators
+فتح الكشف | Open sheet
+فتح الجلسات | Open sessions
+تعديل الجلسة | Edit session
+تعديل سجل الإنجاز | Edit output record
+فتح الاستبيانات | Open surveys
+فتح مؤشرات النتائج | Open outcome indicators
+فتح المستفيدين | Open beneficiaries
+خطأ | Error
+تحذير | Warning
+لم تُعالج بعد | Not fixed yet
+✔ عولجت | ✔ Fixed
+التالي › | Next ›
+إنهاء | Finish
+العودة لصفحة التحقق | Back to the check page
+✔ تمت معالجتها | ✔ Fixed
+انتهت المعالجة | Fixing finished
+تعديل جلسة | Edit session
+جلسة جديدة | New session
+حفظ التعديل | Save edit
+إلغاء التعديل | Cancel edit
+تعديل سجل إنجاز | Edit output record
+تسجيل إنجاز | Record output
+تم حفظ التعديل | Edit saved
+تعديل | Edit

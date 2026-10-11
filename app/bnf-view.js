@@ -50,6 +50,7 @@ function formHtml(b) {
     <div id="batt">${attHtml()}</div></details>
     <div class="row" style="margin-top:10px"><button type="button" data-act="bSave">${b ? 'حفظ التعديل' : '+ إضافة'}</button>${b ? '<button type="button" class="sec" data-act="bCancel">إلغاء</button>' : ''}</div></div>`;
 }
+export async function openBnf(id) { if (!ctx.db.beneficiaries.some((b) => b.id === id)) return false; st.edit = id; await loadAtt(cur()); vBnf(); scrollTo({ top: 0 }); return true; }
 export function vBnf() {
   const db = ctx.db, q = st.q.trim(), list = db.beneficiaries.filter((b) => !q || b.name.includes(q) || (b.phone || '').includes(q) || (b.nationalId || '').includes(q)).slice(0, 400), need = nameNeed(), today = iso(new Date());
   ctx.view().innerHTML = formHtml(cur()) + `
