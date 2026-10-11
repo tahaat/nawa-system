@@ -3,8 +3,8 @@
 from urllib.parse import quote
 import math
 PAL = {
- 'light': dict(r='#A21008', g='#E6A901', o='#4f6f2c', k='#2a2323', ol='#3a2236', p='#FF9798', net='rgba(60,30,25,.07)', wave='rgba(162,16,8,.05)'),
- 'dark':  dict(r='#e0574c', g='#E6A901', o='#93b86d', k='#e6dcd8', ol='#6b4a62', p='#c97b7c', net='rgba(255,235,225,.055)', wave='rgba(230,169,1,.05)'),
+ 'light': dict(r='#A21008', g='#E6A901', o='#4f6f2c', k='#2a2323', ol='#3a2236', p='#FF9798', net='rgba(60,30,25,.12)', wave='rgba(162,16,8,.07)'),
+ 'dark':  dict(r='#e0574c', g='#E6A901', o='#93b86d', k='#e6dcd8', ol='#6b4a62', p='#c97b7c', net='rgba(255,235,225,.10)', wave='rgba(230,169,1,.08)'),
 }
 def uri(svg): return 'url("data:image/svg+xml,' + quote(svg, safe="/:=' ()+,;-.") .replace('"', "'") + '")'
 def svg(w, h, body): return f"<svg xmlns='http://www.w3.org/2000/svg' width='{w}' height='{h}' viewBox='0 0 {w} {h}'>{body}</svg>"

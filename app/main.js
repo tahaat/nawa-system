@@ -49,6 +49,7 @@ function nav() {
 function go(r) { chartTheme(); if (!allowed(r)) r = 'dash'; route = r; charts.forEach((c) => c.destroy()); charts = []; nav(); ROUTES[r][1](); }
 const rerender = () => go(route);
 
+document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches?.('a.kpi')) e.target.click(); });
 document.addEventListener('click', async (e) => {
   const t = e.target.closest('[data-go],[data-act]'); if (!t) return;
   if (t.dataset.go) return go(t.dataset.go);
@@ -66,17 +67,18 @@ function bind(el) { // data-bind="list|idx|field"  أو "obj|field"
 }
 
 // ======================= لوحة القيادة =======================
+const kpi = (to, ic, val, label, src, cls = '') => `<a class="card kpi ${cls}" data-go="${to}" tabindex="0" role="link" title="${src}"><span class="ki">${icon(ic)}</span><b>${val}</b><span>${label}</span><span class="src">${src}</span></a>`;
 function vDash() {
   const p = project(); if (!p) return empty();
   const d = dashboard(p, db), rec = reconcile(db).filter((x) => x.level === 'error'), val = validateEntry(db);
   const nErr = val.filter((x) => x.level === 'error').length;
   view().innerHTML = `
   <div class="grid g4">
-    <div class="card kpi"><b>${d.sessions}</b><span>جلسة منفذة</span></div>
-    <div class="card kpi"><b>${d.attendance}</b><span>إجمالي الحضور</span></div>
-    <div class="card kpi gold"><b>${d.directCount}</b><span>مستفيد مباشر (حسب تعريف المشروع)</span></div>
-    <div class="card kpi gold"><b>${d.uniqueRolled}</b><span>أفراد فريدون بكشف الأسماء</span></div>
-    <div class="card kpi"><b class="${rec.length + nErr ? '' : ''}">${rec.length + nErr ? rec.length + nErr : '✔'}</b><span>${rec.length + nErr ? 'ملاحظات تحتاج معالجة (انظر التحقق)' : 'الأدوات الثلاث متطابقة'}</span></div>
+    ${kpi('sessions', 'cal', d.sessions, 'جلسة منفذة', 'المصدر: الجلسات (STT) وكشوفات الحضور')}
+    ${kpi('sessions', 'clip', d.attendance, 'إجمالي الحضور', 'المصدر: الجلسات (STT) وكشوفات الحضور')}
+    ${kpi('bnf', 'users', d.directCount, 'مستفيد مباشر (حسب تعريف المشروع)', 'المصدر: سجل المستفيدين (BTT) وتعريف المشروع', 'gold')}
+    ${kpi('sheets', 'idcard', d.uniqueRolled, 'أفراد فريدون بكشف الأسماء', 'المصدر: كشوفات الحضور بالأسماء', 'gold')}
+    ${kpi('check', rec.length + nErr ? 'alert' : 'shield', rec.length + nErr ? rec.length + nErr : '✔', rec.length + nErr ? 'ملاحظات تحتاج معالجة (انظر التحقق)' : 'الأدوات الثلاث متطابقة', 'المصدر: التحقق والتكامل')}
   </div>
   ${d.unclassified ? `<div class="card"><span class="badge b-warn">تنبيه</span> ${d.unclassified} مشارك بلا فئة عمرية (جلسات بالأعداد دون توزيع عمري) لا يدخلون في جدول الفئات العمرية.</div>` : ''}
   ${outcomeBlock(p)}

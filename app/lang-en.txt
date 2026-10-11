@@ -849,3 +849,7 @@ PTT يُعبَّأ داخل القالب الأصلي (مع بقاء المخط�
 تلميح | Hint
 أخطاء | errors
 تحذيرات | warnings
+المصدر: الجلسات (STT) وكشوفات الحضور | Source: sessions (STT) and attendance sheets
+المصدر: سجل المستفيدين (BTT) وتعريف المشروع | Source: beneficiary register (BTT) and the project definition
+المصدر: كشوفات الحضور بالأسماء | Source: name-based attendance sheets
+المصدر: التحقق والتكامل | Source: validation and integrity
