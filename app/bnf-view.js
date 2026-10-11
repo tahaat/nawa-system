@@ -34,7 +34,7 @@ function attHtml() {
 }
 function formHtml(b) {
   const v = b || {}, dis = !!v.disability, nw = nameNeed();
-  return `<div class="card" id="bnform"><h2>${b ? 'تعديل مستفيد' : 'إضافة مستفيد'}</h2><div class="row">
+  return `<div class="card" id="bnform"><div class="row-h"><h2>${b ? 'تعديل مستفيد' : 'إضافة مستفيد'}</h2>${b ? '' : '<button type="button" class="sec" data-act="bDraft" title="احفظ ما كتبته كمسودة وأكمله لاحقًا">حفظ كمسودة</button>'}</div><div class="row">
     <label>الاسم الرباعي<input id="bn" data-chk="name" autocomplete="off" placeholder="مثال: محمد أحمد علي سالم" value="${esc(v.name)}" style="width:280px"><span class="fh"></span></label>
     <label>الجنس<select id="bs"><option value="M" ${v.sex === 'M' ? 'selected' : ''}>ذكر</option><option value="F" ${v.sex === 'F' ? 'selected' : ''}>أنثى</option></select></label>
     <label>العمر<input id="ba" type="number" min="0" max="120" placeholder="مثال: 12" value="${v.age ?? ''}" style="width:90px"></label>
@@ -49,7 +49,7 @@ function formHtml(b) {
     <label>اسم جهة اتصال الطوارئ<input id="ben" placeholder="مثال: والد/ة أو قريب" value="${esc(v.emergencyName || '')}" style="width:200px"></label>
     <label>هاتف الطوارئ<input id="bep" data-chk="ephone" inputmode="numeric" dir="ltr" placeholder="0561234567" value="${esc(v.emergencyPhone || '')}" style="width:150px"><span class="fh"></span></label></div>
     <div id="batt">${attHtml()}</div></details>
-    <div class="row" style="margin-top:10px"><button type="button" data-act="bSave">${b ? 'حفظ التعديل' : '+ إضافة'}</button>${b ? '' : '<button type="button" class="sec" data-act="bDraft" title="احفظ ما كتبته كمسودة وأكمله لاحقًا">حفظ كمسودة</button>'}${b ? '<button type="button" class="sec" data-act="bCancel">إلغاء</button>' : ''}</div></div>`;
+    <div class="row" style="margin-top:10px"><button type="button" data-act="bSave">${b ? 'حفظ التعديل' : '+ إضافة'}</button>${b ? '<button type="button" class="sec" data-act="bCancel">إلغاء</button>' : ''}</div></div>`;
 }
 // مسودة مستفيد جديد: الحقول النصية فقط (المرفقات الجديدة لا تُحفظ في المسودة)
 const FIELDS = ['bn', 'bs', 'ba', 'bd', 'bdis', 'bdt', 'bp', 'bem', 'bnid', 'ben', 'bep'];
@@ -69,10 +69,14 @@ export function vBnf() {
   <div class="row"><label>الملف<input type="file" id="bimp" accept=".xlsx"></label><button class="sec" data-act="bImp">استيراد</button><button class="sec" data-act="bTpl">تنزيل قالب الاستيراد</button></div><p id="bimsg" class="small"></p></div>
   <div class="card"><div class="row"><label>بحث<input id="bq" placeholder="اسم أو جوال أو هوية" value="${esc(q)}"></label><span class="small">${db.beneficiaries.length} مستفيد</span></div>
   <div class="tw"><table><tr><th>الاسم</th><th>الجنس</th><th>العمر</th><th>الفئة</th><th>إعاقة</th><th>الجوال</th><th>مرفقات</th><th>جلسات حضور</th><th></th></tr>${list.map((b) => { const age = ageAt(b, today), n = db.sessions.filter((s) => s.mode === 'roll' && s.attendance.includes(b.id)).length, short = words(b.name) < need;
-    return `<tr><td>${esc(b.name)}${short ? ' <span class="badge b-warn">منقوص</span>' : ''}</td><td>${b.sex === 'M' ? 'ذكر' : 'أنثى'}</td><td>${age ?? '؟'}</td><td>${bandOf(age)?.key || '—'}</td><td>${b.disability ? esc(b.disabilityType || 'نعم') : ''}</td><td dir="ltr">${esc(b.phone || '')}</td><td>${(b.attachments || []).length || ''}</td><td>${n}</td><td><button class="sec" data-act="bEdit" data-id="${b.id}">تعديل</button> <button class="x" data-act="bDel" data-id="${b.id}">حذف</button></td></tr>`; }).join('')}</table></div></div>`;
+    return `<tr><td>${esc(b.name)}${short ? ' <span class="badge b-warn">منقوص</span>' : ''}</td><td>${b.sex === 'M' ? 'ذكر' : 'أنثى'}</td><td>${age ?? '؟'}</td><td>${bandOf(age)?.key || '—'}</td><td>${b.disability ? esc(b.disabilityType || 'نعم') : ''}</td><td dir="ltr">${esc(b.phone || '')}</td><td>${(b.attachments || []).length ? `<button class="sec attb" data-act="bAtts" data-id="${b.id}" title="عرض المرفقات">📎 ${b.attachments.length}</button>` : '<span class="small">—</span>'}</td><td>${n}</td><td><button class="sec" data-act="bEdit" data-id="${b.id}">تعديل</button> <button class="x" data-act="bDel" data-id="${b.id}">حذف</button></td></tr>`; }).join('')}</table></div></div>`;
   $('#bq').addEventListener('input', (e) => { st.q = e.target.value; clearTimeout(vBnf.t); vBnf.t = setTimeout(() => { vBnf(); const x = $('#bq'); x.focus(); x.setSelectionRange(x.value.length, x.value.length); }, 300); });
   if (st.fill && !st.edit) { for (const [i, v] of Object.entries(st.fill)) { const e = $('#' + i); if (e) e.value = v; } if ($('#bdtw')) $('#bdtw').hidden = $('#bdis')?.value !== '1'; st.fill = null; }
   document.querySelectorAll('#bnform [data-chk]').forEach((t) => t.value && paint(t));
+}
+function openAtts(html) {
+  $('#attmodal')?.remove(); const m = document.createElement('div'); m.id = 'attmodal'; m.innerHTML = `<div class="modal-box" role="dialog" aria-modal="true">${html}</div>`;
+  m.addEventListener('mousedown', (e) => { if (e.target === m) m.remove(); }); document.body.append(m);
 }
 async function loadAtt(b) { st.keep = (b?.attachments || []).map((a) => ({ ...a })); st.pend = []; st.gone = []; st.have = await fileIds(); }
 async function shrink(file) {
@@ -100,6 +104,13 @@ export function bnfActions({ toast, ask, save, rerender, dl }) {
   const X = {
     async bEdit(t) { st.edit = t.dataset.id; await loadAtt(cur()); vBnf(); scrollTo({ top: 0, behavior: 'smooth' }); },
     bDraft() { if (!bnfAuto(true)) return toast('اكتب بعض البيانات أولاً'); toast('حُفظ كمسودة'); vBnf(); },
+    async bAtts(t) {
+      const b = ctx.db.beneficiaries.find((x) => x.id === t.dataset.id); if (!b) return; const have = await fileIds();
+      const rows = (b.attachments || []).map((a) => { const miss = a.kind === 'file' && !have.has(a.id);
+        return `<tr><td>${esc(a.title || a.name || a.url)}</td><td>${esc(TYPE[a.type] || a.type)}</td><td>${a.kind === 'link' ? 'رابط' : 'ملف'}</td><td>${miss ? '<span class="badge b-warn">غير موجود على هذا الجهاز</span>' : `<button data-act="bAttOpen" data-bid="${b.id}" data-id="${a.id}">فتح</button>`}</td></tr>`; }).join('');
+      openAtts(`<div class="modal-h"><h3>مرفقات: ${esc(b.name)}</h3><button class="sec" data-act="bAttsClose">إغلاق</button></div><div class="tw"><table><tr><th>العنوان</th><th>النوع</th><th>الصيغة</th><th></th></tr>${rows}</table></div>`);
+    },
+    bAttsClose() { $('#attmodal')?.remove(); },
     bCancel() { st.edit = null; st.keep = []; st.pend = []; vBnf(); },
     async bSave() {
       const b0 = cur(), r = read(); if (!r.name) { $('#bn').focus(); return toast('الاسم مطلوب'); }
@@ -129,7 +140,7 @@ export function bnfActions({ toast, ask, save, rerender, dl }) {
     },
     bAttDel(t) { const id = t.dataset.id, k = st.keep.findIndex((a) => a.id === id); if (k >= 0) { const [a] = st.keep.splice(k, 1); if (a.kind === 'file') st.gone.push(a.id); } else st.pend = st.pend.filter((a) => a.id !== id); $('#batt').innerHTML = attHtml(); },
     async bAttOpen(t) {
-      const a = attList().find((x) => x.id === t.dataset.id); if (!a) return; if (a.kind === 'link') return window.open(a.url, '_blank', 'noopener');
+      const a = (t.dataset.bid ? ctx.db.beneficiaries.find((x) => x.id === t.dataset.bid)?.attachments || [] : attList()).find((x) => x.id === t.dataset.id); if (!a) return; if (a.kind === 'link') return window.open(a.url, '_blank', 'noopener');
       const bl = a.blob || (await getFile(a.id)); if (!bl) return toast('الملف غير موجود على هذا الجهاز'); const u = URL.createObjectURL(bl);
       if (/^image\/|pdf$/.test(bl.type)) window.open(u, '_blank'); else Object.assign(document.createElement('a'), { href: u, download: a.name || 'file' }).click(); setTimeout(() => URL.revokeObjectURL(u), 60000);
     },

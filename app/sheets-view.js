@@ -46,7 +46,7 @@ const eligible = (L, b) => { const gs = (cur.meta.groups || []).filter((k) => L.
 
 function editor() {
   const K = KINDS[cur.kind], p = ctx.project(), db = ctx.db;
-  ctx.view().innerHTML = `<div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">${esc(K.name)}</h2><button class="sec" data-shact="cancel">إغلاق دون حفظ</button></div>
+  ctx.view().innerHTML = `<div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">${esc(K.name)}</h2><span class="row" style="gap:6px"><button class="sec" data-shact="draft" title="احفظ ما أنجزته الآن كمسودة وأكمله لاحقًا">حفظ كمسودة</button><button class="sec" data-shact="cancel">إغلاق دون حفظ</button></span></div>
     <p class="small">المشروع: <b>${esc(p.name)}</b> — الحقول المعلَّمة بـ * إلزامية.</p>
     <div class="row"><label>النشاط في المشروع *<select id="sh-act"><option value=""></option>${p.activities.filter((a) => !a.ops).map((a) => `<option value="${a.id}" ${a.id === cur.activityId ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select></label>
     <label>المركز *<select id="sh-ctr"><option value=""></option>${ctx.myCenters().map((c) => `<option value="${c.id}" ${c.id === cur.centerId ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>${K.fields.map(fld).join('')}</div>
@@ -97,7 +97,7 @@ function checkHTML() {
   return `<h2>الأعداد (تُحسب تلقائياً من القائمة)</h2><div class="row"><span class="badge b-info">الإجمالي <b>${d.total}</b></span><span class="badge b-info">ذكور <b>${d.M}</b></span><span class="badge b-info">إناث <b>${d.F}</b></span><span class="badge b-info">ذكور ذوو إعاقة <b>${d.MWD}</b></span><span class="badge b-info">إناث ذوات إعاقة <b>${d.FWD}</b></span>${types ? `<span class="badge b-info">نوع الإعاقة: ${esc(types)}</span>` : ''}
     ${comp && cur.meta.mandatoryPct != null && cur.meta.mandatoryPct !== '' ? `<span class="badge b-ok">مستوفون لنسبة الحضور (${cur.meta.mandatoryPct}%): <b>${comp.filter((c) => c.ok).length}</b> من ${comp.length}</span>` : ''}</div>
     <h2>الفحص قبل الحفظ</h2>${r.errors.map((e) => `<p style="margin:3px 0"><span class="badge b-error">خطأ</span> ${esc(e)}</p>`).join('')}${r.warnings.map((e) => `<p style="margin:3px 0"><span class="badge b-warn">تنبيه</span> ${esc(e)}</p>`).join('')}${!r.errors.length && !r.warnings.length ? '<span class="badge b-ok">لا ملاحظات ✔</span>' : ''}
-    <div class="row" style="margin-top:12px"><button data-shact="save" ${r.errors.length ? 'disabled' : ''}>حفظ الكشف</button><button class="sec" data-shact="draft" title="احفظ ما أنجزته الآن كمسودة وأكمله لاحقًا">حفظ كمسودة</button>${r.errors.length ? `<span class="small">لا يمكن الحفظ قبل معالجة ${r.errors.length} خطأ</span>` : ''}</div>`;
+    <div class="row" style="margin-top:12px"><button data-shact="save" ${r.errors.length ? 'disabled' : ''}>حفظ الكشف</button>${r.errors.length ? `<span class="small">لا يمكن الحفظ قبل معالجة ${r.errors.length} خطأ</span>` : ''}</div>`;
 }
 const relist = () => { const e = $('#sh-lists'); if (e) e.innerHTML = KINDS[cur.kind].lists.map(listCard).join(''); refreshCheck(); };
 const remeet = () => { const e = $('#sh-meet'); if (e) e.innerHTML = KINDS[cur.kind].multi ? meetingsCard() : ''; };

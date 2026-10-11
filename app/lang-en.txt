@@ -1161,3 +1161,8 @@ English (يُستعمل في تصدير PTT) | English (used in the PTT export)
 لا توجد مسودات. من أي نموذج اضغط «حفظ كمسودة» لحفظ عملك غير المكتمل، كما تُحفظ تلقائيًا عند الانتقال إلى شاشة أخرى. | No drafts. In any form press "Save as draft" to keep unfinished work; it is also saved automatically when you switch to another screen.
 إغلاق الكشف دون حفظ؟ سيبقى آخر ما حُفظ في المسودة. (لحذف المسودة نفسها استخدم «حذف» من قائمة المسودات) | Close the sheet without saving? The last saved draft will remain. (To delete the draft itself use "Delete" in the drafts list)
 مستفيد — بلا اسم بعد | Beneficiary — no name yet
+عرض المرفقات | View attachments
+إغلاق | Close
+غير موجود على هذا الجهاز | Not on this device
+الصيغة | Format
+مرفقات: | Attachments:
