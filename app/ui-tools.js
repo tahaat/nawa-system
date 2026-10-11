@@ -30,7 +30,7 @@ export const toggleTheme = () => setTheme(getTheme() === 'dark' ? 'light' : 'dar
 // ---- لوحة منسدلة (إشعارات/تلميحات) ----
 let panel;
 export function openPanel(html) {
-  if (!panel) { panel = document.createElement('div'); panel.id = 'panel'; document.body.append(panel); document.addEventListener('mousedown', (e) => { if (panel.style.display === 'block' && !panel.contains(e.target) && !e.target.closest('.ic')) closePanel(); }); document.addEventListener('keydown', (e) => e.key === 'Escape' && closePanel()); }
+  if (!panel) { panel = document.createElement('div'); panel.id = 'panel'; document.body.append(panel); document.addEventListener('mousedown', (e) => { if (panel.style.display === 'block' && !panel.contains(e.target) && !e.target.closest('.ic,.cg')) closePanel(); }); document.addEventListener('keydown', (e) => e.key === 'Escape' && closePanel()); }
   panel.innerHTML = html; panel.style.display = 'block'; walk(panel);
 }
 export const closePanel = () => { if (panel) panel.style.display = 'none'; };

@@ -67,8 +67,8 @@ label:has(>input[type=checkbox]){flex-direction:row;align-items:center;gap:6px;c
 
 /* ===== الهوية الفلسطينية: تطريز، زيتون، كوفية ===== */
 aside,main{position:relative;z-index:1}
-.card{background:var(--card);background:color-mix(in srgb,var(--card) 74%,transparent)}
-.tw{background:color-mix(in srgb,var(--card) 80%,transparent)}
+.card{background:var(--card);background:color-mix(in srgb,var(--card) calc(var(--ca,55) * 1%),transparent)}
+.tw{background:color-mix(in srgb,var(--card) 60%,transparent)}
 aside nav{flex:none}
 #top{border-bottom:0;margin-bottom:26px}
 #top:after{inset-inline:0;bottom:-12px;width:auto;height:10px;border-radius:0;background:var(--p-band-zig) repeat-x}
@@ -93,10 +93,7 @@ button.ic .dot{position:absolute;top:-6px;inset-inline-end:-6px;min-width:19px;h
 
 
 /* بطاقات المؤشرات: أيقونة بمقاس النص، والمصدر يظهر كبوب عند التمرير */
-.dash{zoom:var(--ds,1);max-width:var(--dw,none);margin-inline:auto}
-.kpis{display:grid;gap:14px;margin-bottom:16px;grid-template-columns:var(--kc,repeat(auto-fit,minmax(200px,1fr)))}
-.dash .grid.g2{grid-template-columns:var(--cc,repeat(auto-fit,minmax(380px,1fr)))}
-.dc summary{cursor:pointer}.dc input[type=range]{padding:0;width:150px;accent-color:var(--red)}
+.kpis{display:grid;gap:14px;margin-bottom:16px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
 a.kpi{display:block;color:inherit;text-decoration:none;cursor:pointer;padding:12px 14px;margin-bottom:0;transition:transform .15s,box-shadow .15s}
 a.kpi:hover,a.kpi:focus-visible{transform:translateY(-2px);box-shadow:0 8px 20px rgba(80,20,15,.16);outline:none}
 a.kpi .kh{display:flex;align-items:center;justify-content:space-between;gap:10px}
@@ -107,3 +104,11 @@ a.kpi .ki svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:
 a.kpi b{font-size:28px;line-height:1.1}
 a.kpi .kl{display:block;margin-top:6px;font-size:13.5px;line-height:1.4}
 .tl{display:flex;align-items:center;gap:12px}
+
+.cc h3{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.cc .cw{position:relative}
+button.cg{background:none;border:1px solid var(--line);color:var(--mut);width:30px;height:30px;padding:0;border-radius:9px;display:inline-grid;place-items:center;flex:none;position:relative}
+button.cg:hover{background:var(--tint);color:var(--accent);border-color:var(--gold)}
+button.cg svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+button.cg.warn{border-color:var(--gold);color:var(--accent)}button.cg.warn:after{content:'';position:absolute;top:-3px;inset-inline-end:-3px;width:9px;height:9px;border-radius:50%;background:var(--gold)}
+#panel input[type=range]{padding:0;accent-color:var(--red)}

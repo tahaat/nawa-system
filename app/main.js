@@ -68,40 +68,39 @@ function bind(el) { // data-bind="list|idx|field"  أو "obj|field"
 
 // ======================= لوحة القيادة =======================
 const kpi = (to, ic, val, label, src, cls = '') => `<a class="card kpi ${cls}" data-go="${to}" tabindex="0" role="link" data-tip="${src}"><div class="kh"><span class="ki">${icon(ic)}</span><b>${val}</b></div><span class="kl">${label}</span></a>`;
-// ---- ضبط عرض لوحة القيادة: حجم/أعمدة/اتساع/فترة (يُحفظ في المتصفح) ----
-const DDEF = { scale: 100, kc: 'auto', cc: 'auto', w: 'full', per: 'all', from: '', to: '' };
-const dget = () => { try { return { ...DDEF, ...JSON.parse(localStorage.getItem('nawa.dash') || '{}') }; } catch { return { ...DDEF }; } };
-const dset = (o) => { try { localStorage.setItem('nawa.dash', JSON.stringify(o)); } catch { /* خاص */ } };
-const dstyle = (o) => `--ds:${o.scale / 100};${o.kc !== 'auto' ? `--kc:repeat(${o.kc},1fr);` : ''}${o.cc !== 'auto' ? `--cc:repeat(${o.cc},1fr);` : ''}${o.w !== 'full' ? `--dw:${o.w}px;` : ''}`;
-function dperiod(o) {
-  const now = new Date(), t = iso(now), y = now.getFullYear(), m = now.getMonth();
-  if (o.per === '30') return [iso(new Date(now.getTime() - 29 * 864e5)), t];
-  if (o.per === 'month') return [iso(new Date(y, m, 1)), iso(new Date(y, m + 1, 0))];
-  if (o.per === 'quarter') { const q = Math.floor(m / 3) * 3; return [iso(new Date(y, q, 1)), iso(new Date(y, q + 3, 0))]; }
-  if (o.per === 'custom') return [o.from || '', o.to || ''];
+// ---- ضبط كل بطاقة بمفردها: مقياس المحور العمودي، محور ثانٍ، ارتفاع، شفافية، فترة (يُحفظ في المتصفح) ----
+const CS_DEF = { max: '', min: '', log: false, y2: false, max2: '', h: '', alpha: 55, per: 'all' };
+const csAll = () => { try { return JSON.parse(localStorage.getItem('nawa.cards') || '{}'); } catch { return {}; } };
+const csGet = (id) => ({ ...CS_DEF, ...(csAll()[id] || {}) });
+const csSet = (id, v) => { const a = csAll(); a[id] = { ...(a[id] || {}), ...v }; try { localStorage.setItem('nawa.cards', JSON.stringify(a)); } catch { /* خاص */ } };
+function perRange(per) {
+  const now = new Date(), y = now.getFullYear(), m = now.getMonth();
+  if (per === '30') return [iso(new Date(now.getTime() - 29 * 864e5)), iso(now)];
+  if (per === 'month') return [iso(new Date(y, m, 1)), iso(new Date(y, m + 1, 0))];
+  if (per === 'quarter') { const q = Math.floor(m / 3) * 3; return [iso(new Date(y, q, 1)), iso(new Date(y, q + 3, 0))]; }
   return ['', ''];
 }
-const dopt = (list, v) => list.map(([k, t]) => `<option value="${k}" ${String(k) === String(v) ? 'selected' : ''}>${t}</option>`).join('');
-function dControls(o, n0, n1) {
-  const [f, t] = dperiod(o), days = f && t ? Math.round((new Date(t) - new Date(f)) / 864e5) + 1 : null;
-  const lbl = o.per === 'all' ? 'كل مدة المشروع' : `${f || '…'} ← ${t || '…'}${days ? ` (${days} يومًا)` : ''}`;
-  return `<details class="card dc" id="dc"><summary><b>ضبط عرض لوحة القيادة</b> <span class="small">· الفترة: ${lbl} · ${n1} / ${n0} جلسة</span></summary>
-  <div class="row" style="margin-top:10px">
-    <label>حجم البطاقات <span class="small" id="dsv">${o.scale}%</span><input type="range" min="70" max="140" step="5" value="${o.scale}" data-d="scale"></label>
-    <label>أعمدة المؤشرات<select data-d="kc">${dopt([['auto', 'تلقائي'], [2, '2'], [3, '3'], [4, '4'], [5, '5']], o.kc)}</select></label>
-    <label>أعمدة المخططات<select data-d="cc">${dopt([['auto', 'تلقائي'], [1, '1'], [2, '2'], [3, '3']], o.cc)}</select></label>
-    <label>اتساع المحتوى<select data-d="w">${dopt([['full', 'ممتد'], [1500, 'واسع'], [1200, 'متوسط'], [960, 'ضيّق']], o.w)}</select></label>
-    <label>الفترة<select data-d="per" data-re="1">${dopt([['all', 'كل المشروع'], ['30', 'آخر 30 يومًا'], ['month', 'هذا الشهر'], ['quarter', 'هذا الربع'], ['custom', 'مخصصة']], o.per)}</select></label>
-    ${o.per === 'custom' ? `<label>من<input type="date" data-d="from" data-re="1" value="${o.from}"></label><label>إلى<input type="date" data-d="to" data-re="1" value="${o.to}"></label>` : ''}
-    <button class="sec" data-act="dashReset">إعادة الضبط</button>
-  </div><p class="small" style="margin:8px 0 0">الفترة تُطبَّق على الجلسات والحضور (STT)؛ مؤشرات النتائج من الاستبيانات والمستفيدون المباشرون لا تتأثر بها.</p></details>`;
+const CARD_TITLES = { c1: 'الحضور حسب الجنس والإعاقة', c2: 'الأنشطة: المنفذ مقابل المخطط', c3: 'الجلسات والحضور شهريًا', c4: 'الفئات العمرية', c5: 'الحضور حسب المركز', c6: 'الحضور حسب الفئة المستهدفة' };
+const AXIS_CARDS = ['c2', 'c3', 'c4', 'c5'];
+const cardBox = (id, title, extra = '') => { const c = csGet(id); return `<div class="card cc" data-cid="${id}" style="--ca:${c.alpha}"><h3>${title}<button class="cg" data-act="cardset" data-c="${id}" title="ضبط هذه البطاقة (المقياس، الارتفاع، الشفافية، الفترة)" aria-label="ضبط هذه البطاقة"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button></h3>${extra}<div class="cw" style="${c.h ? `height:${+c.h}px` : ''}"><canvas id="${id}"></canvas></div></div>`; };
+function cardPanel(id) {
+  const c = csGet(id), ax = AXIS_CARDS.includes(id), two = ['c2', 'c3', 'c5'].includes(id);
+  const num = (k, ph = 'تلقائي') => `<input type="number" data-cs="${k}" value="${c[k]}" placeholder="${ph}" style="width:110px">`;
+  return `<h3>ضبط البطاقة: ${CARD_TITLES[id]}</h3><div class="row" style="flex-direction:column;align-items:stretch;gap:10px">
+  ${ax ? `<div class="row"><label>أعلى قيمة للمحور العمودي${num('max')}</label><label>أدنى قيمة${num('min')}</label></div>
+  <label>نوع المقياس<select data-cs="log"><option value="" ${c.log ? '' : 'selected'}>خطي (عادي)</option><option value="1" ${c.log ? 'selected' : ''}>لوغاريتمي (يُظهر القيم الصغيرة بجانب الكبيرة)</option></select></label>` : ''}
+  ${two ? `<label class="chk"><input type="checkbox" data-cs="y2" ${c.y2 ? 'checked' : ''}> محور ثانٍ مستقل للسلسلة الثانية (يظهر على الجانب الآخر)</label>${c.y2 ? `<label>أعلى قيمة للمحور الثاني${num('max2')}</label>` : ''}` : ''}
+  <div class="row"><label>ارتفاع البطاقة (بكسل)${num('h', 'تلقائي')}</label><label>الفترة<select data-cs="per">${[['all', 'كل المشروع'], ['30', 'آخر 30 يومًا'], ['month', 'هذا الشهر'], ['quarter', 'هذا الربع']].map(([k, t]) => `<option value="${k}" ${c.per === k ? 'selected' : ''}>${t}</option>`).join('')}</select></label></div>
+  <div><div class="small">شفافية البطاقة: <b id="cav">${c.alpha}</b>% معتمة</div><input type="range" min="15" max="100" step="5" value="${c.alpha}" data-cs="alpha" style="width:100%"></div>
+  <p class="small" style="margin:0">${ax ? 'مثال: إن كانت أعلى قيمة 3000 وقيمة أخرى 5 فاستخدم المقياس اللوغاريتمي، أو محوراً ثانياً للسلسلة الأصغر، أو خفّض «أعلى قيمة». ' : ''}الفترة تُطبَّق على الجلسات والحضور (STT) في هذه البطاقة فقط.</p>
+  <p><button class="sec" data-act="cardReset" data-c="${id}">إعادة ضبط هذه البطاقة</button></p></div>`;
 }
 function vDash() {
+  charts.forEach((c) => c.destroy()); charts = [];
   const p = project(); if (!p) return empty();
-  const o = dget(), [pf, pt] = dperiod(o), mine = db.sessions.filter((x) => x.projectId === p.id), ss = mine.filter((x) => (!pf || x.date >= pf) && (!pt || x.date <= pt));
-  const d = dashboard(p, o.per === 'all' ? db : { ...db, sessions: ss }), rec = reconcile(db).filter((x) => x.level === 'error'), val = validateEntry(db);
+  const d = dashboard(p, db), rec = reconcile(db).filter((x) => x.level === 'error'), val = validateEntry(db);
   const nErr = val.filter((x) => x.level === 'error').length;
-  view().innerHTML = dControls(o, mine.length, ss.length) + `<div class="dash" style="${dstyle(o)}">
+  view().innerHTML = `<div class="dash">
   <div class="kpis">
     ${kpi('sessions', 'cal', d.sessions, 'جلسة منفذة', 'المصدر: الجلسات (STT) وكشوفات الحضور')}
     ${kpi('sessions', 'clip', d.attendance, 'إجمالي الحضور', 'المصدر: الجلسات (STT) وكشوفات الحضور')}
@@ -112,29 +111,39 @@ function vDash() {
   ${d.unclassified ? `<div class="card"><span class="badge b-warn">تنبيه</span> ${d.unclassified} مشارك بلا فئة عمرية (جلسات بالأعداد دون توزيع عمري) لا يدخلون في جدول الفئات العمرية.</div>` : ''}
   ${outcomeBlock(p)}
   <div class="grid g2">
-    <div class="card"><h3>الحضور حسب الجنس والإعاقة</h3><canvas id="c1"></canvas></div>
-    <div class="card"><h3>الأنشطة: المنفذ مقابل المخطط</h3><canvas id="c2"></canvas></div>
-    <div class="card"><h3>الجلسات والحضور شهريًا</h3><canvas id="c3"></canvas></div>
-    <div class="card"><h3>الفئات العمرية</h3><p class="small" style="margin:0">الأحمر: أفراد فريدون لكل ربع وبند (جلسات الأسماء). الذهبي: مشاركات جلسات الأعداد (غير فريدة).</p><canvas id="c4"></canvas></div>
-    <div class="card"><h3>الحضور حسب المركز</h3><canvas id="c5"></canvas></div>
-    <div class="card"><h3>الحضور حسب الفئة المستهدفة</h3><canvas id="c6"></canvas></div>
+    ${cardBox('c1', 'الحضور حسب الجنس والإعاقة')}
+    ${cardBox('c2', 'الأنشطة: المنفذ مقابل المخطط')}
+    ${cardBox('c3', 'الجلسات والحضور شهريًا')}
+    ${cardBox('c4', 'الفئات العمرية', '<p class="small" style="margin:0">الأحمر: أفراد فريدون لكل ربع وبند (جلسات الأسماء). الذهبي: مشاركات جلسات الأعداد (غير فريدة).</p>')}
+    ${cardBox('c5', 'الحضور حسب المركز')}
+    ${cardBox('c6', 'الحضور حسب الفئة المستهدفة')}
   </div></div>`;
-  const dc = $('#dc'); if (o.open) dc.open = true;
-  dc.addEventListener('toggle', () => dset({ ...dget(), open: dc.open }));
-  dc.addEventListener('input', (e) => { const el = e.target, k = el.dataset.d; if (!k || el.dataset.re) return; const cur = dget(); cur[k] = k === 'scale' ? +el.value : el.value; dset(cur); $('.dash').style.cssText = dstyle(cur); const v = $('#dsv'); if (v) v.textContent = cur.scale + '%'; });
-  dc.addEventListener('change', (e) => { const el = e.target, k = el.dataset.d; if (!k || !el.dataset.re) return; const cur = { ...dget(), open: true }; cur[k] = el.value; if (k === 'per' && el.value === 'custom' && !cur.from) { cur.from = pf || p.start; cur.to = pt || iso(new Date()); } dset(cur); vDash(); });
   const RED = '#A21008', GOLD = '#E6A901', PINK = '#FF9798', DK = getTheme() === 'dark' ? '#d98a82' : '#5b0a05', GR = '#9a8f8f';
-  const mk = (id, cfg) => { if (cfg.data) { if (cfg.data.labels) cfg.data.labels = cfg.data.labels.map(tr); (cfg.data.datasets || []).forEach((ds) => { if (ds.label) ds.label = tr(ds.label); }); } const c = new Chart($('#' + id), { ...cfg, options: { responsive: true, plugins: { legend: { labels: { font: { family: 'Tajawal', size: 15 } } } }, scales: cfg.type === 'doughnut' ? {} : { x: { ticks: { font: { family: 'Tajawal', size: 14 } } }, y: { beginAtZero: true } }, ...(cfg.opt || {}) }, data: cfg.data }); charts.push(c); };
-  mk('c1', { type: 'doughnut', data: { labels: ['ذكور', 'إناث', 'ذكور (إعاقة)', 'إناث (إعاقة)'], datasets: [{ data: [d.cats.M, d.cats.F, d.cats.CWD_M, d.cats.CWD_F], backgroundColor: [RED, PINK, GOLD, DK] }] } });
-  const an = Object.keys(d.byAct);
-  mk('c2', { type: 'bar', data: { labels: an, datasets: [{ label: 'منفذ', data: an.map((k) => d.byAct[k].sessions), backgroundColor: RED }, { label: 'مخطط', data: an.map((k) => d.byAct[k].planned), backgroundColor: GOLD }] } });
-  const ml = Array.from({ length: 12 }, (_, i) => { const x = new Date(Date.UTC(+p.start.slice(0, 4), +p.start.slice(5, 7) - 1 + i, 1)); return x.toISOString().slice(0, 7); });
-  mk('c3', { type: 'line', data: { labels: ml, datasets: [{ label: 'الحضور', data: d.byMonth.map((m) => m.att), borderColor: RED, backgroundColor: RED }, { label: 'الجلسات', data: d.byMonth.map((m) => m.sessions), borderColor: GOLD, backgroundColor: GOLD }] } });
-  mk('c4', { type: 'bar', data: { labels: AGE_BANDS.map((b) => b.key), datasets: [{ label: 'أفراد فريدون (أسماء)', data: d.byBand.map((n, i) => n - d.byBandCounts[i]), backgroundColor: PINK, borderColor: RED, borderWidth: 1 }, { label: 'مشاركات (أعداد)', data: d.byBandCounts, backgroundColor: GOLD, borderColor: GOLD, borderWidth: 1 }] }, options: { scales: { x: { stacked: true }, y: { stacked: true } } } });
-  const cn = Object.keys(d.byCenter);
-  mk('c5', { type: 'bar', data: { labels: cn, datasets: [{ label: 'الحضور', data: cn.map((k) => d.byCenter[k].att), backgroundColor: RED }, { label: 'الجلسات', data: cn.map((k) => d.byCenter[k].sessions), backgroundColor: GOLD }] } });
-  const gk = Object.keys(d.byGroup);
-  mk('c6', { type: 'doughnut', data: { labels: gk.map((k) => GROUPS[k] || k), datasets: [{ data: gk.map((k) => d.byGroup[k]), backgroundColor: [RED, GOLD, PINK, DK, GR] }] } });
+  const dCache = {}, dFor = (per) => dCache[per] || (dCache[per] = per === 'all' ? d : (() => { const [f, t] = perRange(per); return dashboard(p, { ...db, sessions: db.sessions.filter((x) => x.date >= f && x.date <= t) }); })());
+  const mk = (id, cfg) => {
+    const cs = csGet(id); if (cfg.data) { if (cfg.data.labels) cfg.data.labels = cfg.data.labels.map(tr); (cfg.data.datasets || []).forEach((ds) => { if (ds.label) ds.label = tr(ds.label); }); }
+    let scales = {};
+    if (cfg.type !== 'doughnut') {
+      const y = { beginAtZero: true }; if (cs.max !== '' && cs.max != null) y.max = +cs.max; if (cs.min !== '' && cs.min != null) { y.min = +cs.min; y.beginAtZero = false; }
+      if (cs.log) { y.type = 'logarithmic'; y.beginAtZero = false; if (y.min == null || y.min <= 0) delete y.min; }
+      scales = { x: { ticks: { font: { family: 'Tajawal', size: 14 } } }, y };
+      if (cs.y2 && cfg.data.datasets[1]) { cfg.data.datasets[1].yAxisID = 'y2'; scales.y2 = { position: 'right', beginAtZero: true, grid: { drawOnChartArea: false }, ...(cs.max2 !== '' && cs.max2 != null ? { max: +cs.max2 } : {}), ...(cs.log ? { type: 'logarithmic', beginAtZero: false } : {}) }; }
+      // قيم متباعدة جدًا: نبّه على أيقونة الضبط
+      const vals = cfg.data.datasets.flatMap((ds) => ds.data).filter((v) => v > 0); if (vals.length > 1 && Math.max(...vals) / Math.min(...vals) >= 40 && !cs.log && !cs.y2 && cs.max === '') document.querySelector(`[data-cid=${id}] .cg`)?.classList.add('warn');
+    }
+    const c = new Chart($('#' + id), { ...cfg, options: { responsive: true, maintainAspectRatio: !cs.h, plugins: { legend: { labels: { font: { family: 'Tajawal', size: 15 } } } }, scales }, data: cfg.data }); charts.push(c);
+  };
+  { const d = dFor(csGet('c1').per); mk('c1', { type: 'doughnut', data: { labels: ['ذكور', 'إناث', 'ذكور (إعاقة)', 'إناث (إعاقة)'], datasets: [{ data: [d.cats.M, d.cats.F, d.cats.CWD_M, d.cats.CWD_F], backgroundColor: [RED, PINK, GOLD, DK] }] } }); }
+  { const d = dFor(csGet('c2').per), an = Object.keys(d.byAct);
+    mk('c2', { type: 'bar', data: { labels: an, datasets: [{ label: 'منفذ', data: an.map((k) => d.byAct[k].sessions), backgroundColor: RED }, { label: 'مخطط', data: an.map((k) => d.byAct[k].planned), backgroundColor: GOLD }] } }); }
+  { const d = dFor(csGet('c3').per), ml = Array.from({ length: 12 }, (_, i) => { const x = new Date(Date.UTC(+p.start.slice(0, 4), +p.start.slice(5, 7) - 1 + i, 1)); return x.toISOString().slice(0, 7); });
+    mk('c3', { type: 'line', data: { labels: ml, datasets: [{ label: 'الحضور', data: d.byMonth.map((m) => m.att), borderColor: RED, backgroundColor: RED }, { label: 'الجلسات', data: d.byMonth.map((m) => m.sessions), borderColor: GOLD, backgroundColor: GOLD }] } }); }
+  { const d = dFor(csGet('c4').per);
+    mk('c4', { type: 'bar', data: { labels: AGE_BANDS.map((b) => b.key), datasets: [{ label: 'أفراد فريدون (أسماء)', data: d.byBand.map((n, i) => n - d.byBandCounts[i]), backgroundColor: PINK, borderColor: RED, borderWidth: 1 }, { label: 'مشاركات (أعداد)', data: d.byBandCounts, backgroundColor: GOLD, borderColor: GOLD, borderWidth: 1 }] } }); }
+  { const d = dFor(csGet('c5').per), cn = Object.keys(d.byCenter);
+    mk('c5', { type: 'bar', data: { labels: cn, datasets: [{ label: 'الحضور', data: cn.map((k) => d.byCenter[k].att), backgroundColor: RED }, { label: 'الجلسات', data: cn.map((k) => d.byCenter[k].sessions), backgroundColor: GOLD }] } }); }
+  { const d = dFor(csGet('c6').per), gk = Object.keys(d.byGroup);
+    mk('c6', { type: 'doughnut', data: { labels: gk.map((k) => GROUPS[k] || k), datasets: [{ data: gk.map((k) => d.byGroup[k]), backgroundColor: [RED, GOLD, PINK, DK, GR] }] } }); }
 }
 function outcomeBlock(p) {
   const os = computeOutcomes(p, db); if (!os.length) return '';
@@ -390,7 +399,14 @@ const actions = {
   hints() { openPanel(hintsHtml(view())); },
   theme() { toggleTheme(); chartTheme(); nav(); go(route); },
   side() { document.body.classList.toggle('nonav'); try { localStorage.setItem('nawa.nonav', document.body.classList.contains('nonav') ? '1' : ''); } catch { /* خاص */ } },
-  dashReset() { dset({ ...DDEF, open: true }); vDash(); },
+  cardset(el) {
+    const id = el.dataset.c; openPanel(cardPanel(id)); const pn = $('#panel');
+    const h = (e) => { const t = e.target, k = t.dataset.cs; if (!k) return; const v = t.type === 'checkbox' ? t.checked : k === 'log' ? t.value === '1' : t.type === 'range' ? +t.value : t.value;
+      csSet(id, { [k]: v }); if (k === 'alpha') { const card = document.querySelector(`[data-cid=${id}]`); card?.style.setProperty('--ca', v); const n = $('#cav'); if (n) n.textContent = v; if (e.type === 'input') return; }
+      if (e.type === 'input' && t.type !== 'checkbox' && t.tagName !== 'SELECT' && k !== 'alpha') return; vDash(); if (k === 'y2') openPanel(cardPanel(id)); };
+    pn.oninput = h; pn.onchange = h;
+  },
+  cardReset(el) { const id = el.dataset.c, a = csAll(); delete a[id]; try { localStorage.setItem('nawa.cards', JSON.stringify(a)); } catch { /* خاص */ } vDash(); openPanel(cardPanel(id)); },
   lang() { toggleLang(); nav(); go(route); setSyncBadge(); },
   demo() { if (db.projects.some((x) => x.id === 'p_fr')) { toast('المشروع التجريبي محمّل مسبقًا'); ui.projectId = 'p_fr'; save(); return go('dash'); } const d = france(); for (const k of Object.keys(d)) db[k].push(...d[k]); ui.projectId = 'p_fr'; save(); toast('تم تحميل المشروع التجريبي (بيانات محاكاة)'); go('dash'); },
   demoGiz() { if (db.projects.some((x) => x.id === GIZ_ID)) { toast('مشروع GIZ النموذجي محمّل مسبقًا'); ui.projectId = GIZ_ID; save(); return go('dash'); } const d = giz(); for (const k of Object.keys(d)) db[k].push(...d[k]); ui.projectId = GIZ_ID; save(); toast('تم تحميل مشروع GIZ النموذجي (بيانات تجريبية)'); go('projects'); },
@@ -451,4 +467,4 @@ initPlan({ project, save, rerender, view, empty }); initSheets({ db, project, sa
 setInterval(() => { if (sync.cfg.auto) doSync(); else setSyncBadge(); }, 60000);
 window.addEventListener('online', () => sync.cfg.auto && doSync());
 let st; document.addEventListener('change', () => { clearTimeout(st); st = setTimeout(() => sync.cfg.auto && doSync(), 4000); });
-window.__nawa = { db, ui, go, sync, useHandle: async (h) => { sync.handle = h; fsync = null; await saveHandle(h); } };
+window.__nawa = { db, ui, go, sync, charts: () => charts, useHandle: async (h) => { sync.handle = h; fsync = null; await saveHandle(h); } };

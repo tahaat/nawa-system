@@ -879,3 +879,20 @@ PTT يُعبَّأ داخل القالب الأصلي (مع بقاء المخط�
 إلى | To
 الفترة تُطبَّق على الجلسات والحضور (STT)؛ مؤشرات النتائج من الاستبيانات والمستفيدون المباشرون لا تتأثر بها. | The period applies to sessions and attendance (STT); survey outcome indicators and direct beneficiaries are not affected by it.
 جلسة | session(s)
+ضبط هذه البطاقة (المقياس، الارتفاع، الشفافية، الفترة) | Adjust this card (scale, height, transparency, period)
+ضبط هذه البطاقة | Adjust this card
+ضبط البطاقة: | Card settings:
+أعلى قيمة للمحور العمودي | Vertical axis maximum
+أدنى قيمة | Minimum value
+نوع المقياس | Scale type
+خطي (عادي) | Linear (normal)
+لوغاريتمي (يُظهر القيم الصغيرة بجانب الكبيرة) | Logarithmic (shows small values next to large ones)
+محور ثانٍ مستقل للسلسلة الثانية (يظهر على الجانب الآخر) | Independent second axis for the second series (shown on the other side)
+أعلى قيمة للمحور الثاني | Second axis maximum
+ارتفاع البطاقة (بكسل) | Card height (px)
+شفافية البطاقة | Card transparency
+معتمة | opaque
+إعادة ضبط هذه البطاقة | Reset this card
+مثال: إن كانت أعلى قيمة 3000 وقيمة أخرى 5 فاستخدم المقياس اللوغاريتمي، أو محوراً ثانياً للسلسلة الأصغر، أو خفّض «أعلى قيمة». | Example: if the highest value is 3000 and another is 5, use the logarithmic scale, a second axis for the smaller series, or lower the "maximum".
+الفترة تُطبَّق على الجلسات والحضور (STT) في هذه البطاقة فقط. | The period applies to sessions and attendance (STT) in this card only.
+شفافية البطاقة: | Card transparency:
