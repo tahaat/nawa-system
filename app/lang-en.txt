@@ -1,0 +1,842 @@
+آخر الجلسات | Latest sessions
+آخر مزامنة: | Last sync:
+آلية التنفيذ | Implementation mechanism
+أبدًا | Never
+أتحدث مع أشخاص أثق بهم عندما أشعر بالضغط | I talk to people I trust when I feel stressed
+أثق بقدرتي على التعلّم | I trust my ability to learn
+أحب الذهاب إلى المركز للتعلّم | I like going to the centre to learn
+أحيانًا | Sometimes
+أخرى | Other
+أخصص وقتًا لنفسي للراحة أو لما أحب | I set aside time for myself to rest or do what I like
+أرغب في العودة للجلسة القادمة | I would like to come back to the next session
+أساسي | Basic
+أسبوع | Week
+أسبوعيًا | Weekly
+أستخدم أساليب هادئة عند التعامل مع سلوك الأطفال | I use calm methods when dealing with children's behaviour
+أستطيع التعبير عن مشاعري أمام الآخرين | I can express my feelings in front of others
+أستطيع القراءة بصوت مسموع دون خوف | I can read aloud without fear
+أستطيع حل مسائل الجمع والطرح | I can solve addition and subtraction problems
+أستمتع بالأنشطة التي أشارك فيها | I enjoy the activities I take part in
+أستمع إلى أطفالي عندما يتحدثون عن مشاعرهم | I listen to my children when they talk about their feelings
+أسماء | Names
+أسماء الأنشطة (حتى 3) | Activity names (up to 3)
+أسماء الأنشطة (حتى 4) | Activity names (up to 4)
+أسماء المرافقين (حتى 3) | Names of accompanying staff (up to 3)
+أسماء المنشطين (حتى 3) | Facilitator names (up to 3)
+أسماء المنشطين/ات (حتى 4) | Facilitator names (up to 4)
+أشعر بالأمان عندما أكون في المركز | I feel safe when I am at the centre
+أشعر بالسعادة في معظم الأيام | I feel happy most days
+أضف بندًا أولًا | Add an item first
+أضف زائراً واحداً على الأقل | Add at least one visitor
+أضف مؤشرات في شاشة | Add indicators in the screen
+أضف مستفيداً جديداً بالزر أدناه. | Add a new beneficiary with the button below.
+أضف مشاركاً واحداً على الأقل | Add at least one participant
+أطرح أسئلتي عندما لا أفهم | I ask questions when I do not understand
+أطفال | Children
+أطفال (4-6) سنوات | Children (4-6) years
+أطفال (7-12) سنوات | Children (7-12) years
+أعجبني النشاط اليوم | I liked today's activity
+أعداد غير صحيحة | Invalid counts
+أعداد فقط | Counts only
+أفراد فريدون (أسماء) | Unique individuals (names)
+أفراد فريدون (بكشف الأسماء) | Unique individuals (name-based sheets)
+أفراد فريدون بكشف الأسماء | Unique individuals from name-based sheets
+أفراد فريدون في الشهر | Unique individuals per month
+أقل عدد جلسات | Minimum number of sessions
+أقل مكسب بالدرجات | Minimum gain in points
+أقل من ثلاثة مقاطع | fewer than three name parts
+أكثر من إجمالي الحضور | more than total attendance
+أكثر من الإجمالي | more than the total
+أنثى | Female
+أنشطة | Activities
+أهالي | Parents
+أو | or
+أوافق | Agree
+أوافق بشدة | Strongly agree
+أوراق | Sheets
+أولًا | first
+أُضيف | Added
+إجبار | Force
+إجراءات التخفيف | Mitigation measures
+إجمالي الجلسات | Total sessions
+إجمالي الحضور | Total attendance
+إجمالي المستفيدين المباشرين المخطط | Planned total direct beneficiaries
+إجمالي ساعات التدريب | Total training hours
+إجمالي عدد الجلسات | Total number of sessions
+إجمالي عدد اللقاءات | Total number of meetings
+إجمالي عدد لقاءات الدورة | Total number of course meetings
+إدارة التعلم | Learning management
+إدارة المجموعة وضبط الصف بإيجابية | Group management and positive classroom discipline
+إدارة المستخدمين: | User management:
+إدخال البيانات | Data entry
+إزالة | Remove
+إضافة | Add
+إضافة زائر | Add visitor
+إضافة مستخدم | Add user
+إضافة مستفيد | Add beneficiary
+إظهار غير المطابقين للفئة | Show people outside the category
+إعاقة | Disability
+إعاقة بلا تحديد النوع | Disability without a specified type
+إعاقة بلا نوع: | Disability without type:
+إغلاق الكشف دون حفظ التعديلات؟ | Close the sheet without saving changes?
+إغلاق النموذج | Close form
+إغلاق دون حفظ | Close without saving
+إلزامي | Mandatory
+إلغاء | Cancel
+إلكتروني (منصة) | Online (platform)
+إلى | to
+إناث | Females
+إناث (إعاقة) | Females (disability)
+إناث ذوات إعاقة | Females with disabilities
+إنشاء مشروع | Create project
+ابدأ | Start
+اختر | Select
+اختر آلية التنفيذ | Select the implementation mechanism
+اختر الجنس | Select sex
+اختر الفئة المشاركة | Select the participating group
+اختر الفئة المشاركة أعلاه أولاً. | Select the participating group above first.
+اختر المركز | Select centre
+اختر المشروع | Select project
+اختر ملف | Choose file
+اختر ملفًا | Choose a file
+اختر نوع الكشف كما في الكشوف الورقية. كل ما يُكتب هنا يُفحص قبل الحفظ، ولا يُحفظ كشف فيه خطأ. | Choose the sheet type as in the paper sheets. Everything entered here is checked before saving, and a sheet with an error cannot be saved.
+اختيار متعدد | Multiple choice
+اختيار واحد | Single choice
+اختياري | optional
+اربط الكشف بنشاط من أنشطة المشروع | Link the sheet to a project activity
+ازدواج الحضور: نفس الشخص في جلسة أخرى بالتاريخ والوقت نفسهما | Double attendance: same person in another session at the same date and time
+استبيان جديد | New survey
+استبيان قبلي/بعدي لرفاه الأطفال | Pre/post survey: children's well-being
+استبيان قبلي/بعدي للأهالي (الرعاية الذاتية والممارسات الأسرية) | Pre/post survey: parents (self-care and family practices)
+استبيان قبلي/بعدي للثقة بالتعلّم (القراءة والحساب) | Pre/post survey: confidence in learning (reading and maths)
+استخدام الأنشطة الفنية والحركية في التعلّم | Using artistic and movement activities in learning
+استرجاع | Restore
+استيراد | Import
+استيراد الردود من | Import responses from
+استيراد من | Import from
+اسم | Name
+اسم الباحث/ة الميداني | Field researcher name
+اسم البند | Item name
+اسم الجهة الزائرة | Visiting body name
+اسم الدورة التدريبية | Training course name
+اسم المدرب/ة | Trainer name
+اسم المركز | Centre name
+اسم المنشط/ة | Facilitator name
+اسم المنشط/ة - المدرب/ة | Facilitator / trainer name
+اسم النشاط | Activity name
+اسم مكرر داخل نفس الجلسة | Duplicate name within the same session
+اسم مكرر محتمل | Possible duplicate name
+افتراض | Assumption
+اقرأ العبارة واختر الإجابة | Read the statement and choose the answer
+اكتب المنصة المستخدمة (زوم/تيمز…) | Enter the platform used (Zoom/Teams…)
+اكتب تاريخ كل لقاء نُفِّذ فعلاً (اللقاءات بلا تاريخ تُعدّ غير منفَّذة). لا يمكن تسجيل تاريخ مستقبلي أو مكرر أو خارج مدة الدورة. | Enter the date of every meeting actually held (meetings without a date count as not held). A future, duplicate or out-of-course date cannot be recorded.
+اكتب جزءاً من الاسم | Type part of the name
+اكتب مكان التنفيذ (القاعة) | Enter the venue (hall)
+الأحداث | Events
+الأحمر: أفراد فريدون لكل ربع وبند (جلسات الأسماء). الذهبي: مشاركات جلسات الأعداد (غير فريدة). | Red: unique individuals per quarter and item (name-based sessions). Gold: participations in count-only sessions (not unique).
+الأدوات الثلاث متطابقة | The three tools match
+الأرشفة | Archiving
+الأسئلة | Questions
+الأطفال / اليافعون | Children / adolescents
+الأعداد (تُحسب تلقائياً من القائمة) | Counts (calculated automatically from the list)
+الأعداد المشتقة للترويسة | Derived counts for the header
+الأعداد تُحسب من القائمة ولا تُكتب يدوياً. | Counts are calculated from the list and never typed manually.
+الأنشطة | Activities
+الأنشطة التشغيلية: كل سجل إنجاز | Operational activities: each achievement record
+الأنشطة المحتسبة | Counted activities
+الأنشطة: المنفذ مقابل المخطط | Activities: delivered vs planned
+الأهالي | Parents
+الإجراء | Action
+الإجراءات | Actions
+الإجمالي | Total
+الإطار المنطقي | Logical framework
+الإعاقة | Disability
+الإنجاز | Achievement
+الإنجاز التشغيلي | Operational achievement
+الاتصال بخادم مزامنة | Connect to a sync server
+الاستبيان | Survey
+الاستبيانات | Surveys
+الاستراتيجية المتبعة | Strategy followed
+الاسم | Name
+الاسم (3 مقاطع على الأقل) | Name (at least 3 parts)
+الاسم الرباعي | Full name
+الاسم الرباعي؟ | Full name?
+الاسم مطلوب | Name is required
+الاسم يجب أن يكون ثلاثة مقاطع على الأقل | The name must have at least three parts
+الافتراض | Assumption
+الافتراضات | Assumptions
+البداية | Start
+البند | Item
+البند مرتبط بأنشطة | The item is linked to activities
+البيانات الأساسية) | master data)
+البيانات محفوظة محليًا وستُرسل لاحقًا | Data is saved locally and will be sent later
+التاريخ | Date
+التحقق | Verification
+التحقق من الإدخال | Input validation
+التحقق والتكامل | Validation and integrity
+التحقق: | Verification:
+التحليل | Analysis
+التصدير | Export
+التصدير والنسخ | Export and backup
+التصنيف | Classification
+التعريف | Definition
+التغطية الجغرافية | Geographic coverage
+التكرار | Frequency
+التواريخ والأوقات | Dates and times
+الجذر | Root
+الجلسات | Sessions
+الجلسات والحضور شهريًا | Sessions and attendance by month
+الجنس | Sex
+الجنس غير محدد | Sex not specified
+الحالة | Status
+الحد (% من الدرجة) | Threshold (% of score)
+الحد الأقصى | Maximum
+الحضور | Attendance
+الحضور حسب الجنس والإعاقة | Attendance by sex and disability
+الحضور حسب الفئة المستهدفة | Attendance by target group
+الحضور حسب المركز | Attendance by centre
+الدرجة الأعلى | Highest score
+الدروس | Lessons
+الدعم النفسي الاجتماعي الأولي للأطفال | Initial psychosocial support for children
+الدور | Role
+الردود | Responses
+الرمز | Code
+الرمز غير صالح | Invalid code
+الزائرون | Visitors
+السجل فارغ | The register is empty
+السحابة | Cloud
+السحابة والمزامنة | Cloud and sync
+الشاشات | Screens
+الشرح | Explanation
+الشركاء المنفذون | Implementing partners
+الصف | Row
+الصلاحيات | Permissions
+الصلاحية: | Permission:
+الطريقة | Method
+العمر | Age
+العمر مطلوب | Age is required
+العمر؟ | Age?
+العملة | Currency
+العنوان | Title
+العنوان (إنجليزي) | Title (English)
+العنوان (عربي) | Title (Arabic)
+العينة | Sample
+الفئات العمرية | Age groups
+الفئات المستهدفة | Target groups
+الفئات المشاركة كما في الكشوفات الورقية (النطاق العمري يُستعمل للتحقق من كل مشارك) | Participating groups as in the paper sheets (the age range is used to validate each participant)
+الفئة | Group
+الفئة العمرية | Age group
+الفئة المختارة أعلاه لا تتضمن فئة مناسبة لهذه القائمة | The group selected above has no suitable category for this list
+الفئة المشاركة | Participating group
+الفحص قبل الحفظ | Pre-save check
+الفريدون | Unique
+الفعلي | Actual
+الفعلي في خطة العمل | Actual in the work plan
+القائمة | List
+القطاعات | Sectors
+القيمة بين | The value must be between
+الكامل | Full
+الكشف | Sheet
+الكشوف المسجَّلة | Recorded sheets
+الكشوفات | Sheets
+الكمية | Quantity
+الكمية يجب أن تكون عدداً صحيحاً موجباً | Quantity must be a positive whole number
+اللقاء | Meeting
+اللقاءات | Meetings
+اللقاءات الفعلية | Actual meetings
+اللقاءات المنفَّذة فعلاً (لها تاريخ) | Meetings actually held (with a date)
+المؤشر | Indicator
+المؤشرات | Indicators
+المباشرون | Direct
+المتدربون | Trainees
+المتوقع | Expected
+المجموع | Total
+المجموعة/الشعبة | Group / section
+المحدد: | Selected:
+المحرر | Editor
+المخاطر والافتراضات | Risks and assumptions
+المخرج | Output
+المخرجات | Outputs
+المدرب/ة | Trainer
+المراكز | Centres
+المراكز (للمنسق) | Centres (for coordinator)
+المرجع | Reference
+المرجع (رقم وثيقة/فاتورة/تقرير) إلزامي ليسهل التحقق. | A reference (document / invoice / report number) is mandatory for verification.
+المرجع / دليل التحقق | Reference / proof of verification
+المرحلة | Stage
+المركز | Centre
+المركز / المبنى | Centre / building
+المسؤول | Responsible
+المسؤول عن الرحلة | Trip leader
+المستخدم | User
+المستخدمون | Users
+المستخدمون والصلاحيات | Users and permissions
+المستفيد المباشر | Direct beneficiary
+المستفيدون | Beneficiaries
+المستفيدون الفريدون | Unique beneficiaries
+المستفيدون المباشرون | Direct beneficiaries
+المستفيدون المباشرون (المستهدف) | Direct beneficiaries (target)
+المستهدف | Target
+المستهدفات وخطوط الأساس | Targets and baselines
+المستوى | Level
+المسجَّل بحضور | Registered with attendance
+المشاركون | Participants
+المشاريع | Projects
+المشروع | Project
+المشروع التجريبي محمّل مسبقًا | The demo project is already loaded
+المشروع: | Project:
+المطوية (إن وجد) | Leaflet (if any)
+الملاحظة | Note
+الملف | File
+الممول | Donor
+المنجز | Delivered
+المنشّط | Facilitator
+المنصة (زوم/تيمز…) | Platform (Zoom/Teams…)
+الموافقة على التسجيل والنشر | Consent to recording and publication
+الموعد | Schedule
+الميزانية الكلية | Total budget
+المُحاوَرون | Interviewees
+النتيجة | Result
+النشاط | Activity
+النشاط في المشروع | Activity in the project
+النمط | Mode
+النموذج | Form
+النموذجي | Model project
+النموذجي (بيانات تجريبية) | Model project (demo data)
+النموذجي محمّل مسبقًا | The model project is already loaded
+النهاية | End
+النوع | Type
+النوع؟ | Type?
+الهاتف | Phone
+الهاتف (اختياري) | Phone (optional)
+الهاتف يبدأ بـ 059 أو 056 ويتكون من 10 أرقام | The phone number starts with 059 or 056 and has 10 digits
+الهدف العام | Overall goal
+الوصف | Description
+انثى | Female
+بحث | Search
+بحث في السجل | Search the register
+بحث في سجل المستفيدين | Search the beneficiary register
+بداية | Start
+بصرية | Visual
+بعدي | Post
+بلا أي حاضر | without any attendee
+بلا اسم | Unnamed
+بلا تاريخ بداية/نهاية | no start/end date
+بلا تسجيل (تدوين فقط) | No recording (notes only)
+بلا جنس واضح | no clear sex
+بلا رمز مستفيد | without beneficiary code
+بند | Item
+بند جديد | New item
+بيانات المستفيد | Beneficiary data
+بيانات المشروع | Project data
+بين | between
+تأكيد | Confirm
+تاريخ | Date
+تاريخ إنجاز مستقبلي | Future achievement date
+تاريخ الإضافة | Date added
+تاريخ الإنجاز | Achievement date
+تاريخ الانتهاء | End date
+تاريخ الانتهاء قبل تاريخ البدء | End date is before the start date
+تاريخ البدء | Start date
+تاريخ التسليم | Delivery date
+تاريخ التنفيذ | Implementation date
+تاريخ الجلسة | Session date
+تاريخ الزيارة | Visit date
+تاريخ اللقاء | Meeting date
+تاريخ المقابلة | Interview date
+تاريخ الميلاد | Date of birth
+تاريخ النشاط | Activity date
+تاريخ النشاط مستقبلي | Activity date is in the future
+تاريخ انتهاء الدورة | Course end date
+تاريخ بدء الدورة | Course start date
+تاريخ تنفيذ الرحلة | Trip date
+تاريخ تنفيذ النشاط | Activity date
+تاريخ مستقبلي | future date
+تحتاج تأكيداً | Needs confirmation
+تحذير | Warning
+تحذيرات: | Warnings:
+تحرير: | Edit:
+تحقق | Check
+تحميل مشروع | Load project
+تحميل مشروع تجريبي | Load demo project
+تخطيط جلسة تعليمية/فنية | Educational / artistic session plan
+تدريب | Training
+تدريبات أهالي | Parent trainings
+تدريبات تربويين/ات | Educator trainings
+تدريبية | Training
+تراث مادي | Tangible heritage
+تربويون/ات المدارس | School educators
+تربويون/ات النوى | Nawa educators
+تربويون/ات خريجون جدد | New graduate educators
+ترفيهي | Recreational
+ترفيهية | Recreational
+تسجيل إنجاز | Record achievement
+تسجيل دون نشر | Recording without publication
+تشغيلي | Operational
+تصدير | Export
+تعبئة ذاتية | Self-completed
+تعديل | Edit
+تعذّر | Failed
+تعذّر التحميل: | Could not load:
+تعذّر الحفظ: | Could not save:
+تعذّرت المزامنة: | Sync failed:
+تعريف | Definition
+تعريف المستفيد المباشر (قابل للضبط لكل مشروع) | Direct beneficiary definition (configurable per project)
+تعطيل | Disable
+تعليق | Comment
+تعليقات | Comments
+تعليمي | Educational
+تعليمية | Educational
+تفاصيل | Details
+تفصيل المستفيدين | Beneficiary breakdown
+تفعيل | Enable
+تقارير الممول (حتى 9) | Donor reports (up to 9)
+تقرير | Report
+تقييم (3) | Rating (3)
+تقييم الجلسة السريع (بعد النشاط) | Quick session rating (after the activity)
+تقييم ذاتي قبلي/بعدي للمنشّطين | Pre/post self-assessment for facilitators
+تكرار (4) | Frequency (4)
+تكرار التقرير | Reporting frequency
+تكرار جمع البيانات | Data collection frequency
+تكرار محتمل للمستفيدين: نفس الاسم + نفس الجنس | Possible duplicate beneficiaries: same name + same sex
+تم | Done
+تم استيراد | Imported
+تم الاسترجاع | Restored
+تم التعطيل | Disabled
+تم تحميل المشروع التجريبي (بيانات محاكاة) | Demo project loaded (simulated data)
+تم تحميل مشروع | Project loaded
+تم تسجيل الإنجاز | Achievement recorded
+تم حفظ الجلسة | Session saved
+تم حفظ الكشف وتوليد جلساته | Sheet saved and its sessions generated
+تم مسح المحاكاة: | Simulation cleared:
+تمت المزامنة: دُفع | Synced: pushed
+تمت المزامنة: كُتب | Synced: written
+تنبيه | Notice
+تنبيهات: | Notices:
+تنزيل | Download
+توثيق الحضور والتقارير | Attendance documentation and reports
+توزيع الفئات العمرية | Age group distribution
+توصية | Recommendation
+توصية/تعلّم | Recommendation / learning
+توعوية | Awareness
+توليد جلسات | Generate sessions
+ثقافي | Cultural
+ثقافية | Cultural
+جدول | Table
+جلسات | Sessions
+جلسات حضور | Attendance sessions
+جلسات مخططة | Planned sessions
+جلسات منفذة | Delivered sessions
+جلسات/وحدات مخططة | Planned sessions / units
+جلسة بالأعداد بلا توزيع عمري: لن تدخل في تفصيل الفئات العمرية | Count-only session without age breakdown: it will not enter the age-group breakdown
+جلسة بالأعداد فقط، تُحتسب كمشاركات وليست أفرادًا فريدين | Count-only session, counted as participations and not unique individuals
+جلسة بلا حضور | Session without attendance
+جلسة بلا مركز | Session without a centre
+جلسة بلا مشروع | Session without a project
+جلسة بلا منشّط | Session without a facilitator
+جلسة جديدة | New session
+جلسة خارج الأشهر الـ12 الأولى للقالب | Session outside the template's first 12 months
+جلسة مكررة محتملة: | Possible duplicate session:
+جلسة منفذة | Delivered session
+جمع البيانات (المسؤول) | Data collection (responsible)
+جمعية نوى للثقافة والفنون | Nawa Association for Culture and Arts
+جنس | Sex
+جنس غير محدد: | Sex not specified:
+جوال | Mobile
+جيد | Good
+حتى 9 صفوف (سعة القالب). | Up to 9 rows (template capacity).
+حتى الساعة | until
+حد أدنى للحضور / نسبة | Minimum attendance / percentage
+حدّد نوع الإعاقة | Specify the disability type
+حذف | Delete
+حذف الجلسة؟ | Delete the session?
+حذف المشروع وكل جلساته؟ | Delete the project and all its sessions?
+حذف سجل الإنجاز؟ | Delete the achievement record?
+حذف هذا الاستبيان؟ (الردود المستوردة تبقى محفوظة) | Delete this survey? (Imported responses are kept)
+حذف هذا الكشف وكل جلساته؟ | Delete this sheet and all its sessions?
+حذف هذا المشروع | Delete this project
+حركية | Mobility
+حصة الممول | Donor share
+حصة نوى | Nawa share
+حضور بلا تاريخ | Attendance without a date
+حضور جلسة واحدة | Attendance of one session
+حضور لمستفيد غير موجود في السجل | Attendance for a beneficiary not in the register
+حفظ | Save
+حفظ الجلسة | Save session
+حفظ الصلاحيات | Save permissions
+حفظ الكشف | Save sheet
+حفظ رغم ذلك؟ | Save anyway?
+حفظ نسخة | Save copy
+حفظ واختبار الاتصال | Save and test connection
+حُفظت | Saved
+خادم المزامنة | Sync server
+خادم مزامنة | Sync server
+خارج الفئات العمرية للقالب | outside the template's age groups
+خارج الفئات المختارة | outside the selected groups
+خارج فئة النشاط | outside the activity's group
+خارج مدة الدورة | outside the course period
+خارج مدة المشروع | outside the project period
+خط الأساس | Baseline
+خطأ | Error
+خطأ الخادم | Server error
+خطأ: | Error:
+خطة العمل: الفعلي | Work plan: actual
+خطة العمل: صفّان لكل نشاط (مخطط/فعلي) | Work plan: two rows per activity (planned/actual)
+دائمًا | Always
+داخل السنة الأولى | within the first year
+دعم الأطفال ذوي الإعاقة والاحتياجات الخاصة | Support for children with disabilities and special needs
+دعم نفسي واجتماعي | Psychosocial support
+دور: | Role:
+دورة (أطفال / يافعين / شباب) | Course (children / adolescents / youth)
+ذكر | Male
+ذكور | Males
+ذكور (إعاقة) | Males (disability)
+ذكور ذوو إعاقة | Males with disabilities
+ذهنية | Intellectual
+رؤوس الأشهر (من تاريخ بداية المشروع) | Month headers (from the project start date)
+ربع | Quarter
+رجوع | Back
+رحلة | Trip
+ردّ بلا تاريخ: | Response without a date:
+ردّ مكرر | Duplicate response
+رفض الخادم | Server rejected
+رقم التواصل | Contact number
+رقم صحيح | Whole number
+رقم عشري | Decimal number
+رقم فاتورة، تقرير، محضر استلام… | Invoice number, report, delivery record…
+رقم هاتف غير صالح | invalid phone number
+رمز | Code
+رمز الدخول | Access code
+رمز الدخول غير صالح | Invalid access code
+رمز المركز | Centre code
+رمز المستفيد (كما في سجل النظام) | Beneficiary code (as in the system register)
+رمز المشروع | Project code
+رمز دخول | Access code
+رواية شفوية | Oral narrative
+رياضي/حركي | Sports / movement
+رياضية/حركية | Sports / movement
+زيارة (زوار) | Visit (visitors)
+ساعات الدورة | Course hours
+ساعة | hour
+سجل | Record
+سجل إنجاز بلا مرجع/دليل تحقق | Achievement record without a reference / proof
+سجل إنجاز بلا مشروع | Achievement record without a project
+سجل إنجاز لنشاط غير موجود | Achievement record for a non-existent activity
+سجل إنجاز مكرر محتمل: | Possible duplicate achievement record:
+سجل الإنجاز | Achievement log
+سجل الإنجاز التشغيلي (أنشطة بلا حضور) | Operational achievement log (activities without attendance)
+سجّل تاريخ لقاء واحد على الأقل | Record the date of at least one meeting
+سطر 1 | Line 1
+سطر 2 | Line 2
+سطر 3 | Line 3
+سطر 4 | Line 4
+سطر 5 | Line 5
+سطر 6 | Line 6
+سطر 7 | Line 7
+سطر 8 | Line 8
+سمعية | Hearing
+سنة | year
+سيُحذف المشروع التجريبي وكل بياناته (جلسات، مستفيدون، مراكز، ردود استبيان) نهائيًا. بياناتك الحقيقية لا تتأثر. متابعة؟ | The demo project and all its data (sessions, beneficiaries, centres, survey responses) will be permanently deleted. Your real data is not affected. Continue?
+سيُستبدل كل ما في النظام بالنسخة. متابعة؟ | Everything in the system will be replaced by the copy. Continue?
+شاشة | Screen
+شباب | Youth
+شخص التواصل | Contact person
+شكرًا لمشاركتك | Thank you for taking part
+شهر | Month
+صف | Row
+صف لكل جلسة | One row per session
+صلاحيات الأدوار | Role permissions
+ضعيف | Weak
+طريقة التعبئة | Completion method
+طريقة الجمع | Collection method
+طريقة الحساب | Calculation method
+طريقة العد | Counting method
+عادات وتقاليد | Customs and traditions
+عالج الأخطاء أولاً | Fix the errors first
+عدد | Count
+عدد الجلسات المنفَّذة (تلقائي) | Number of sessions delivered (automatic)
+عدد الحضور | Attendance count
+عدد الساعات التدريبية | Number of training hours
+عدد اللقاءات المسجَّلة | Number of recorded meetings
+عدد جلسات | Number of sessions
+عدد منجز | Number delivered
+عدد منجز (من سجل الإنجاز التشغيلي) | Number delivered (from the operational achievement log)
+عدد وحدات الجلسة | Number of session units
+عدداً صحيحاً | a whole number
+على | on
+على هذا الجهاز | On this device
+عمر | Age
+عنوان الخادم | Server address
+عنوان الدورة | Course title
+عنوان المشروع | Project title
+غالبًا | Often
+غير متصل | Offline
+غير مدعوم | Not supported
+غير مرتبط بأي نشاط | not linked to any activity
+غير مرتبط باستبيان | not linked to a survey
+غير مرتبط بالسحابة | Not linked to the cloud
+فئات عمرية | Age groups
+فئة | Group
+فئة النشاط | Activity group
+فتح | Open
+فحص التكامل بين الأدوات الثلاث | Integrity check across the three tools
+فشل الاتصال: | Connection failed:
+فعّال | Active
+فني | Artistic
+فنية | Artistic
+فهمت ما طُلب مني | I understood what was asked of me
+في | in
+قالب | Template
+قبلي | Pre
+قصة وحكاية | Story and storytelling
+قناة | Channel
+قيّم نفسك | Rate yourself
+كبار السن / أصحاب الرواية | Elders / narrators
+كشف أسماء | Name-based sheet
+كشف بالأسماء | Name-based sheet
+كشف حضور جديد | New attendance sheet
+كشوفات الحضور | Attendance sheets
+كشوفات الحضور (إدخال) | Attendance sheets (entry)
+كشوفات الحضور الورقية | Paper attendance sheets
+كل | Every
+كل اسم في سطر | One name per line
+كل المراكز | All centres
+كل النماذج (الجاهزة والمخصصة) | All forms (ready-made and custom)
+لا | No
+لا أوافق | Disagree
+لا أوافق إطلاقًا | Strongly disagree
+لا استبيانات مخصصة بعد | No custom surveys yet
+لا تُكتب يدوياً أبداً | never typed manually
+لا سجلات بعد. | No records yet.
+لا عمر/تاريخ ميلاد: | No age / date of birth:
+لا كشوف بعد. | No sheets yet.
+لا مؤشرات بعد. | No indicators yet.
+لا مستفيدون مباشرون مسجَّلون بالأسماء | No direct beneficiaries registered by name
+لا مشاركين بعد. | No participants yet.
+لا مشاريع | No projects
+لا ملاحظات | No notes
+لا نتائج | No results
+لا يساوي العدد | does not equal the count
+لا يمكن الحفظ قبل معالجة | Cannot save before resolving
+لا يوجد مشروع بعد. | No project yet.
+لا يُسجَّل حضور قبل حدوثه | Attendance cannot be recorded before it happens
+لدي أصدقاء أستطيع اللعب والتحدث معهم | I have friends I can play and talk with
+لقاء | Meeting
+لقاء تعلّم مهني | Professional learning meeting
+لن يظهروا في جدول الفئات العمرية | They will not appear in the age-group table
+لوحة القيادة | Dashboard
+لوحة المؤشرات (المدخلات اليدوية) | Indicator board (manual inputs)
+ليس نشاطاً تشغيلياً | not an operational activity
+مؤشر | Indicator
+مؤشر المخرج | Output indicator
+مؤشر المخرجات | Output indicator
+مؤشر النتائج | Outcome indicator
+مؤشر جديد | New indicator
+مؤشر عدّي (ليس أفراداً) | Count indicator (not individuals)
+مؤشر نتائج | Outcome indicator
+مؤشر نتيجة جديد | New outcome indicator
+مؤشرات العدد المنجز | Delivered-count indicators
+مؤشرات المخرجات | Output indicators
+مؤشرات المخرجات الشهرية | Monthly output indicators
+مؤشرات النتائج | Outcome indicators
+مؤشرات النتائج (من الاستبيانات) | Outcome indicators (from surveys)
+مبتدئ | Beginner
+متابعة | Continue
+متزامن | Synced
+متمكّن | Proficient
+متوسط | Intermediate
+متوسط الدرجة % | Average score %
+مجتمع (كبار السن/أصحاب الرواية) | Community (elders / narrators)
+مجلد | Folder
+مجموع الحضور في | Total attendance in
+مجموع الصفوف | Total rows
+مجموع الفئات العمرية | Total age groups
+مجموعة | Group
+محايد | Neutral
+مخرج | Output
+مخطط | Planned
+مدة الجلسة أكثر من 10 ساعات | Session lasts more than 10 hours
+مدخل بيانات (المكتب) | Data entry (office)
+مدير | Manager
+مدير/منسق المشروع | Project manager / coordinator
+مرحلة القياس | Measurement stage
+مركز | Centre
+مركز: | Centre:
+مزامنة الآن | Sync now
+مزامنة تلقائية | Automatic sync
+مزامنة… | Syncing…
+مستفيد | Beneficiary
+مستفيد جديد (غير موجود في السجل) | New beneficiary (not in the register)
+مستفيد جديد سريع | Quick new beneficiary
+مستفيد في | beneficiary in
+مستفيد مباشر (حسب تعريف المشروع) | Direct beneficiary (per project definition)
+مستوفون لنسبة الحضور | Meeting the attendance rate
+مسجَّل في الدورة بلا أي حضور | Enrolled in the course with no attendance
+مسح بيانات المحاكاة كلها | Clear all simulated data
+مشارك بلا فئة عمرية | Participant without an age group
+مشارك محذوف من سجل المستفيدين | Participant deleted from the beneficiary register
+مشاركات (أعداد) | Participations (counts)
+مشاركات (كل حضور) | Participations (every attendance)
+مشاركة سابقة | Previous participation
+مشروع | Project
+مشروع تجريبي | Demo project
+مشروع جديد | New project
+مصادر التحقق | Means of verification
+مصدر البيانات | Data source
+مصدر التعلم | Learning source
+مطلوب | Required
+معادلة | Formula
+معبأ | Filled
+معطّل | Disabled
+معلومات المشروع | Project information
+معلومات المشروع: | Project information:
+مفعّلة | Enabled
+مقابلة (مُجري المقابلة) | Interview (interviewer)
+مقابلة توثيق تراث شفوي | Oral heritage documentation interview
+مقياس | Scale
+مقياس (يدخل في الدرجة) | Scale (counts toward the score)
+مكان استضافة الجهة الزائرة (القاعة) | Venue hosting the visiting body (hall)
+مكان التنفيذ (القاعة) | Venue (hall)
+مكان المقابلة | Interview location
+مكان تنفيذ الرحلة | Trip location
+مكان تنفيذ النشاط (القاعة) | Activity venue (hall)
+مكرر | Duplicate
+مكرر في الكشف | duplicated in the sheet
+ملاحظات | Notes
+ملاحظات أخرى (انظر التحقق) | Other notes (see Validation)
+ملاحظات تحتاج معالجة (انظر التحقق) | Notes needing attention (see Validation)
+ملاحظات على الملف المصدَّر | Notes on the exported file
+ملاحظة/عنوان | Note / title
+ملخص | Summary
+ملخص التدخل | Intervention summary
+ملخص الردود | Response summary
+ملخص المشروع | Project summary
+ملف | File
+ملف المؤشرات | Indicators file
+ملف نسخة احتياطية غير صالح | Invalid backup file
+من | from
+من الساعة | from
+من الكشف | from the sheet
+منسق مركز | Centre coordinator
+منشئ الاستبيانات | Survey builder
+منشطو نوى | Nawa facilitators
+منشطون محليون | Local facilitators
+منشّطون | Facilitators
+منطق التدخل | Intervention logic
+منفذ | Delivered
+مهارة (5) | Skill (5)
+موافق | Agree
+موافقة (5) | Agreement (5)
+موافقة كاملة (تسجيل ونشر) | Full consent (recording and publication)
+موضوع التدريب | Training topic
+موضوع المقابلة / الرواية | Interview / narrative topic
+نتيجة | Result
+نسبة الحضور الإلزامية % | Mandatory attendance %
+نسبة حضور كل مشارك في الكشف متعدد اللقاءات ومدى استيفائه نسبة الحضور الإلزامية | Each participant's attendance rate in a multi-meeting sheet and whether they meet the mandatory rate
+نسبة من تجاوز حدًّا | Share who exceeded a threshold
+نسخ وتعديل | Copy and edit
+نسخة احتياطية | Backup
+نشاط | Activity
+نشاط الجلسة لا يتبع مشروعها | The session's activity does not belong to its project
+نشاط بلا حضور (تدقيق، صيانة، مشتريات…) | Activity without attendance (audit, maintenance, procurement…)
+نشاط جديد | New activity
+نشاط مشترك (أهالي + أطفال) | Joint activity (parents + children)
+نص | Text
+نص السؤال (عربي) | Question text (Arabic)
+نظام نوى للمشاريع والمستفيدين | Nawa Projects and Beneficiaries System
+نعم | Yes
+نعم/لا | Yes/No
+نماذج إدخال مقيّدة تطابق كشوفات الحضور الورقية | Constrained entry forms matching the paper attendance sheets
+نهاية | End
+نوع الإعاقة | Disability type
+نوع الإعاقة: | Disability type:
+نوع التدريب | Training type
+نوع الدورة | Course type
+نوع الدورة التدريبية | Training course type
+نوع الرحلة | Trip type
+نوع الزيارة | Visit type
+نوع المادة | Material type
+نوع النشاط | Activity type
+نوى | Nawa
+هاتف | Phone
+هاتف غير صالح: | Invalid phone:
+هدف عام | Overall goal
+هل تحقق؟ | Achieved?
+هل لديه إعاقة؟ | Has a disability?
+هل هو ذكر؟ | Is he male?
+وجاهي (قاعة) | In person (hall)
+وجاهي (مركز/قاعة) | In person (centre / hall)
+وحدة منفَّذة | Delivered unit
+ورشة عمل | Workshop
+وسائل التحقق | Means of verification
+وقت النهاية يجب أن يكون بعد وقت البداية | End time must be after the start time
+يافعين/ات (13-15) | Adolescents (13-15)
+يافعين/ات (16-18) | Adolescents (16-18)
+يجب أن يكون | must be
+يدوي (تحديد من السجل) | Manual (select from the register)
+يوم مفتوح | Open day
+الجلسات (STT) | Sessions (STT)
+المستفيدون (BTT) | Beneficiaries (BTT)
+المشاريع (PTT) | Projects (PTT)
+ملف PTT الكامل | Full PTT file
+الاستبيانات (KoBo) | Surveys (KoBo)
+تصدير Excel | Excel export
+PTT — قالب Annex 5 معبأ | PTT — completed Annex 5 template
+STT — الجلسات | STT — sessions
+BTT — المستفيدون | BTT — beneficiaries
+أو Date of birth | or Date of birth
++ إضافة | + Add
++ بند | + Item
++ نشاط | + Activity
++ مؤشر | + Indicator
++ تقرير | + Report
++ مشروع جديد | + New project
+أعداد | Counts
+النشاط * | Activity *
+التاريخ * | Date *
+الكمية * | Quantity *
+عمر من | Age from
+أشهر الخطة (من–إلى) | Plan months (from–to)
+نسبة من تحسّنت درجته (قبلي→بعدي) | Share whose score improved (pre→post)
+المصروف حتى الآن (للوحة المؤشرات) | Spent to date (for the indicator board)
+طلب تعديل (MR)؟ | Modification request (MR)?
+تاريخ MR | MR date
+مجلد OneDrive (موصى به) | OneDrive folder (recommended)
+المزامنة عبر مجلد OneDrive | Sync via a OneDrive folder
+اختيار مجلد المزامنة | Choose the sync folder
+لم يُختَر مجلد | No folder chosen
+القنوات المتزامنة إلى هذا الجهاز: | Channels synced to this device:
+تغييرات معلّقة: | Pending changes:
+معرّف الجهاز: | Device ID:
+تنزيل XLSForm | Download XLSForm
+مستفيد | beneficiary
+مشروع GIZ النموذجي | GIZ model project
+مشروع GIZ النموذجي محمّل مسبقًا | The GIZ model project is already loaded
+يتأكد أن STT = BTT = PTT = Dashboard (الحضور، المؤشرات، Age groups، خطة العمل، Direct beneficiary). | Checks that STT = BTT = PTT = Dashboard (attendance, indicators, age groups, work plan, direct beneficiary).
+قالب PTT يغطي 12 شهرًا من تاريخ البداية؛ الجلسات خارجها تظهر في النظام ولا تظهر في الملف المصدَّر. | The PTT template covers 12 months from the start date; sessions outside it appear in the system but not in the exported file.
+تاريخ البداية والنهاية والممول والاسم تؤخذ من شاشة «المشاريع». | Start/end dates, donor and name are taken from the "Projects" screen.
+كل بند يظهر كصف في جدول «Beneficiaries Breakdown». | Each item appears as a row in the "Beneficiaries Breakdown" table.
+يتولى برنامج OneDrive نقل الملفات بين الأجهزة، والنظام يدمجها دون تعارض ويعمل دون إنترنت. اختر المجلد المتزامن مرة واحدة على كل جهاز. | OneDrive moves the files between devices, and the system merges them without conflicts and works offline. Choose the synced folder once on each device.
+الصلاحيات تُفرض بمشاركة OneDrive نفسها: الجهاز لا يستلم إلا المجلدات المشاركة معه. | Permissions are enforced by OneDrive sharing itself: a device only receives the folders shared with it.
+PTT يُعبَّأ داخل القالب الأصلي (مع بقاء المخططات والمعادلات) وتُعاد حساباته عند فتحه في Excel. | The PTT is filled inside the original template (charts and formulas preserved) and recalculates when opened in Excel.
+أنشئ استبيانك الخاص أو انسخ قالبًا جاهزًا وعدّله، ثم نزّل ملف XLSForm وارفعه في KoBo. | Create your own survey or copy a ready template and edit it, then download the XLSForm file and upload it to KoBo.
+نزّل النموذج وارفعه في KoboToolbox (Deploy). | Download the form and upload it to KoboToolbox (Deploy).
+كل سجل يُحتسب | Each record counts as a
+في خطة العمل، وتُجمع كمياته في مؤشرات | in the work plan, and its quantities are summed into indicators
+أنشئ مجلدًا باسم | Create a folder named
+وداخله مجلدات: | containing the folders:
+شاركه (تحرير) مع كل من يستخدم النظام. | Share it (edit) with everyone who uses the system.
+مع المكتب الرئيسي وMEAL فقط. | with the head office and MEAL only.
+مع منسق ذلك المركز ومع المكتب الرئيسي فقط. | with that centre's coordinator and the head office only.
+الذي يحويها. | that contains them.
+النشاط في المشروع | Activity in the project
+جولة في المكتبة | Library tour
+يُعبَّأ داخل القالب | is filled inside the template
+تنبيه: | Notice:
+الأنشطة الفنية | Artistic activities
+مستفيد مباشر | Direct beneficiary
+بنود | Items
+حتى | up to
+الحقول المعلَّمة بـ | Fields marked with
+إلزامية. | are mandatory.
+المشاركون | Participants

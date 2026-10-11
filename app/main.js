@@ -10,6 +10,7 @@ import { importResponses, computeOutcomes } from '../core/outcomes.js';
 import { france } from './sim_france.js';
 import { giz, GIZ_ID } from './giz.js';
 import { vPlan, initPlan } from './plan-view.js';
+import { tr, getLang, toggleLang, applyDoc } from './i18n.js';
 import { vSheets, initSheets } from './sheets-view.js';
 import { vOps, initOps } from './ops-view.js';
 import { commitSheet } from '../core/sheets.js';
@@ -35,7 +36,7 @@ let route = 'dash', charts = [], sess = { mode: 'roll', att: new Set(), q: '', b
 function nav() {
   $('#nav').innerHTML = Object.entries(ROUTES).filter(([k]) => allowed(k)).map(([k, [t]]) => `<a data-go="${k}" class="${k === route ? 'on' : ''}">${t}</a>`).join('');
   const opts = db.projects.map((p) => `<option value="${p.id}" ${p.id === ui.projectId ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
-  $('#top').innerHTML = `<h1>${ROUTES[route][0]}</h1><label>المشروع<select id="pj">${opts || '<option>— لا مشاريع —</option>'}</select></label>`;
+  $('#top').innerHTML = `<h1>${ROUTES[route][0]}</h1><div class="row"><label>المشروع<select id="pj">${opts || '<option>— لا مشاريع —</option>'}</select></label><button class="sec lang" data-act="lang" title="Language / اللغة">${getLang() === 'en' ? 'العربية' : 'English'}</button></div>`;
 }
 function go(r) { if (!allowed(r)) r = 'dash'; route = r; charts.forEach((c) => c.destroy()); charts = []; nav(); ROUTES[r][1](); }
 const rerender = () => go(route);
@@ -80,7 +81,7 @@ function vDash() {
     <div class="card"><h3>الحضور حسب الفئة المستهدفة</h3><canvas id="c6"></canvas></div>
   </div>`;
   const RED = '#A21008', GOLD = '#E6A901', PINK = '#FF9798', DK = '#5b0a05', GR = '#9a8f8f';
-  const mk = (id, cfg) => { const c = new Chart($('#' + id), { ...cfg, options: { responsive: true, plugins: { legend: { labels: { font: { family: 'Sakkal Majalla', size: 15 } } } }, scales: cfg.type === 'doughnut' ? {} : { x: { ticks: { font: { family: 'Sakkal Majalla', size: 14 } } }, y: { beginAtZero: true } }, ...(cfg.opt || {}) }, data: cfg.data }); charts.push(c); };
+  const mk = (id, cfg) => { if (cfg.data) { if (cfg.data.labels) cfg.data.labels = cfg.data.labels.map(tr); (cfg.data.datasets || []).forEach((ds) => { if (ds.label) ds.label = tr(ds.label); }); } const c = new Chart($('#' + id), { ...cfg, options: { responsive: true, plugins: { legend: { labels: { font: { family: 'Tajawal', size: 15 } } } }, scales: cfg.type === 'doughnut' ? {} : { x: { ticks: { font: { family: 'Tajawal', size: 14 } } }, y: { beginAtZero: true } }, ...(cfg.opt || {}) }, data: cfg.data }); charts.push(c); };
   mk('c1', { type: 'doughnut', data: { labels: ['ذكور', 'إناث', 'ذكور (إعاقة)', 'إناث (إعاقة)'], datasets: [{ data: [d.cats.M, d.cats.F, d.cats.CWD_M, d.cats.CWD_F], backgroundColor: [RED, PINK, GOLD, DK] }] } });
   const an = Object.keys(d.byAct);
   mk('c2', { type: 'bar', data: { labels: an, datasets: [{ label: 'منفذ', data: an.map((k) => d.byAct[k].sessions), backgroundColor: RED }, { label: 'مخطط', data: an.map((k) => d.byAct[k].planned), backgroundColor: GOLD }] } });
@@ -341,6 +342,7 @@ const actions = {
     await doSyncFolder({ firstMode: mode }, true); vCloud();
   },
   newProject() { const p = { id: uid('p'), name: 'مشروع جديد', donor: '', start: iso(new Date()).slice(0, 4) + '-01-01', end: iso(new Date()).slice(0, 4) + '-12-31', directRule: { mode: 'once' }, interventions: [], activities: [], outputIndicators: [] }; db.projects.push(p); ui.projectId = p.id; save(); go('projects'); },
+  lang() { toggleLang(); nav(); go(route); setSyncBadge(); },
   demo() { if (db.projects.some((x) => x.id === 'p_fr')) { toast('المشروع التجريبي محمّل مسبقًا'); ui.projectId = 'p_fr'; save(); return go('dash'); } const d = france(); for (const k of Object.keys(d)) db[k].push(...d[k]); ui.projectId = 'p_fr'; save(); toast('تم تحميل المشروع التجريبي (بيانات محاكاة)'); go('dash'); },
   demoGiz() { if (db.projects.some((x) => x.id === GIZ_ID)) { toast('مشروع GIZ النموذجي محمّل مسبقًا'); ui.projectId = GIZ_ID; save(); return go('dash'); } const d = giz(); for (const k of Object.keys(d)) db[k].push(...d[k]); ui.projectId = GIZ_ID; save(); toast('تم تحميل مشروع GIZ النموذجي (بيانات تجريبية)'); go('projects'); },
   async purgeDemo() { if (!(await ask('سيُحذف المشروع التجريبي وكل بياناته (جلسات، مستفيدون، مراكز، ردود استبيان) نهائيًا. بياناتك الحقيقية لا تتأثر. متابعة؟'))) return; const r = purgeDemo(db); ui.projectId = db.projects[0]?.id || null; save(); toast(`تم مسح المحاكاة: ${r.sessions} جلسة، ${r.beneficiaries} مستفيد`); go('projects'); },
@@ -396,9 +398,8 @@ const actions = {
 };
 
 $('.logo').src = logoUrl; { const l = document.createElement('link'); l.rel = 'icon'; l.href = logoUrl; document.head.append(l); }
-initPlan({ project, save, rerender, view, empty }); initSheets({ db, project, save, view, empty, ask, toast, myCenters, route: () => route }); initOps({ db, project, save, view, empty, ask, toast, myCenters }); initBuilder({ project, save, rerender }); await load(); nav(); go('dash'); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
+initPlan({ project, save, rerender, view, empty }); initSheets({ db, project, save, view, empty, ask, toast, myCenters, route: () => route }); initOps({ db, project, save, view, empty, ask, toast, myCenters }); initBuilder({ project, save, rerender }); await load(); applyDoc(); nav(); go('dash'); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
 setInterval(() => { if (sync.cfg.auto) doSync(); else setSyncBadge(); }, 60000);
 window.addEventListener('online', () => sync.cfg.auto && doSync());
 let st; document.addEventListener('change', () => { clearTimeout(st); st = setTimeout(() => sync.cfg.auto && doSync(), 4000); });
-if ('serviceWorker' in navigator && location.protocol !== 'file:' && import.meta.env?.PROD) navigator.serviceWorker.register('./sw.js').catch(() => {});
 window.__nawa = { db, ui, go, sync, useHandle: async (h) => { sync.handle = h; fsync = null; await saveHandle(h); } };
