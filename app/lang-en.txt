@@ -902,3 +902,5 @@ PTT يُعبَّأ داخل القالب الأصلي (مع بقاء المخط�
 تم نسخ الملخص | Summary copied
 تعذّر النسخ | Could not copy
 تعذّر النسخ إلى الحافظة، نُزّلت الصورة بدلاً منه | Could not copy to the clipboard, the image was downloaded instead
+نسخ ملخص سردي | Copy narrative summary
+تم نسخ الملخص السردي | Narrative summary copied
