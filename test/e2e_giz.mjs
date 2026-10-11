@@ -1,0 +1,22 @@
+import { chromium } from '/opt/npm-tools/node_modules/playwright/index.mjs';
+const shots = process.env.SHOTS || '/tmp'; const b = await chromium.launch(), pg = await b.newPage({ viewport: { width: 1400, height: 1000 } }); const errs = [];
+pg.on('pageerror', (e) => errs.push(e.message)); pg.on('console', (m) => m.type() === 'error' && !/sw\.js|service worker/i.test(m.text()) && errs.push(m.text()));
+const log = (m, ok) => console.log(ok ? 'ok  ' : 'FAIL', m);
+await pg.goto('http://localhost:8765/'); await pg.waitForSelector('#nav'); await pg.click('[data-act=demoGiz]'); await pg.waitForSelector('#view table');
+log('تحميل GIZ', (await pg.evaluate(() => window.__nawa.db.projects[0].id)) === 'p_giz');
+await pg.click('a[data-go=ops]'); await pg.waitForSelector('#o-save');
+await pg.fill('#o-ref', ''); await pg.fill('#o-qty', '0'); await pg.click('#o-save'); const e1 = await pg.textContent('#o-err'); log('يرفض كمية صفر ومرجعاً فارغاً', /الكمية/.test(e1) && /مرجع/.test(e1));
+await pg.selectOption('#o-act', 'a_solar'); await pg.fill('#o-qty', '1'); await pg.fill('#o-ref', 'أمر شراء 77'); await pg.click('#o-save'); await pg.waitForTimeout(300);
+log('سجل إنجاز صحيح حُفظ', (await pg.evaluate(() => window.__nawa.db.ops.length)) === 9);
+await pg.screenshot({ path: `${shots}/ops.png`, fullPage: true });
+await pg.click('a[data-go=sheets]'); await pg.waitForSelector('#view table'); const rows = await pg.$$eval('#view .card:nth-of-type(2) tbody tr, #view table tr', (r) => r.length); log(`قائمة الكشوف (${rows} صفاً)`, rows >= 12);
+await pg.screenshot({ path: `${shots}/giz_sheets.png`, fullPage: true });
+await pg.click('[data-shact=edit] >> nth=0'); await pg.waitForSelector('#sh-check'); log('فتح كشف قائم للتعديل', /الأعداد/.test(await pg.textContent('#sh-check')));
+await pg.click('[data-shact=cancel]'); await pg.click('#dlg-ok'); await pg.waitForTimeout(200);
+await pg.click('a[data-go=check]'); await pg.waitForTimeout(300); log('فحص التكامل: بلا أخطاء', (await pg.$$eval('#view .badge.b-error', (e) => e.length)) === 0);
+await pg.click('a[data-go=projects]'); await pg.waitForTimeout(300); log('شاشة المشاريع تعرض خانة تشغيلي', (await pg.$$('input[data-bind$="|ops"]')).length === 16);
+await pg.click('a[data-go=dash]'); await pg.waitForTimeout(500); await pg.screenshot({ path: `${shots}/giz_dash.png`, fullPage: true });
+// المحو
+await pg.click('a[data-go=projects]'); await pg.click('[data-act=purgeDemo]'); await pg.click('#dlg-ok'); await pg.waitForTimeout(400);
+const left = await pg.evaluate(() => Object.fromEntries(Object.entries(window.__nawa.db).map(([k, v]) => [k, v.length]))); log('المسح يزيل كل شيء ' + JSON.stringify(left), Object.values(left).every((n) => n === 0));
+console.log('أخطاء الصفحة:', errs.length ? errs : 'لا شيء'); await b.close();

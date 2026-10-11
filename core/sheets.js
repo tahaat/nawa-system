@@ -13,6 +13,7 @@ export const SG = {
   edN: { name: 'تربويون/ات النوى', min: 19, max: 70, grp: 'nawaEducator' },
   edG: { name: 'تربويون/ات خريجون جدد', min: 19, max: 70, grp: 'localEducator' },
   edS: { name: 'تربويون/ات المدارس', min: 19, max: 70, grp: 'localEducator' },
+  elders: { name: 'كبار السن / أصحاب الرواية', min: 40, max: 100, grp: 'community' },
 };
 const KIDS = ['c46', 'c712', 'y1315', 'y1618', 'adult'], EDU = ['edN', 'edG', 'edS'];
 export const DTYPES = ['سمعية', 'بصرية', 'حركية', 'ذهنية', 'أخرى'];
@@ -53,6 +54,10 @@ export const KINDS = {
     fields: [F('activities', 'أسماء الأنشطة (حتى 3)', 'lines', { req: true, max: 3 }), F('facilitators', 'أسماء المنشطين (حتى 3)', 'lines', { req: true, max: 3 }), F('date', 'تاريخ الزيارة', 'date', { req: true }), ...TIME,
       F('type', 'نوع الزيارة', 'text', { req: true }), F('booklet', 'المطوية (إن وجد)'), F('venue', 'مكان استضافة الجهة الزائرة (القاعة)', 'text', { req: true }),
       F('body', 'اسم الجهة الزائرة', 'text', { req: true }), F('contact', 'شخص التواصل', 'text', { req: true }), F('contactPhone', 'رقم التواصل', 'tel', { req: true }), F('companions', 'أسماء المرافقين (حتى 3)', 'lines', { max: 3 })] },
+  interview: { name: 'مقابلة توثيق تراث شفوي', multi: false, groups: ['elders'], guests: true,
+    lists: [{ key: 'guests', label: 'المُحاوَرون', age: true, allowed: ['elders'], inline: true }],
+    fields: [F('title', 'موضوع المقابلة / الرواية', 'text', { req: true }), F('type', 'نوع المادة', 'select', { req: true, opts: ['رواية شفوية', 'قصة وحكاية', 'تراث مادي', 'عادات وتقاليد', 'أخرى'] }), F('facilitator', 'اسم الباحث/ة الميداني', 'text', { req: true }),
+      F('date', 'تاريخ المقابلة', 'date', { req: true }), ...TIME, F('place', 'مكان المقابلة', 'text', { req: true }), F('consent', 'الموافقة على التسجيل والنشر', 'select', { req: true, opts: ['موافقة كاملة (تسجيل ونشر)', 'تسجيل دون نشر', 'بلا تسجيل (تدوين فقط)'] }), F('recordRef', 'رمز التسجيل/الملف في الأرشيف')] },
   joint: { name: 'نشاط مشترك (أهالي + أطفال)', multi: false, groups: ['c46', 'c712', 'y1315', 'y1618', 'parents'],
     lists: [{ key: 'roster', label: 'الأطفال / اليافعون', age: true, allowed: ['c46', 'c712', 'y1315', 'y1618'] }, { key: 'rosterP', label: 'الأهالي', age: false, allowed: ['parents'] }],
     fields: [F('title', 'اسم النشاط', 'text', { req: true }), F('type', 'نوع النشاط', 'select', { req: true, opts: ['تعليمي', 'فني', 'ثقافي', 'دعم نفسي واجتماعي', 'ترفيهي', 'أخرى'] }), F('facilitator', 'اسم المنشط/ة', 'text', { req: true }),

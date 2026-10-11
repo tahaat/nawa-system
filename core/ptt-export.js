@@ -40,6 +40,7 @@ export async function exportPTT(templateBuf, project, db, DOMParserCtor, XMLSeri
     if (!slots || n > slots.length) { warnings.push(`المؤشر «${o.ind.name}» لا يوجد له صف في القالب (${o.ind.output})`); continue; }
     const r = slots[n - 1]; oc['B' + r] = o.ind.outputText || null; oc['C' + r] = o.ind.name;
     o.months.forEach((m, i) => CATS.forEach((c, j) => { oc[colName(4 + i * 4 + j) + r] = m[c] || null; }));
+    if (o.ind.measure === 'count' || o.ind.measure === 'sessions-held') warnings.push(`المؤشر «${o.ind.name}»: مؤشر عدّي (ليس أفراداً) — القالب بلا عمود إجمالي، فكُتبت القيمة الشهرية في عمود الفئة الأولى (Male) في Output indicators`);
     if (o.countsModeSessions) warnings.push(`المؤشر «${o.ind.name}»: ${o.countsModeSessions} جلسة بالأعداد فقط، تُحتسب كمشاركات وليست أفرادًا فريدين`);
   }
   await x.set('Output indicators', oc);
@@ -69,7 +70,7 @@ export async function exportPTT(templateBuf, project, db, DOMParserCtor, XMLSeri
   warnings.push(...(await exportPlanSheets(x, project, db)));
   return { data: await x.save(), warnings };
 }
-const GROUP_LABEL = { child: 'Children', youth: 'Youth', parent: 'Parents', localEducator: 'Local Educator', nawaEducator: 'NAWA educators' };
+const GROUP_LABEL = { community: 'Community (elders / history bearers)', child: 'Children', youth: 'Youth', parent: 'Parents', localEducator: 'Local Educator', nawaEducator: 'NAWA educators' };
 function spreadPlan(a) { // يوزّع الجلسات المخططة على أشهر الخطة (a.planMonths=[من,إلى]) أسبوعيًا
   const [from, to] = a.planMonths || [0, 11], total = a.plannedSessions || 0, weeks = [], span = (to - from + 1) * 4, arr = Array(48).fill(0);
   for (let i = 0; i < total; i++) arr[from * 4 + Math.floor((i * span) / Math.max(total, 1))]++;

@@ -36,7 +36,7 @@ function editor() {
   const K = KINDS[cur.kind], p = ctx.project(), db = ctx.db;
   ctx.view().innerHTML = `<div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">${esc(K.name)}</h2><button class="sec" data-shact="cancel">إغلاق دون حفظ</button></div>
     <p class="small">المشروع: <b>${esc(p.name)}</b> — الحقول المعلَّمة بـ * إلزامية.</p>
-    <div class="row"><label>النشاط في المشروع *<select id="sh-act"><option value=""></option>${p.activities.map((a) => `<option value="${a.id}" ${a.id === cur.activityId ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select></label>
+    <div class="row"><label>النشاط في المشروع *<select id="sh-act"><option value=""></option>${p.activities.filter((a) => !a.ops).map((a) => `<option value="${a.id}" ${a.id === cur.activityId ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select></label>
     <label>المركز *<select id="sh-ctr"><option value=""></option>${ctx.myCenters().map((c) => `<option value="${c.id}" ${c.id === cur.centerId ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>${K.fields.map(fld).join('')}</div>
     <h3>الفئة المشاركة *</h3><div>${K.groups.map((g) => `<label class="chk"><input type="checkbox" data-sg="${g}" ${(cur.meta.groups || []).includes(g) ? 'checked' : ''}> ${esc(SG[g].name)}</label>`).join(' ')}</div></div>
   <div id="sh-meet">${K.multi ? meetingsCard() : ''}</div>

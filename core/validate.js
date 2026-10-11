@@ -38,7 +38,7 @@ export function validateEntry(db) {
         const b = cx.bnf.get(id);
         if (!b) { out.push(issue('error', 'S06', `حضور لمستفيد غير موجود في السجل (${id})`, s.id)); continue; }
         const age = ageAt(b, s.date);
-        if (a?.ageMin != null && age != null && (age < a.ageMin || age > a.ageMax)) out.push(issue('warn', 'S07', `عمر ${b.name} (${age}) خارج فئة النشاط «${a.name}» (${a.ageMin}-${a.ageMax})`, s.id));
+        if (!s.sheetId && a?.ageMin != null && age != null && (age < a.ageMin || age > a.ageMax)) out.push(issue('warn', 'S07', `عمر ${b.name} (${age}) خارج فئة النشاط «${a.name}» (${a.ageMin}-${a.ageMax})`, s.id));
         if (age != null && !bandOf(age)) out.push(issue('warn', 'S08', `عمر ${b.name} (${age}) خارج الفئات العمرية للقالب`, s.id));
       }
     } else {
@@ -56,6 +56,18 @@ export function validateEntry(db) {
     const key = [s.projectId, s.activityId, s.centerId, s.date, s.educator, s.grp || '', s.sheetId || ''].join('|');
     if (seenKey.has(key)) out.push(issue('warn', 'S13', `جلسة مكررة محتملة: ${a?.name} ${s.date} (${s.educator})`, s.id));
     seenKey.set(key, s.id);
+  }
+  // سجل الإنجاز التشغيلي (أنشطة بلا حضور)
+  const opsSeen = new Set(), today = new Date().toISOString().slice(0, 10);
+  for (const o of db.ops || []) {
+    const p = cx.proj.get(o.projectId), a = p?.activities.find((x) => x.id === o.activityId);
+    if (!p) { out.push(issue('error', 'T00', 'سجل إنجاز بلا مشروع', o.id)); continue; }
+    if (!a) out.push(issue('error', 'T01', `سجل إنجاز لنشاط غير موجود (${o.date})`, o.id)); else if (!a.ops) out.push(issue('error', 'T02', `النشاط «${a.name}» ليس نشاطاً تشغيلياً`, o.id));
+    if (!o.date || o.date < p.start || o.date > p.end) out.push(issue('error', 'T03', `تاريخ الإنجاز ${o.date || '؟'} خارج مدة المشروع`, o.id)); else if (o.date > today) out.push(issue('error', 'T04', `تاريخ إنجاز مستقبلي (${o.date})`, o.id));
+    if (!Number.isInteger(o.qty) || o.qty < 1) out.push(issue('error', 'T05', `الكمية يجب أن تكون عدداً صحيحاً موجباً (${a?.name || ''} ${o.date})`, o.id));
+    if (!String(o.ref || '').trim()) out.push(issue('error', 'T06', `سجل إنجاز بلا مرجع/دليل تحقق (${a?.name || ''} ${o.date})`, o.id));
+    if (!cx.ctr.get(o.centerId) && o.centerId) out.push(issue('error', 'T07', `مركز غير موجود في سجل إنجاز (${o.date})`, o.id));
+    const k = [o.projectId, o.activityId, o.date, String(o.ref || '').trim()].join('|'); if (opsSeen.has(k)) out.push(issue('warn', 'T08', `سجل إنجاز مكرر محتمل: ${a?.name || ''} ${o.date} (${o.ref})`, o.id)); opsSeen.add(k);
   }
   const dupR = new Map();
   for (const r of db.surveyResponses || []) {
@@ -93,7 +105,7 @@ export function reconcile(db) {
       const acts = new Set(o.ind.activityIds);
       const sttSum = db.sessions.filter((s) => s.projectId === p.id && acts.has(s.activityId) && monthIdx(p, s.date) >= 0 && monthIdx(p, s.date) < 12).reduce((a, s) => a + sumCats(sessionCats(s, cx)), 0);
       if (o.ind.measure === 'sessions-attendance' && tot !== sttSum) out.push(issue('error', 'X03', `${tag} مؤشر «${o.ind.name}»: ${tot} في PTT ≠ ${sttSum} في STT`, o.ind.id));
-      if (tot > sttSum) out.push(issue('error', 'X04', `${tag} مؤشر «${o.ind.name}»: المستفيدون الفريدون (${tot}) أكثر من إجمالي الحضور (${sttSum})`, o.ind.id));
+      if (o.ind.measure !== 'count' && o.ind.measure !== 'sessions-held' && tot > sttSum) out.push(issue('error', 'X04', `${tag} مؤشر «${o.ind.name}»: المستفيدون الفريدون (${tot}) أكثر من إجمالي الحضور (${sttSum})`, o.ind.id));
     }
     // 4) تفصيل المستفيدين: المصنّف + غير المصنّف = الفريد لكل (ربع، بند)
     const bd = breakdown(p, db); const placed = Object.values(bd.cells).reduce((a, arr) => a + arr.reduce((x, y) => x + y, 0), 0);
@@ -108,7 +120,8 @@ export function reconcile(db) {
     if (bd.unclassified) out.push(issue('warn', 'X06', `${tag}: ${bd.unclassified} مشارك بلا فئة عمرية — لن يظهروا في جدول الفئات العمرية`, p.id));
     // 5) خطة العمل: الفعلي = عدد جلسات STT داخل السنة الأولى
     const wp = workplanActual(p, db); const wpSum = [...wp.values()].reduce((a, arr) => a + arr.reduce((x, y) => x + y, 0), 0);
-    const inWin = db.sessions.filter((s) => s.projectId === p.id && monthIdx(p, s.date) >= 0 && monthIdx(p, s.date) < 12).reduce((a, s) => a + (s.units || 1), 0);
+    const inWin = db.sessions.filter((s) => s.projectId === p.id && monthIdx(p, s.date) >= 0 && monthIdx(p, s.date) < 12).reduce((a, s) => a + (s.units || 1), 0)
+      + (db.ops || []).filter((o) => o.projectId === p.id && monthIdx(p, o.date) >= 0 && monthIdx(p, o.date) < 12).length;
     if (wpSum !== inWin) out.push(issue('error', 'X07', `${tag}: الفعلي في خطة العمل (${wpSum}) ≠ جلسات STT (${inWin})`, p.id));
     const outside = db.sessions.filter((s) => s.projectId === p.id && (monthIdx(p, s.date) < 0 || monthIdx(p, s.date) > 11)).length;
     if (outside) out.push(issue('warn', 'X08', `${tag}: ${outside} جلسة خارج الأشهر الـ12 الأولى للقالب — لن تظهر في PTT`, p.id));

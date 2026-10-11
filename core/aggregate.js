@@ -80,6 +80,14 @@ export function outputMonthly(project, db) {
     const seen = Array.from({ length: 12 }, () => new Set());
     let unknownUnique = 0;
     const acts = new Set(ind.activityIds);
+    if (ind.measure === 'count') { // عدد منجز: مجموع كميات سجل الإنجاز التشغيلي (يُكتب في عمود الفئة الأولى لعدم وجود عمود إجمالي في القالب)
+      for (const o of db.ops || []) { if (o.projectId !== project.id || !acts.has(o.activityId)) continue; const m = monthIdx(project, o.date); if (m >= 0 && m < 12) months[m].M += o.qty || 0; }
+      res.push({ ind, months, countsModeSessions: 0 }); continue;
+    }
+    if (ind.measure === 'sessions-held') { // عدد الجلسات المنفَّذة من STT
+      for (const s of db.sessions) { if (s.projectId !== project.id || !acts.has(s.activityId)) continue; const m = monthIdx(project, s.date); if (m >= 0 && m < 12) months[m].M += s.units || 1; }
+      res.push({ ind, months, countsModeSessions: 0 }); continue;
+    }
     for (const s of db.sessions) {
       if (s.projectId !== project.id || !acts.has(s.activityId)) continue;
       const m = monthIdx(project, s.date); if (m < 0 || m > 11) continue;
@@ -138,6 +146,10 @@ export function workplanActual(project, db) {
     const m = monthIdx(project, s.date); if (m < 0 || m > 11) continue;
     const arr = res.get(s.activityId) || Array(48).fill(0);
     arr[m * 4 + weekOfMonth(s.date) - 1] += s.units || 1; res.set(s.activityId, arr);
+  }
+  for (const o of db.ops || []) { // الأنشطة التشغيلية: كل سجل إنجاز = وحدة منفَّذة
+    if (o.projectId !== project.id) continue; const m = monthIdx(project, o.date); if (m < 0 || m > 11) continue;
+    const arr = res.get(o.activityId) || Array(48).fill(0); arr[m * 4 + weekOfMonth(o.date) - 1] += 1; res.set(o.activityId, arr);
   }
   return res;
 }

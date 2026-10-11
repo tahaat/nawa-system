@@ -1,8 +1,8 @@
 // تحقق مستقل: نصدّر PTT ببيانات كبيرة، ونعيد حسابه بـ LibreOffice، ثم نقارن خلايا القالب المحسوبة بالأرقام المتوقعة
 import fs from 'node:fs'; import { execSync } from 'node:child_process'; import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
-import ExcelJS from 'exceljs'; import { france as big } from './sim_france.js'; import { exportPTT } from '../core/ptt-export.js';
+import ExcelJS from 'exceljs'; import { france } from './sim_france.js'; import { giz } from '../app/giz.js'; import { exportPTT } from '../core/ptt-export.js';
 import { outputMonthly, breakdown, workplanActual } from '../core/aggregate.js'; import { CATS } from '../core/model.js';
-const db = big(), p = db.projects[0];
+const big = process.env.SIM === 'giz' ? giz : france, db = big(), p = db.projects[0];
 const { data } = await exportPTT(fs.readFileSync('assets/ptt.xlsx'), p, db, DOMParser, XMLSerializer);
 fs.mkdirSync('out/lo2', { recursive: true }); fs.writeFileSync('out/big_ptt.xlsx', data);
 execSync('soffice --headless --convert-to xlsx --outdir out/lo2 out/big_ptt.xlsx', { stdio: 'ignore' });

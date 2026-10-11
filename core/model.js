@@ -5,7 +5,7 @@ export const AGE_BANDS = [
   { key: '19-25', min: 19, max: 25, col: 4 }, { key: '26-40', min: 26, max: 40, col: 5 },
   { key: '41+', min: 41, max: 200, col: 6 },
 ];
-export const GROUPS = { child: 'أطفال', youth: 'شباب', parent: 'أهالي', localEducator: 'منشطون محليون', nawaEducator: 'منشطو نوى' };
+export const GROUPS = { child: 'أطفال', youth: 'شباب', parent: 'أهالي', localEducator: 'منشطون محليون', nawaEducator: 'منشطو نوى', community: 'مجتمع (كبار السن/أصحاب الرواية)' };
 export const SESSION_MODES = { roll: 'كشف أسماء', counts: 'أعداد فقط' };
 export const SEX = { M: 'ذكر', F: 'أنثى' };
 
@@ -38,12 +38,23 @@ export const CATS = ['M', 'F', 'CWD_M', 'CWD_F'];
 export const emptyCats = () => ({ M: 0, F: 0, CWD_M: 0, CWD_F: 0 });
 
 export function newDb() {
-  return { projects: [], centers: [], beneficiaries: [], sessions: [], enrollments: [], surveyResponses: [], sheets: [] };
+  return { projects: [], centers: [], beneficiaries: [], sessions: [], enrollments: [], surveyResponses: [], sheets: [], ops: [] };
 }
 
-// يحذف كل سجلات المحاكاة (الموسومة demo) ويعيد عددها
+// يحذف كل سجلات المحاكاة (الموسومة demo) وكل ما أُدخل داخل مشروع محاكاة (جلسات، كشوف، إنجاز، ردود)،
+// ثم المستفيدين الذين لم يعد لهم أي حضور في بيانات باقية. يعيد أعداد المحذوف.
 export function purgeDemo(db) {
-  const out = {};
-  for (const k of ['sheets', 'sessions', 'surveyResponses', 'enrollments', 'beneficiaries', 'centers', 'projects']) { const before = db[k].length; db[k] = db[k].filter((r) => !r.demo); out[k] = before - db[k].length; }
+  const out = {}, demoP = new Set(db.projects.filter((p) => p.demo).map((p) => p.id)), used = new Set();
+  const inDemo = (r) => r.demo || demoP.has(r.projectId);
+  for (const k of ['ops', 'sheets', 'sessions', 'surveyResponses', 'enrollments']) {
+    const before = db[k].length; db[k] = db[k].filter((r) => !inDemo(r)); out[k] = before - db[k].length;
+  }
+  for (const s of db.sessions) (s.attendance || []).forEach((id) => used.add(id));
+  for (const sh of db.sheets) [...(sh.roster || []), ...(sh.rosterP || [])].forEach((id) => used.add(id));
+  for (const r of db.surveyResponses) r.bnfId && used.add(r.bnfId);
+  const b0 = db.beneficiaries.length; db.beneficiaries = db.beneficiaries.filter((b) => !b.demo && (used.has(b.id) || !wasDemoOnly(b, db))); out.beneficiaries = b0 - db.beneficiaries.length;
+  for (const k of ['centers', 'projects']) { const before = db[k].length; db[k] = db[k].filter((r) => !r.demo); out[k] = before - db[k].length; }
   return out;
 }
+// مستفيد أُضيف أثناء التجربة بلا أي استعمال في بيانات باقية: نعتبره من التجربة فقط إذا كان مرتبطاً بمركز محاكاة
+const wasDemoOnly = (b, db) => db.centers.some((c) => c.demo && c.id === b.center);

@@ -61,5 +61,5 @@ test('الكشوف الأحادية: نشاط مشترك (أهالي + أطفا�
   assert.deepEqual(validateSheet(v, db, { today: '2026-10-01' }).errors, []); const [s] = sheetSessions(v, db); assert.deepEqual(s.counts, { M: 1, F: 1, MWD: 0, FWD: 1 }); commitSheet(db, v);
   assert.deepEqual(reconcile(db).filter((i) => i.level === 'error'), []); assert.deepEqual(validateEntry(db).filter((i) => i.level === 'error'), []);
   v.meta.contactPhone = '123'; assert.ok(validateSheet(v, db, { today: '2026-10-01' }).errors.some((e) => e.includes('رقم التواصل')));
-  assert.equal(Object.keys(KINDS).length, 8);
+  assert.equal(Object.keys(KINDS).length, 9);
 });

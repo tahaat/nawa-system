@@ -8,8 +8,10 @@ import { ask, askText } from './dialogs.js';
 import { initBuilder, builderCard } from './form-builder.js';
 import { importResponses, computeOutcomes } from '../core/outcomes.js';
 import { france } from './sim_france.js';
+import { giz, GIZ_ID } from './giz.js';
 import { vPlan, initPlan } from './plan-view.js';
 import { vSheets, initSheets } from './sheets-view.js';
+import { vOps, initOps } from './ops-view.js';
 import { commitSheet } from '../core/sheets.js';
 import { purgeDemo, uid, GROUPS, AGE_BANDS, ageAt, bandOf, iso } from '../core/model.js';
 import { dashboard, sttRows, sessionCats, sumCats, context } from '../core/aggregate.js';
@@ -24,7 +26,7 @@ const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const view = () => $('#view');
 const toast = (m) => { const t = $('#toast'); t.textContent = m; t.style.display = 'block'; setTimeout(() => (t.style.display = 'none'), 3500); };
-const ROUTES = { dash: ['لوحة القيادة', vDash], sheets: ['كشوفات الحضور (إدخال)', vSheets], sessions: ['الجلسات (STT)', vSessions], bnf: ['المستفيدون (BTT)', vBnf], projects: ['المشاريع (PTT)', vProjects], plan: ['ملف PTT الكامل', vPlan], centers: ['المراكز', vCenters], check: ['التحقق والتكامل', vCheck], surveys: ['الاستبيانات (KoBo)', vSurveys], users: ['المستخدمون والصلاحيات', vUsers], cloud: ['السحابة والمزامنة', vCloud], export: ['التصدير والنسخ', vExport] };
+const ROUTES = { dash: ['لوحة القيادة', vDash], sheets: ['كشوفات الحضور (إدخال)', vSheets], sessions: ['الجلسات (STT)', vSessions], ops: ['الإنجاز التشغيلي', vOps], bnf: ['المستفيدون (BTT)', vBnf], projects: ['المشاريع (PTT)', vProjects], plan: ['ملف PTT الكامل', vPlan], centers: ['المراكز', vCenters], check: ['التحقق والتكامل', vCheck], surveys: ['الاستبيانات (KoBo)', vSurveys], users: ['المستخدمون والصلاحيات', vUsers], cloud: ['السحابة والمزامنة', vCloud], export: ['التصدير والنسخ', vExport] };
 const me = () => sync.cfg.me || null;
 const allowed = (r) => { const p = me()?.policy; if (r === 'users') return !!p?.manageUsers; return !p || p.routes === '*' || p.routes.includes(r); };
 const myCenters = () => { const x = me(); return x?.role === 'coordinator' || x?.policy?.write?.sessions === 'own' ? db.centers.filter((c) => x.centers.includes(c.id)) : db.centers; };
@@ -50,7 +52,7 @@ document.addEventListener('change', (e) => {
 function bind(el) { // data-bind="list|idx|field"  أو "obj|field"
   const [a, b, c] = el.dataset.bind.split('|'); const p = project(); let tgt, key;
   if (c !== undefined) { tgt = p[a][+b]; key = c; } else { tgt = a === 'p' ? p : p[a]; key = b; }
-  let v = el.type === 'number' ? (el.value === '' ? null : +el.value) : el.multiple ? [...el.selectedOptions].map((o) => o.value) : el.value;
+  let v = el.type === 'checkbox' ? el.checked : el.type === 'number' ? (el.value === '' ? null : +el.value) : el.multiple ? [...el.selectedOptions].map((o) => o.value) : el.value;
   tgt[key] = v; save(); if (el.dataset.re) rerender();
 }
 
@@ -97,7 +99,7 @@ function outcomeBlock(p) {
     return `<tr><td>${esc(o.ind.name)}${o.issues.length ? ` <span class="badge b-warn" title="${esc(o.issues.slice(0, 5).join(' | '))}">${o.issues.length}</span>` : ''}</td>${['M', 'F', 'CWD_M', 'CWD_F'].map((k) => `<td>${N[k]}/${D[k]} (${pct(N[k], D[k])})</td>`).join('')}<td><b>${tn}/${td} (${pct(tn, td)})</b></td></tr>`; }).join('')}</table></div>`;
 }
 const hasDemo = () => ['projects', 'centers', 'beneficiaries', 'sessions', 'surveyResponses', 'sheets'].some((k) => db[k].some((r) => r.demo));
-const empty = () => (view().innerHTML = `<div class="card"><h2>ابدأ</h2><p>لا يوجد مشروع بعد.</p><button data-act="newProject">إنشاء مشروع</button> <button class="sec" data-act="demo">تحميل مشروع تجريبي</button></div>`);
+const empty = () => (view().innerHTML = `<div class="card"><h2>ابدأ</h2><p>لا يوجد مشروع بعد.</p><button data-act="newProject">إنشاء مشروع</button> <button class="sec" data-act="demo">تحميل مشروع تجريبي</button> <button class="sec" data-act="demoGiz">تحميل مشروع GIZ النموذجي</button></div>`);
 
 // ======================= المشاريع =======================
 const sel = (opts, v) => opts.map(([k, t]) => `<option value="${esc(k)}" ${k === v ? 'selected' : ''}>${esc(t)}</option>`).join('');
@@ -105,7 +107,7 @@ function vProjects() {
   const p = project(); if (!p) return empty();
   const iv = p.interventions.map((i) => [i.id, `${i.result} — ${i.name}`]);
   view().innerHTML = `
-  <div class="card row"><button data-act="newProject">+ مشروع جديد</button><button class="sec" data-act="demo">مشروع تجريبي</button>${hasDemo() ? '<button class="x" data-act="purgeDemo">مسح بيانات المحاكاة كلها</button>' : ''}<button class="sec" data-act="delProject">حذف هذا المشروع</button></div>
+  <div class="card row"><button data-act="newProject">+ مشروع جديد</button><button class="sec" data-act="demo">مشروع تجريبي</button><button class="sec" data-act="demoGiz">مشروع GIZ النموذجي</button>${hasDemo() ? '<button class="x" data-act="purgeDemo">مسح بيانات المحاكاة كلها</button>' : ''}<button class="sec" data-act="delProject">حذف هذا المشروع</button></div>
   <div class="card"><h2>بيانات المشروع</h2><div class="row">
     <label>الاسم<input data-bind="p|name" value="${esc(p.name)}" style="width:280px"></label>
     <label>الممول<input data-bind="p|donor" value="${esc(p.donor)}"></label>
@@ -122,21 +124,21 @@ function vProjects() {
     <td><select data-bind="interventions|${k}|group">${sel(Object.entries(GROUPS), i.group)}</select></td>
     <td><button class="x" data-act="delIv" data-i="${k}">حذف</button></td></tr>`).join('')}</table>
   <button class="sec" data-act="addIv" ${p.interventions.length >= 5 ? 'disabled' : ''}>+ بند</button></div>
-  <div class="card"><h2>الأنشطة</h2><div class="tw"><table><tr><th>النشاط</th><th>النوع</th><th>البند</th><th>الفئة</th><th>عمر من</th><th>إلى</th><th>جلسات مخططة</th><th>أشهر الخطة (من–إلى)</th><th></th></tr>${p.activities.map((a, k) => `<tr>
+  <div class="card"><h2>الأنشطة</h2><div class="tw"><table><tr><th>النشاط</th><th>النوع</th><th>البند</th><th>الفئة</th><th>عمر من</th><th>إلى</th><th>جلسات/وحدات مخططة</th><th>أشهر الخطة (من–إلى)</th><th>تشغيلي</th><th></th></tr>${p.activities.map((a, k) => `<tr>
     <td><input data-bind="activities|${k}|name" value="${esc(a.name)}"></td><td><input data-bind="activities|${k}|type" value="${esc(a.type)}" style="width:100px"></td>
     <td><select data-bind="activities|${k}|interventionId">${sel(iv, a.interventionId)}</select></td>
     <td><select data-bind="activities|${k}|group">${sel(Object.entries(GROUPS), a.group)}</select></td>
     <td><input type="number" style="width:60px" data-bind="activities|${k}|ageMin" value="${a.ageMin ?? ''}"></td><td><input type="number" style="width:60px" data-bind="activities|${k}|ageMax" value="${a.ageMax ?? ''}"></td>
     <td><input type="number" style="width:80px" data-bind="activities|${k}|plannedSessions" value="${a.plannedSessions ?? ''}"></td>
-    <td>${planMonths(a, k)}</td><td><button class="x" data-act="delAct" data-i="${k}">حذف</button></td></tr>`).join('')}</table></div>
+    <td>${planMonths(a, k)}</td><td title="نشاط بلا حضور (تدقيق، صيانة، مشتريات…)"><input type="checkbox" data-bind="activities|${k}|ops" ${a.ops ? 'checked' : ''}></td><td><button class="x" data-act="delAct" data-i="${k}">حذف</button></td></tr>`).join('')}</table></div>
   <button class="sec" data-act="addAct" ${!p.interventions.length ? 'disabled title="أضف بندًا أولًا"' : ''}>+ نشاط</button></div>
   <div class="card"><h2>مؤشرات المخرجات (Output indicators)</h2><table><tr><th>المخرج</th><th>المؤشر</th><th>الأنشطة المحتسبة</th><th>طريقة العد</th><th></th></tr>${p.outputIndicators.map((o, k) => `<tr>
     <td><select data-bind="outputIndicators|${k}|output">${sel(['output 1', 'output 2', 'output 3'].map((x) => [x, x]), o.output)}</select></td>
     <td><input data-bind="outputIndicators|${k}|name" value="${esc(o.name)}" style="width:100%"></td>
     <td><select multiple size="3" data-bind="outputIndicators|${k}|activityIds">${p.activities.map((a) => `<option value="${a.id}" ${o.activityIds.includes(a.id) ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select></td>
-    <td><select data-bind="outputIndicators|${k}|measure">${sel([['unique', 'أفراد فريدون في الشهر'], ['sessions-attendance', 'مشاركات (كل حضور)']], o.measure)}</select></td>
+    <td><select data-bind="outputIndicators|${k}|measure">${sel([['unique', 'أفراد فريدون في الشهر'], ['sessions-attendance', 'مشاركات (كل حضور)'], ['sessions-held', 'عدد الجلسات المنفَّذة (تلقائي)'], ['count', 'عدد منجز (من سجل الإنجاز التشغيلي)']], o.measure)}</select></td>
     <td><button class="x" data-act="delOut" data-i="${k}">حذف</button></td></tr>`).join('')}</table><button class="sec" data-act="addOut">+ مؤشر</button>
-  <p class="small">قيود القالب: output 1 = 3 مؤشرات، output 2 = 4، output 3 = 6.</p></div>
+  <p class="small">قيود القالب: output 1 = 3 مؤشرات، output 2 = 4، output 3 = 6. المؤشرات العدّية (عدد جلسات/عدد منجز) تُكتب في عمود الفئة الأولى لأن القالب بلا عمود إجمالي؛ اكتب مستهدفها في خانة «ذكور» في تبويب المستهدفات.</p></div>
   <div class="card"><h2>مؤشرات النتائج (Outcome indicators)</h2><p class="small">تُحسب من ردود الاستبيانات وتُكتب في ورقة Outcome indicators (البسط والمقام لكل ربع وفئة).</p>
   <table><tr><th>الصف</th><th>المؤشر</th><th>الاستبيان</th><th>النوع</th><th>الحد (% من الدرجة)</th><th>المرحلة</th><th></th></tr>${(p.outcomeIndicators || []).map((o, k) => `<tr>
     <td><select data-bind="outcomeIndicators|${k}|row">${sel([4, 5, 7, 8, 9, 10, 11, 12].map((x) => [x, x === 4 || x === 5 ? 'هدف عام ' + x : 'نتيجة ' + x]), String(o.row))}</select></td>
@@ -175,7 +177,7 @@ function vBnf() {
 // ======================= الجلسات =======================
 function vSessions() {
   const p = project(); if (!p) return empty();
-  const cx = context(db), acts = p.activities, a = acts.find((x) => x.id === sess.act) || acts[0]; sess.act = a?.id;
+  const cx = context(db), acts = p.activities.filter((x) => !x.ops), a = acts.find((x) => x.id === sess.act) || acts[0]; sess.act = a?.id;
   const list = db.beneficiaries.filter((b) => !sess.q || b.name.includes(sess.q)).slice(0, 300);
   const today = iso(new Date());
   view().innerHTML = `
@@ -340,6 +342,7 @@ const actions = {
   },
   newProject() { const p = { id: uid('p'), name: 'مشروع جديد', donor: '', start: iso(new Date()).slice(0, 4) + '-01-01', end: iso(new Date()).slice(0, 4) + '-12-31', directRule: { mode: 'once' }, interventions: [], activities: [], outputIndicators: [] }; db.projects.push(p); ui.projectId = p.id; save(); go('projects'); },
   demo() { if (db.projects.some((x) => x.id === 'p_fr')) { toast('المشروع التجريبي محمّل مسبقًا'); ui.projectId = 'p_fr'; save(); return go('dash'); } const d = france(); for (const k of Object.keys(d)) db[k].push(...d[k]); ui.projectId = 'p_fr'; save(); toast('تم تحميل المشروع التجريبي (بيانات محاكاة)'); go('dash'); },
+  demoGiz() { if (db.projects.some((x) => x.id === GIZ_ID)) { toast('مشروع GIZ النموذجي محمّل مسبقًا'); ui.projectId = GIZ_ID; save(); return go('dash'); } const d = giz(); for (const k of Object.keys(d)) db[k].push(...d[k]); ui.projectId = GIZ_ID; save(); toast('تم تحميل مشروع GIZ النموذجي (بيانات تجريبية)'); go('projects'); },
   async purgeDemo() { if (!(await ask('سيُحذف المشروع التجريبي وكل بياناته (جلسات، مستفيدون، مراكز، ردود استبيان) نهائيًا. بياناتك الحقيقية لا تتأثر. متابعة؟'))) return; const r = purgeDemo(db); ui.projectId = db.projects[0]?.id || null; save(); toast(`تم مسح المحاكاة: ${r.sessions} جلسة، ${r.beneficiaries} مستفيد`); go('projects'); },
   async delProject() { if (!(await ask('حذف المشروع وكل جلساته؟'))) return; const id = ui.projectId; db.projects = db.projects.filter((p) => p.id !== id); db.sessions = db.sessions.filter((s) => s.projectId !== id); ui.projectId = db.projects[0]?.id; save(); rerender(); },
   addIv() { project().interventions.push({ id: uid('i'), result: 'R1', name: 'بند جديد', group: 'child' }); save(); rerender(); },
@@ -393,7 +396,7 @@ const actions = {
 };
 
 $('.logo').src = logoUrl; { const l = document.createElement('link'); l.rel = 'icon'; l.href = logoUrl; document.head.append(l); }
-initPlan({ project, save, rerender, view, empty }); initSheets({ db, project, save, view, empty, ask, toast, myCenters, route: () => route }); initBuilder({ project, save, rerender }); await load(); nav(); go('dash'); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
+initPlan({ project, save, rerender, view, empty }); initSheets({ db, project, save, view, empty, ask, toast, myCenters, route: () => route }); initOps({ db, project, save, view, empty, ask, toast, myCenters }); initBuilder({ project, save, rerender }); await load(); nav(); go('dash'); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
 setInterval(() => { if (sync.cfg.auto) doSync(); else setSyncBadge(); }, 60000);
 window.addEventListener('online', () => sync.cfg.auto && doSync());
 let st; document.addEventListener('change', () => { clearTimeout(st); st = setTimeout(() => sync.cfg.auto && doSync(), 4000); });

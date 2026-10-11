@@ -7,7 +7,7 @@ import { COLLS } from './sync.js';
 export const PII_FIELDS = ['phone', 'disabilityType'];
 const rkey = (coll, id) => `${coll}|${id}`;
 export function chanOf(coll, rec) {
-  if (coll === 'sessions' || coll === 'sheets') return rec?.centerId ? `c-${rec.centerId}` : 'core';
+  if (coll === 'sessions' || coll === 'sheets' || coll === 'ops') return rec?.centerId ? `c-${rec.centerId}` : 'core';
   if (coll === 'surveyResponses') return rec?.answers?.center ? `c-${rec.answers.center}` : 'core';
   return 'core';
 }
