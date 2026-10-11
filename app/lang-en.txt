@@ -904,3 +904,41 @@ PTT يُعبَّأ داخل القالب الأصلي (مع بقاء المخط�
 تعذّر النسخ إلى الحافظة، نُزّلت الصورة بدلاً منه | Could not copy to the clipboard, the image was downloaded instead
 نسخ ملخص سردي | Copy narrative summary
 تم نسخ الملخص السردي | Narrative summary copied
+الترجمة | Translation
+عند التبديل إلى English يُترجَم كل نص من القاموس المخزّن أولًا (ترجماتك ثم المدمجة)، وما لا يوجد فيه يُجمَّع في «نصوص ناقصة» ويمكن ترجمته عبر الإنترنت وحفظه فيعمل بعدها بلا اتصال. لا يُرسَل أي اسم مستفيد أو مستخدم أو رقم هاتف إلى الإنترنت؛ تُرسَل فقط نصوص الواجهة وأسماء المشاريع والمراكز. | When you switch to English every text is translated from the stored glossary first (your entries, then the built-in ones). Anything missing is collected under "Missing texts" and can be translated online and saved, so it works offline afterwards. No beneficiary or user names or phone numbers are ever sent to the internet; only interface texts and project and centre names are.
+مدمج | Built-in
+مخصص | Custom
+من الإنترنت | Online
+ناقص | Missing
+متصل | Online
+غير متصل | Offline
+ترجمة النصوص الناقصة تلقائيًا عبر الإنترنت عند التبديل إلى English | Automatically translate missing texts online when switching to English
+المزوّد | Provider
+ترجمة الناقص الآن عبر الإنترنت | Translate missing now online
+تصدير مخصصاتي (Excel) | Export my entries (Excel)
+تصدير الكل (Excel) | Export all (Excel)
+تصدير JSON | Export JSON
+استيراد وإضافة | Import and add
+نصوص ناقصة | Missing texts
+نصوص ظهرت في واجهة English بلا ترجمة. اكتب ترجمتها أو اتركها لزر الإنترنت. | Texts that appeared in the English interface without a translation. Type a translation or leave it to the online button.
+لا نصوص ناقصة في ما عُرض حتى الآن. تنقّل بين الشاشات لتجميع المزيد. | No missing texts in what has been shown so far. Move between screens to collect more.
+تُجمَّع النصوص الناقصة أثناء استخدام البرنامج بالإنجليزية. بدّل اللغة وتنقّل بين الشاشات ثم عُد هنا. | Missing texts are collected while you use the program in English. Switch language, move between screens, then come back here.
+القاموس | Glossary
+بحث | Search
+عربي أو English | Arabic or English
+عرض | Show
+الكل | All
+إضافة | Add
+المصدر | Source
+حذف | Delete
+عرض المزيد | Show more
+ترجم | Translate
+جارٍ الترجمة… | Translating…
+لا نصوص ناقصة | No missing texts
+لا يوجد اتصال بالإنترنت | No internet connection
+تُرجم وحُفظ | Translated and saved
+تعذّرت الترجمة | Translation failed
+اكتب العربية والإنجليزية | Enter both Arabic and English
+حذف هذه الترجمة المخصصة؟ | Delete this custom translation?
+اختر ملفًا | Choose a file
+العربية | Arabic

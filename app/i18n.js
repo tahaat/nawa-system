@@ -2,11 +2,22 @@
 // ما يُصدَّر من ملفات (Excel/XLSForm) لا يمر من هنا أبداً.
 import RAW from './lang-en.txt?raw';
 const PAIRS = RAW.split('\n').map((l) => l.split(' | ')).filter((p) => p.length >= 2).map(([a, ...b]) => [a.trim(), b.join(' | ').trim()]);
-const EXACT = new Map(PAIRS);
+const BUILTIN = new Map(PAIRS);
+let EXACT = new Map(PAIRS), user = new Map();
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // العبارات متعددة الكلمات تُستبدل داخل النص؛ الكلمات المفردة بالمطابقة الكاملة فقط كي لا تُشوَّه بيانات المستخدم
-const MULTI = PAIRS.filter(([a]) => /\s/.test(a)).sort((x, y) => y[0].length - x[0].length);
-const RX = new RegExp(MULTI.map(([a]) => esc(a)).join('|'), 'g');
+let RX;
+function rebuild() { EXACT = new Map([...BUILTIN, ...user]); const multi = [...EXACT].filter(([a]) => /\s/.test(a)).sort((x, y) => y[0].length - x[0].length); RX = new RegExp(multi.map(([a]) => esc(a)).join('|'), 'g'); }
+rebuild();
+// ترجمات المستخدم (المخزّنة/من الإنترنت) تتقدّم على القاموس المدمج
+export function setUserPairs(m) { user = new Map(m); rebuild(); }
+export const builtinPairs = () => BUILTIN;
+const missing = new Set(); let pii = () => false, onMiss = null;
+export const getMissing = () => [...missing].filter((x) => !EXACT.has(x));
+export const clearMissing = () => missing.clear();
+export function setMissingHooks(f) { if (f.pii) pii = f.pii; if ('onMiss' in f) onMiss = f.onMiss; }
+function note(v) { const t = v.trim(); if (t.length < 2 || t.length > 300 || missing.has(t) || pii(t)) return; missing.add(t); onMiss?.(); }
+export function refresh() { if (lang === 'en') walk(document.body); }
 const AR = /[؀-ۿ]/;
 let lang = 'ar'; try { lang = localStorage.getItem('nawa.lang') || 'ar'; } catch { /* خاص */ }
 export const getLang = () => lang;
@@ -22,7 +33,7 @@ export function tr(s) {
 }
 const ATTRS = ['placeholder', 'title', 'aria-label', 'alt', 'data-tip'];
 const SKIP = new Set(['SCRIPT', 'STYLE', 'TEXTAREA']);
-function doText(n) { const v = n.data; if (n.__en === v) return; const o = tr(v); if (o !== v) { n.__ar = v; n.__en = o; n.data = o; } }
+function doText(n) { const v = n.data; if (n.__en === v || n.parentNode?.closest?.('[data-notr]')) return; const o = tr(v); if (o !== v) { n.__ar = v; n.__en = o; n.data = o; } if (AR.test(o)) note(v); }
 function doEl(e) { for (const a of ATTRS) { const v = e.getAttribute?.(a); if (v && AR.test(v)) { const o = tr(v); if (o !== v) { e.setAttribute('data-ar-' + a, v); e.setAttribute(a, o); } } } }
 export function walk(root) {
   if (lang !== 'en' || !root) return;

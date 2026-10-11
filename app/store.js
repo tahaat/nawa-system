@@ -5,6 +5,8 @@ import { newMeta } from '../core/sync.js';
 import { newFolderMeta } from '../core/sync-folder.js';
 export const db = newDb(); export const ui = { projectId: null };
 export const sync = { cfg: { url: '', token: '', auto: true, mode: 'folder' }, meta: newMeta(), fmeta: newFolderMeta(), handle: null };
+export const kvGet = async (k) => { try { return (await kv.kv.get(k))?.value; } catch { return undefined; } };
+export const kvSet = (k, v) => kv.kv.put({ key: k, value: JSON.parse(JSON.stringify(v)) }).catch((e) => console.warn(e));
 export const saveHandle = (h) => kv.kv.put({ key: 'folderHandle', value: h });
 let timer;
 export async function load() {
