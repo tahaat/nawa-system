@@ -1012,3 +1012,88 @@ English (يُستعمل في تصدير PTT) | English (used in the PTT export)
 يعمل بلا إنترنت بفتح ملف index.html المحفوظ على الجهاز | Works offline by opening the saved index.html file on this device
 تثبيت كتطبيق | Install as an app
 إن لم يظهر زر التثبيت: في Chrome/Edge افتح قائمة المتصفح ← «تثبيت التطبيق»، وفي الهاتف «إضافة إلى الشاشة الرئيسية» (في iPhone: مشاركة ← إضافة إلى الشاشة الرئيسية). | If the install button does not appear: in Chrome/Edge open the browser menu then "Install app"; on a phone choose "Add to Home screen" (iPhone: Share then Add to Home Screen).
+إضافة مستفيد | Add beneficiary
+تعديل مستفيد | Edit beneficiary
+الاسم الرباعي | Full four-part name
+مثال: محمد أحمد علي سالم | Example: Mohammed Ahmed Ali Salem
+مثال: 12 | Example: 12
+نوع الإعاقة | Disability type
+— اختر النوع — | — Choose type —
+رقم الجوال | Mobile number
+معلومات إضافية ومرفقات (اختيارية) | Additional information and attachments (optional)
+رقم الهوية | ID number
+البريد الإلكتروني | Email
+اسم جهة اتصال الطوارئ | Emergency contact name
+مثال: والد/ة أو قريب | Example: parent or relative
+هاتف الطوارئ | Emergency phone
+حفظ التعديل | Save changes
+إلغاء | Cancel
+تعديل | Edit
+منقوص | Incomplete
+مرفقات | Attachments
+المرفقات والمستندات الداعمة | Attachments and supporting documents
+لا مرفقات بعد. | No attachments yet.
+العنوان | Title
+الصيغة | Format
+نوع المرفق | Attachment type
+ملف من الجهاز | File from device
+رابط | Link
+العنوان (اختياري) | Title (optional)
+مثال: صورة الهوية — الوجه الأمامي | Example: ID photo — front side
+الملف | File
+الرابط | URL
++ إرفاق | + Attach
+فتح | Open
+الملف غير موجود على هذا الجهاز | File not found on this device
+صورة/وثيقة هوية | ID photo/document
+شهادة | Certificate
+تقرير طبي | Medical report
+موافقة ولي أمر | Guardian consent
+صورة شخصية | Personal photo
+أخرى | Other
+الملفات تُحفظ على هذا الجهاز فقط (حتى 5 ميغابايت للملف، والصور تُضغط تلقائيًا) ولا تدخل في النسخة الاحتياطية JSON ولا المزامنة؛ استعمل «رابط» لما يجب أن يصل لباقي الفريق. | Files are kept on this device only (up to 5 MB each; images are compressed automatically) and are not part of the JSON backup or sync; use "Link" for anything the rest of the team must receive.
+استيراد من Excel | Import from Excel
+الأعمدة المدعومة: الاسم، الجنس، العمر، تاريخ الميلاد، الإعاقة، نوع الإعاقة، الجوال، الهوية، البريد، اسم الطوارئ، هاتف الطوارئ. تُتجاهل القيم غير الصحيحة (جوال/هوية/بريد) وتُعدّ في التقرير. | Supported columns: name, sex, age, date of birth, disability, disability type, mobile, ID, email, emergency name, emergency phone. Invalid values (mobile/ID/email) are ignored and counted in the report.
+تنزيل قالب الاستيراد | Download import template
+اسم أو جوال أو هوية | Name, mobile or ID
+جلسات حضور | Attended sessions
+الاسم منقوص | Incomplete name
+الاسم مكتمل | Name complete
+رقم صحيح | Valid number
+بريد صحيح | Valid email
+الاسم مطلوب | Name is required
+رقم الجوال غير صحيح: 10 أرقام تبدأ بـ 059 أو 056 | Invalid mobile: 10 digits starting with 059 or 056
+هاتف الطوارئ غير صحيح | Invalid emergency phone
+البريد الإلكتروني غير صحيح | Invalid email
+رقم الهوية 9 أرقام | ID number is 9 digits
+اختر نوع الإعاقة | Choose the disability type
+العمر غير صحيح | Invalid age
+حُفظ التعديل | Changes saved
+أُضيف المستفيد | Beneficiary added
+أدخل رابطًا صحيحًا يبدأ بـ https:// | Enter a valid link starting with https://
+أستورد | Import
+لم أجد عمود الاسم | Name column not found
+المستفيدون (BTT) | Beneficiaries (BTT)
+أقل عدد مقاطع لاسم المستفيد (التنبيه اللحظي) | Minimum name parts for a beneficiary (live alert)
+يتوهج حقل الاسم بالأحمر حتى يكتمل عدد المقاطع (رباعي = 4) ثم بالأخضر. | The name field glows red until the number of parts is complete (four-part = 4), then green.
+مثال: اكتب الاسم | Example: type the name
+مثال: سلمى أحمد | Example: Salma Ahmed
+مثال: مركز الزيتونة | Example: Al-Zaytouneh Center
+مثال: GIZ | Example: GIZ
+مثال: مشروع الحكايات | Example: Stories project
+مثال: القاعة الرئيسية | Example: Main hall
+مثال: وزارة التربية والتعليم | Example: Ministry of Education
+مثال: ورشة الحكاية الشعبية | Example: Folk storytelling workshop
+مثال: رقم الفاتورة أو المحضر | Example: invoice or minutes number
+ملاحظات اختيارية | Optional notes
+ابحث… | Search…
+اختياري (أ، ب…) | Optional (A, B…)
+وصف مختصر | Short description
+سطر لكل بند | One line per item
+اكتب هنا… | Type here…
+مثال: GIZ-2026 | Example: GIZ-2026
+مثال: USD | Example: USD
+مثال: دير البلح — قطاع غزة | Example: Deir Al-Balah — Gaza Strip
+مثال: تعزيز الصحة النفسية للأطفال | Example: Promoting children's mental health
+مثال: وصف مختصر للتدخل | Example: a short description of the intervention
+مثال: مواد تعليمية | Example: educational materials

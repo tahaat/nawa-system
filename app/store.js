@@ -1,6 +1,11 @@
 import Dexie from 'dexie';
 import { newDb } from '../core/model.js';
-const kv = new Dexie('nawa-system'); kv.version(1).stores({ kv: 'key' });
+const kv = new Dexie('nawa-system'); kv.version(1).stores({ kv: 'key' }); kv.version(2).stores({ kv: 'key', files: 'id' });
+// ملفات المرفقات (Blob) في جدول منفصل كي لا تتضخم قاعدة البيانات ولا النسخ الاحتياطي؛ بياناتها الوصفية في سجل المستفيد.
+export const putFile = (id, blob) => kv.files.put({ id, blob });
+export const getFile = async (id) => { try { return (await kv.files.get(id))?.blob || null; } catch { return null; } };
+export const delFile = (id) => kv.files.delete(id).catch(() => {});
+export const fileIds = async () => { try { return new Set(await kv.files.toCollection().primaryKeys()); } catch { return new Set(); } };
 import { newMeta } from '../core/sync.js';
 import { newFolderMeta } from '../core/sync-folder.js';
 export const db = newDb(); export const ui = { projectId: null };

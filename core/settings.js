@@ -3,6 +3,7 @@
 import { GROUPS, SEX, SESSION_MODES } from './model.js';
 
 export const VARS = [
+  { key: 'bnfNameWords', ar: 'أقل عدد مقاطع لاسم المستفيد (التنبيه اللحظي)', def: 4, min: 2, max: 5, step: 1, help: 'يتوهج حقل الاسم بالأحمر حتى يكتمل عدد المقاطع (رباعي = 4) ثم بالأخضر.' },
   { key: 'nameMinWords', ar: 'أقل عدد كلمات للاسم (كشوف الحضور)', def: 3, min: 1, max: 5, step: 1, help: 'الاسم الأقل من هذا العدد يُرفض في الكشف (مثال: ثلاثي = 3).' },
   { key: 'maxSessionHours', ar: 'أقصى مدة جلسة قبل التحذير (ساعات)', def: 10, min: 1, max: 24, step: 1, help: 'تظهر تحذيرًا إذا تجاوزت مدة الجلسة هذا الحد.' },
   { key: 'dayStartHour', ar: 'بداية الدوام المعتاد (ساعة)', def: 6, min: 0, max: 23, step: 1, help: 'جلسة تبدأ قبل هذه الساعة تُحذَّر كخارج الدوام.' },

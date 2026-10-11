@@ -69,3 +69,38 @@ export function hintsHtml(view) {
   const items = [...view.querySelectorAll('.hint .ht')].map((e) => { const h = e.closest('h2,h3'); return `<li><b>${(h?.firstChild?.textContent || '').trim()}</b><br>${e.innerHTML}</li>`; });
   return `<h3>${tr('التلميحات')}</h3>` + (items.length ? `<ul>${items.join('')}</ul>` : `<p class="small">${tr('لا توجد تلميحات في هذه الشاشة.')}</p>`);
 }
+
+// ===== نصوص توضيحية تلقائية لحقول الإدخال (مثال على صيغة التعبئة) =====
+// تُستنتج من نوع الحقل وعنوانه؛ ما فيه placeholder مكتوب يدويًا لا يُمسّ.
+const PH_RULES = [
+  [/رمز المشروع/, 'مثال: GIZ-2026'], [/العملة/, 'مثال: USD'], [/جغراف|المنطقة|النطاق/, 'مثال: دير البلح — قطاع غزة'], [/الهدف/, 'مثال: تعزيز الصحة النفسية للأطفال'], [/ملخص|الشرح/, 'مثال: وصف مختصر للتدخل'], [/اسم البند|البند/, 'مثال: مواد تعليمية'],
+  [/بريد|e-?mail/i, 'example@gmail.com'], [/هاتف|جوال|phone|mobile|tel\b/i, '0591234567'], [/هوية/, '123456789'], [/رابط|url|الخادم|server/i, 'https://example.org'],
+  [/الاسم الرباعي|اسم المستفيد|الاسم الكامل/, 'مثال: محمد أحمد علي سالم'], [/منشّط|منشط|منسق|educator|facilitator/i, 'مثال: سلمى أحمد'], [/مركز|center/i, 'مثال: مركز الزيتونة'],
+  [/ممول|donor/i, 'مثال: GIZ'], [/مشروع|project/i, 'مثال: مشروع الحكايات'], [/مكان|قاعة|venue/i, 'مثال: القاعة الرئيسية'], [/جهة|body/i, 'مثال: وزارة التربية والتعليم'],
+  [/عنوان|موضوع|اسم الدورة|اسم النشاط|اسم الاستبيان|title/i, 'مثال: ورشة الحكاية الشعبية'], [/مرجع|دليل|ref|رقم الفاتورة/i, 'مثال: رقم الفاتورة أو المحضر'], [/ملاحظ|note/i, 'ملاحظات اختيارية'],
+  [/بحث|search/i, 'ابحث…'], [/مجموعة|شعبة/, 'اختياري (أ، ب…)'], [/وصف|تعريف/, 'وصف مختصر'], [/اسم/, 'مثال: اكتب الاسم'],
+];
+const PH_NUM = [[/وحدات/, '1'], [/ميزانية|حصة|مصروف|مبلغ|تكلفة|قيمة/, '50000'], [/عمر من|من عمر/, '6'], [/^إلى$/, '18'], [/عمر/, '12'], [/نسبة|%|pct/i, '80'], [/ساعات|مدة/, '3'], [/عدد|كمية|qty|مستفيد/i, '25'], [/أعلى|max/i, '100'], [/أدنى|min/i, '0']];
+function labelOf(el) {
+  const lab = el.closest('label'); if (lab) return [...lab.childNodes].filter((n) => n.nodeType === 3 || (n.nodeType === 1 && !n.matches('input,select,textarea,.fh'))).map((n) => n.textContent).join(' ').trim();
+  const td = el.closest('td'); if (td) { const i = td.cellIndex, t = td.closest('table'), th = t?.rows[0]?.cells[i]; if (th) return th.textContent.trim(); }
+  return el.getAttribute('aria-label') || el.id || el.getAttribute('data-bind') || '';
+}
+export function phFor(el) {
+  const t = (el.type || 'text').toLowerCase(), L = labelOf(el);
+  if (['file', 'checkbox', 'radio', 'range', 'date', 'time', 'hidden', 'color', 'button', 'submit', 'datetime-local', 'month'].includes(t) || el.readOnly || el.disabled) return null;
+  if (t === 'email') return 'example@gmail.com'; if (t === 'tel') return '0591234567'; if (t === 'url') return 'https://example.org';
+  if (t === 'password') return null;
+  if (t === 'number') { for (const [r, p] of PH_NUM) if (r.test(L)) return p; return '0'; }
+  for (const [r, p] of PH_RULES) if (r.test(L)) return p;
+  if (el.tagName === 'TEXTAREA') return /سطر|lines/.test(L) || el.dataset.lines ? 'سطر لكل بند' : 'اكتب هنا…';
+  return 'اكتب هنا…';
+}
+export function fillPlaceholders(root = document) {
+  root.querySelectorAll?.('input:not([placeholder]),textarea:not([placeholder])').forEach((el) => { const p = phFor(el); if (p) el.setAttribute('placeholder', p); });
+}
+export function initPlaceholders() {
+  let raf = 0; const run = () => { raf = 0; fillPlaceholders(document.body); };
+  new MutationObserver(() => { if (!raf) raf = requestAnimationFrame(run); }).observe(document.body, { childList: true, subtree: true });
+  run();
+}

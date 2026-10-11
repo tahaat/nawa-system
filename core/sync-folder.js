@@ -4,7 +4,7 @@
 import { hash } from './sync.js';
 import { COLLS } from './sync.js';
 
-export const PII_FIELDS = ['phone', 'disabilityType'];
+export const PII_FIELDS = ['phone', 'disabilityType', 'nationalId', 'email', 'emergencyName', 'emergencyPhone', 'attachments'];
 const rkey = (coll, id) => `${coll}|${id}`;
 export function chanOf(coll, rec) {
   if (coll === 'sessions' || coll === 'sheets' || coll === 'ops') return rec?.centerId ? `c-${rec.centerId}` : 'core';

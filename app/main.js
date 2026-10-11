@@ -19,7 +19,8 @@ import { loadConfig } from '../core/settings.js';
 import { DTYPES } from '../core/sheets.js';
 import { kvGet } from './store.js';
 import { initOffline, offlineCard, offlineActions } from './offline.js';
-import { icon, getTheme, toggleTheme, initTheme, initHints, openPanel, hintsHtml } from './ui-tools.js';
+import { vBnf, initBnf, bnfActions } from './bnf-view.js';
+import { initPlaceholders, icon, getTheme, toggleTheme, initTheme, initHints, openPanel, hintsHtml } from './ui-tools.js';
 import { vSheets, initSheets } from './sheets-view.js';
 import { vOps, initOps } from './ops-view.js';
 import { commitSheet } from '../core/sheets.js';
@@ -222,21 +223,6 @@ function vCenters() {
 }
 
 // ======================= المستفيدون =======================
-let bq = '';
-function vBnf() {
-  const cx = context(db), list = db.beneficiaries.filter((b) => !bq || b.name.includes(bq) || (b.phone || '').includes(bq)).slice(0, 400);
-  view().innerHTML = `
-  <div class="card"><h2>إضافة مستفيد</h2><div class="row">
-    <label>الاسم الرباعي<input id="bn" style="width:260px"></label><label>الجنس<select id="bs"><option value="M">ذكر</option><option value="F">أنثى</option></select></label>
-    <label>العمر<input id="ba" type="number" style="width:80px"></label><label>أو تاريخ الميلاد<input id="bd" type="date"></label>
-    <label>الإعاقة<select id="bdis"><option value="0">لا</option><option value="1">نعم</option></select></label><label>النوع<input id="bdt" style="width:110px"></label>
-    <label>الهاتف<input id="bp" style="width:130px"></label><button data-act="addBnf">+ إضافة</button></div>
-    <div class="row" style="margin-top:10px"><label>استيراد من Excel (أعمدة: الاسم، العمر، الجنس، الإعاقة، الهاتف)<input type="file" id="bimp" accept=".xlsx"></label><button class="sec" data-act="impBnf">استيراد</button></div></div>
-  <div class="card"><div class="row"><label>بحث<input id="bq" value="${esc(bq)}"></label><span class="small">${db.beneficiaries.length} مستفيد</span></div>
-  <div class="tw"><table><tr><th>الاسم</th><th>الجنس</th><th>العمر</th><th>الفئة</th><th>إعاقة</th><th>الهاتف</th><th>جلسات حضور</th><th></th></tr>${list.map((b) => { const age = ageAt(b, iso(new Date())); const n = db.sessions.filter((s) => s.mode === 'roll' && s.attendance.includes(b.id)).length; return `<tr><td>${esc(b.name)}</td><td>${b.sex === 'M' ? 'ذكر' : 'أنثى'}</td><td>${age ?? '؟'}</td><td>${bandOf(age)?.key || '—'}</td><td>${b.disability ? esc(b.disabilityType || 'نعم') : ''}</td><td>${esc(b.phone || '')}</td><td>${n}</td><td><button class="x" data-act="delBnf" data-id="${b.id}">حذف</button></td></tr>`; }).join('')}</table></div></div>`;
-  $('#bq').addEventListener('input', (e) => { bq = e.target.value; clearTimeout(vBnf.t); vBnf.t = setTimeout(() => { vBnf(); $('#bq').focus(); $('#bq').setSelectionRange(bq.length, bq.length); }, 300); });
-}
-
 // ======================= الجلسات =======================
 function vSessions() {
   const p = project(); if (!p) return empty();
@@ -430,24 +416,7 @@ const actions = {
   delOut(t) { project().outputIndicators.splice(+t.dataset.i, 1); save(); rerender(); },
   addCenter() { const v = $('#cn').value.trim(); if (!v) return; db.centers.push({ id: uid('c'), name: v }); save(); rerender(); },
   delCenter(t) { if (db.sessions.some((s) => s.centerId === t.dataset.id)) return toast('للمركز جلسات مسجّلة'); db.centers = db.centers.filter((c) => c.id !== t.dataset.id); save(); rerender(); },
-  async addBnf() {
-    const b = { id: uid('b'), name: $('#bn').value.trim(), sex: $('#bs').value, age: $('#ba').value === '' ? null : +$('#ba').value, dob: $('#bd').value || null, disability: $('#bdis').value === '1', disabilityType: $('#bdt').value.trim(), phone: $('#bp').value.trim() };
-    if (b.dob) b.age = null; if (!b.name) return toast('الاسم مطلوب');
-    const dup = db.beneficiaries.find((x) => x.name.trim() === b.name && x.sex === b.sex); if (dup && !(await ask('يوجد مستفيد بنفس الاسم والجنس. إضافة رغم ذلك؟'))) return;
-    db.beneficiaries.push(b); save(); rerender();
-  },
   async quickBnf() { const n = await askText('الاسم الرباعي؟'); if (!n) return; const age = await askText('العمر؟'); const sx = await ask('هل هو ذكر؟ (إلغاء = أنثى)') ? 'M' : 'F'; const b = { id: uid('b'), name: n.trim(), sex: sx, age: +age || null, disability: await ask('هل لديه إعاقة؟'), disabilityType: '' }; db.beneficiaries.push(b); sess.att.add(b.id); save(); sess.rd?.(); vSessions(); },
-  async delBnf(t) { if (db.sessions.some((s) => s.attendance?.includes(t.dataset.id)) && !(await ask('للمستفيد حضور مسجّل؛ سيُحذف من الجلسات أيضًا. متابعة؟'))) return; db.sessions.forEach((s) => s.attendance && (s.attendance = s.attendance.filter((x) => x !== t.dataset.id))); db.sheets.forEach((sh) => { const had = [sh.roster, sh.rosterP].some((a) => a?.includes(t.dataset.id)); if (!had) return; sh.roster = sh.roster.filter((x) => x !== t.dataset.id); sh.rosterP = (sh.rosterP || []).filter((x) => x !== t.dataset.id); sh.meetings.forEach((m) => (m.present = m.present.filter((x) => x !== t.dataset.id))); commitSheet(db, sh); }); db.beneficiaries = db.beneficiaries.filter((b) => b.id !== t.dataset.id); save(); rerender(); },
-  async impBnf() {
-    const f = $('#bimp').files[0]; if (!f) return toast('اختر ملفًا'); const wb = new ExcelJS.Workbook(); await wb.xlsx.load(await f.arrayBuffer()); const ws = wb.worksheets[0];
-    const head = ws.getRow(1).values.map((v) => String(v?.result ?? v ?? '').trim()); const col = (re) => head.findIndex((h) => re.test(h));
-    const cN = col(/اسم|name/i), cA = col(/عمر|age/i), cS = col(/جنس|sex|gender/i), cD = col(/إعاقة|اعاقة|disab/i), cP = col(/هاتف|جوال|phone/i); if (cN < 1) return toast('لم أجد عمود الاسم');
-    let n = 0, skipped = 0; ws.eachRow((r, i) => { if (i === 1) return; const g = (c) => (c > 0 ? String(r.getCell(c).value?.result ?? r.getCell(c).value ?? '').trim() : ''); const name = g(cN); if (!name) return;
-      const sx = /^(أنثى|انثى|f|female|ذكر)$/i.test(g(cS)) ? (/^ذكر$/.test(g(cS)) ? 'M' : 'F') : /^(m|male)$/i.test(g(cS)) ? 'M' : null; if (!sx) { skipped++; return; }
-      let ph = g(cP).replace(/\D/g, ''); if (ph.length === 9) ph = '0' + ph;
-      db.beneficiaries.push({ id: uid('b'), name, sex: sx, age: +g(cA) || null, disability: /نعم|yes|1|true/i.test(g(cD)), disabilityType: '', phone: ph }); n++; });
-    save(); toast(`تم استيراد ${n}${skipped ? ` وتخطي ${skipped} بلا جنس واضح` : ''}`); rerender();
-  },
   mode(t) { sess.rd?.(); sess.mode = t.dataset.m; vSessions(); },
   toggleBands(t) { sess.rd?.(); sess.bands = t.checked; vSessions(); },
   async saveSession() {
@@ -473,7 +442,7 @@ const actions = {
 };
 
 $('.logo').src = logoUrl; { const l = document.createElement('link'); l.rel = 'icon'; l.href = logoUrl; document.head.append(l); }
-initPlan({ project, save, rerender, view, empty }); initSheets({ db, project, save, view, empty, ask, toast, myCenters, route: () => route }); initOps({ db, project, save, view, empty, ask, toast, myCenters }); initBuilder({ project, save, rerender }); initGloss({ view, ask }); initSettings({ view, db, ask, askText }); Object.assign(actions, offlineActions, glossActions({ toast, dl }), settingsActions({ toast, dl, go, save, rerender, ui, ask })); loadConfig(await kvGet('config'), DTYPES); await load(); await loadGlossary(); try { if (localStorage.getItem('nawa.nonav')) document.body.classList.add('nonav'); } catch { /* خاص */ } initTheme(); applyDoc(); nav(); go('dash'); initHints(view); initCopy({ toast }); initOffline(); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
+initPlan({ project, save, rerender, view, empty }); initSheets({ db, project, save, view, empty, ask, toast, myCenters, route: () => route }); initOps({ db, project, save, view, empty, ask, toast, myCenters }); initBuilder({ project, save, rerender }); initGloss({ view, ask }); initSettings({ view, db, ask, askText }); initBnf({ view, db, ask }); Object.assign(actions, offlineActions, bnfActions({ toast, ask, save, rerender, dl }), glossActions({ toast, dl }), settingsActions({ toast, dl, go, save, rerender, ui, ask })); loadConfig(await kvGet('config'), DTYPES); await load(); await loadGlossary(); try { if (localStorage.getItem('nawa.nonav')) document.body.classList.add('nonav'); } catch { /* خاص */ } initTheme(); applyDoc(); nav(); go('dash'); initHints(view); initCopy({ toast }); initOffline(); initPlaceholders(); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
 setInterval(() => { if (sync.cfg.auto) doSync(); else setSyncBadge(); }, 60000);
 window.addEventListener('online', () => sync.cfg.auto && doSync());
 let st; document.addEventListener('change', () => { clearTimeout(st); st = setTimeout(() => sync.cfg.auto && doSync(), 4000); });
