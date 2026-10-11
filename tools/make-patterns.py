@@ -74,16 +74,38 @@ def keffiyeh(pal):   # شبكة الصيد + خطوط متعرجة (نمط ال�
 def waves(pal):
     return svg(120, 24, f"<path d='M0 12 Q10 0 20 12 T40 12 T60 12 T80 12 T100 12 T120 12' fill='none' stroke='{pal['wave']}' stroke-width='2'/>")
 
+def frond(P, n, Lmax, s, spread, col, op):   # سعفة نخيل: عرق رئيسي منحنٍ ووريقات رفيعة متقابلة
+    d = f"<path d='M{P[0][0]} {P[0][1]} C{P[1][0]} {P[1][1]} {P[2][0]} {P[2][1]} {P[3][0]} {P[3][1]}' fill='none' stroke='{col}' stroke-width='1.3' stroke-linecap='round' stroke-opacity='{op}'/>"
+    for i in range(n):
+        t = .12 + i * (.84 / (n - 1)); x, y, a = bez(t, P); L = Lmax * (1 - abs(t - .45) * 1.1); sw = s
+        for side in (-1, 1):
+            d += f"<g transform='translate({x:.1f} {y:.1f}) rotate({a + side * spread:.1f})'><path d='M0 0 C{L*.3:.1f} {-sw} {L*.7:.1f} {-sw*.7:.1f} {L:.1f} 0 C{L*.7:.1f} {sw*.7:.1f} {L*.3:.1f} {sw} 0 0Z' fill='{col}' fill-opacity='{op}'/></g>"
+    return d
+def olive_sprig(P, n, L, s, col, op):   # غصن زيتون بأوراق عريضة نسبيًا
+    d = f"<path d='M{P[0][0]} {P[0][1]} C{P[1][0]} {P[1][1]} {P[2][0]} {P[2][1]} {P[3][0]} {P[3][1]}' fill='none' stroke='{col}' stroke-width='1.1' stroke-linecap='round' stroke-opacity='{op}'/>"
+    for i in range(n):
+        t = .1 + i * (.8 / (n - 1)); x, y, a = bez(t, P)
+        for side in (-1, 1):
+            d += f"<g transform='translate({x:.1f} {y:.1f}) rotate({a + side * 52:.1f})'><path d='M0 0 C{L*.25:.1f} {-s} {L*.75:.1f} {-s} {L} 0 C{L*.75:.1f} {s} {L*.25:.1f} {s} 0 0Z' fill='{col}' fill-opacity='{op}'/></g>"
+    x, y, a = bez(1, P); d += f"<g transform='translate({x:.1f} {y:.1f}) rotate({a:.1f})'><path d='M0 0 C{L*.25:.1f} {-s} {L*.75:.1f} {-s} {L} 0 C{L*.75:.1f} {s} {L*.25:.1f} {s} 0 0Z' fill='{col}' fill-opacity='{op}'/></g>"
+    return d
+def leafy(col, op, W=260):   # بلاط نخيل وزيتون بنصف إزاحة، يتكرر بسلاسة
+    b = ''
+    for dx, dy in ((0, 0),):
+        b += f"<g transform='translate({dx} {dy})'>"
+        b += frond([(34, 130), (66, 56), (122, 36), (170, 76)], 11, 34, 4.2, 38, col, op)           # سعفة
+        b += olive_sprig([(130, 246), (165, 195), (200, 180), (226, 140)], 7, 20, 5.2, col, op)    # غصن زيتون
+        b += olive_sprig([(36, 244), (28, 214), (54, 192), (84, 190)], 4, 15, 3.8, col, op)          # غصيْن
+        b += '</g>'
+    return svg(W, W, b)
 out = ['/* مولَّد بـ tools/make-patterns.py — لا تعدّله يدويًا */']
+NONE = 'linear-gradient(transparent,transparent)'
+LEAF = {'light': ('#4f6f2c', .075), 'dark': ('#93b86d', .07)}
 for name, sel in (('light', ':root'), ('dark', ':root[data-theme="dark"]')):
-    pal = PAL[name]
-    out.append(f"{sel}{{--p-keff:{uri(keffiyeh(pal))};--p-wave:{uri(waves(pal))};--p-band-star:{uri(band_star(pal))};--p-band-zig:{uri(band_zig(pal))};--p-star:{uri(star(1.7, pal))};--p-star-s:{uri(star(1.15, pal))};--p-olive:{uri(olive(pal))};--p-olive-w:{uri(olive(pal, opacity=.5))}}}")
+    pal = PAL[name]; col, op = LEAF[name]
+    out.append(f"{sel}{{--p-keff:{uri(leafy(col, op))};--p-wave:{NONE};--p-band-star:{uri(band_star(pal))};--p-band-zig:{uri(band_zig(pal))};--p-star:{uri(star(1.7, pal))};--p-star-s:{uri(star(1.15, pal))};--p-olive:{uri(olive(pal))};--p-olive-w:{uri(olive(pal, opacity=.5))}}}")
 out.append(f":root{{--p-band-star-l:{uri(band_star(PAL['light']))};--p-olive-l:{uri(olive(PAL['light']))}}}")
-WP = dict(PAL['light'], net='rgba(255,255,255,.13)', wave='rgba(255,255,255,.07)')
-W = dict(r='rgba(255,255,255,.13)', g='rgba(255,255,255,.13)', o='rgba(255,255,255,.13)', k='rgba(255,255,255,.13)')
-def stars_tile(pw):   # بلاط نجوم تطريز بيضاء شفافة (للشريط الجانبي)
-    c = star_cells(); return svg(120, 120, rects(c, 1.7, 49, 49, pw) + rects(c, 1.7, -11, -11, pw) + rects(c, 1.7, 109, -11, pw) + rects(c, 1.7, -11, 109, pw) + rects(c, 1.7, 109, 109, pw))
-out.append(f":root{{--p-keff-w:{uri(keffiyeh(WP))};--p-stars-w:{uri(stars_tile(W))}}}")
+out.append(f":root{{--p-keff-w:{uri(leafy('#ffffff', .075))};--p-stars-w:{NONE}}}")
 open('app/patterns.css', 'w', encoding='utf8').write('\n'.join(out) + '\n')
 # معاينة
 open('/tmp/pat_preview.html', 'w', encoding='utf8').write(''.join(f"<div style='display:flex;gap:20px;align-items:center;padding:10px;background:{bg}'>{svg_}</div>" for bg, svg_ in [('#fff', star(4, PAL['light'])+olive(PAL['light'])+band_star(PAL['light'], 3)+band_zig(PAL['light'])), ('#1b1415', star(4, PAL['dark'])+olive(PAL['dark'])+band_star(PAL['dark'], 3)+band_zig(PAL['dark']))]))

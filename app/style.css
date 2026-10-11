@@ -93,7 +93,10 @@ button.ic .dot{position:absolute;top:-6px;inset-inline-end:-6px;min-width:19px;h
 
 
 /* بطاقات المؤشرات: أيقونة بمقاس النص، والمصدر يظهر كبوب عند التمرير */
-.kpis{display:grid;gap:14px;margin-bottom:16px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.dash{zoom:var(--ds,1);max-width:var(--dw,none);margin-inline:auto}
+.kpis{display:grid;gap:14px;margin-bottom:16px;grid-template-columns:var(--kc,repeat(auto-fit,minmax(200px,1fr)))}
+.dash .grid.g2{grid-template-columns:var(--cc,repeat(auto-fit,minmax(380px,1fr)))}
+.dc summary{cursor:pointer}.dc input[type=range]{padding:0;width:150px;accent-color:var(--red)}
 a.kpi{display:block;color:inherit;text-decoration:none;cursor:pointer;padding:12px 14px;margin-bottom:0;transition:transform .15s,box-shadow .15s}
 a.kpi:hover,a.kpi:focus-visible{transform:translateY(-2px);box-shadow:0 8px 20px rgba(80,20,15,.16);outline:none}
 a.kpi .kh{display:flex;align-items:center;justify-content:space-between;gap:10px}

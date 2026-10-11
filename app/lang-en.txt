@@ -854,3 +854,28 @@ PTT يُعبَّأ داخل القالب الأصلي (مع بقاء المخط�
 المصدر: كشوفات الحضور بالأسماء | Source: name-based attendance sheets
 المصدر: التحقق والتكامل | Source: validation and integrity
 إظهار/إخفاء الشريط الجانبي | Show / hide the sidebar
+ضبط عرض لوحة القيادة | Dashboard display settings
+الفترة: | Period:
+كل مدة المشروع | The whole project period
+يومًا | days
+من أصل | of
+حجم البطاقات | Card size
+أعمدة المؤشرات | Indicator columns
+أعمدة المخططات | Chart columns
+اتساع المحتوى | Content width
+الفترة | Period
+كل المشروع | Whole project
+آخر 30 يومًا | Last 30 days
+هذا الشهر | This month
+هذا الربع | This quarter
+مخصصة | Custom
+تلقائي | Auto
+ممتد | Full
+واسع | Wide
+متوسط | Medium
+ضيّق | Narrow
+إعادة الضبط | Reset
+من | From
+إلى | To
+الفترة تُطبَّق على الجلسات والحضور (STT)؛ مؤشرات النتائج من الاستبيانات والمستفيدون المباشرون لا تتأثر بها. | The period applies to sessions and attendance (STT); survey outcome indicators and direct beneficiaries are not affected by it.
+جلسة | session(s)
