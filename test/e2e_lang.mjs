@@ -15,4 +15,9 @@ console.log('كلمات عربية متبقية في لوحة القيادة:', 
 await pg.screenshot({ path: `${shots}/ui_en_dash.png` });
 for (const r of ['sheets', 'ops', 'plan', 'bnf', 'check']) { const a = await pg.$(`a[data-go=${r}]`); if (!a) continue; await a.click(); await pg.waitForTimeout(500); const n = await pg.evaluate(() => (document.body.innerText.match(/[؀-ۿ]+/g) || []).length); console.log(r, 'عربي متبقٍ:', n); await pg.screenshot({ path: `${shots}/ui_en_${r}.png`, fullPage: true }); }
 await pg.click('[data-act=lang]'); await pg.waitForTimeout(500); s = await st(); log('العودة إلى العربية', s.dir === 'rtl' && /الإنجاز|لوحة/.test(await pg.textContent('#nav')));
+await pg.click('a[data-go=projects]'); await pg.waitForTimeout(300);
+log('الملاحظات التوجيهية صارت تلميحات (ⓘ)', (await pg.$$('.hint')).length >= 2 && (await pg.$$('.card>p.small')).length === 0);
+await (await pg.$('.hint')).hover(); await pg.waitForTimeout(200); log('البوب يظهر عند اقتراب المؤشر', await pg.isVisible('#hintpop'));
+const bg0 = await pg.evaluate(() => getComputedStyle(document.body).backgroundColor); await pg.click('[data-act=theme]'); await pg.waitForTimeout(300);
+const bg1 = await pg.evaluate(() => getComputedStyle(document.body).backgroundColor); log(`الوضع المظلم: ${bg0} → ${bg1}`, bg0 !== bg1 && (await pg.evaluate(() => document.documentElement.dataset.theme)) === 'dark');
 console.log('أخطاء الصفحة:', errs.length ? errs : 'لا شيء'); await b.close();

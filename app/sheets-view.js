@@ -73,7 +73,7 @@ function results(L) {
 }
 const iso = () => new Date().toISOString().slice(0, 10);
 function quickForm(L) {
-  return `<div class="card" style="background:#fffaf0"><div class="row"><label>الاسم (3 مقاطع على الأقل) *<input id="qa-name" style="width:260px"></label><label>الجنس *<select id="qa-sex"><option value=""></option><option value="M">ذكر</option><option value="F">أنثى</option></select></label>
+  return `<div class="card" style="background:var(--warnbg)"><div class="row"><label>الاسم (3 مقاطع على الأقل) *<input id="qa-name" style="width:260px"></label><label>الجنس *<select id="qa-sex"><option value=""></option><option value="M">ذكر</option><option value="F">أنثى</option></select></label>
     <label>العمر *<input id="qa-age" type="number" min="3" max="90" style="width:80px"></label><label>إعاقة<select id="qa-dis"><option value="0">لا</option><option value="1">نعم</option></select></label>
     <label>نوع الإعاقة<select id="qa-dt"><option value=""></option>${DTYPES.map((d) => `<option>${d}</option>`).join('')}</select></label>${L.inline ? '' : '<label>الهاتف (اختياري)<input id="qa-ph" style="width:130px" placeholder="059xxxxxxx"></label>'}
     <button data-shact="quickSave" data-l="${L.key}">إضافة</button></div><div id="qa-err" class="small" style="color:var(--err)"></div></div>`;

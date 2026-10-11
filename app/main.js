@@ -11,6 +11,7 @@ import { france } from './sim_france.js';
 import { giz, GIZ_ID } from './giz.js';
 import { vPlan, initPlan } from './plan-view.js';
 import { tr, getLang, toggleLang, applyDoc } from './i18n.js';
+import { icon, getTheme, toggleTheme, initTheme, initHints, openPanel, hintsHtml } from './ui-tools.js';
 import { vSheets, initSheets } from './sheets-view.js';
 import { vOps, initOps } from './ops-view.js';
 import { commitSheet } from '../core/sheets.js';
@@ -31,14 +32,21 @@ const ROUTES = { dash: ['لوحة القيادة', vDash], sheets: ['كشوفا�
 const me = () => sync.cfg.me || null;
 const allowed = (r) => { const p = me()?.policy; if (r === 'users') return !!p?.manageUsers; return !p || p.routes === '*' || p.routes.includes(r); };
 const myCenters = () => { const x = me(); return x?.role === 'coordinator' || x?.policy?.write?.sessions === 'own' ? db.centers.filter((c) => x.centers.includes(c.id)) : db.centers; };
+function chartTheme() { const d = getTheme() === 'dark', cs = getComputedStyle(document.documentElement); Chart.defaults.color = d ? '#d8cac6' : '#4a3f3f'; Chart.defaults.borderColor = d ? 'rgba(255,235,225,.12)' : 'rgba(0,0,0,.08)'; Chart.defaults.font.family = 'Tajawal'; Chart.defaults.elements.arc.borderColor = cs.getPropertyValue('--card').trim() || '#fff'; }
 let route = 'dash', charts = [], sess = { mode: 'roll', att: new Set(), q: '', bands: false };
 
+// الإشعارات: أخطاء وتحذيرات التحقق والتكامل (مجمَّعة بالنص)
+function notes() { const m = new Map(); for (const i of [...reconcile(db), ...validateEntry(db)]) { if (i.level !== 'error' && i.level !== 'warn') continue; const k = i.level + i.msg; const e = m.get(k) || { ...i, n: 0 }; e.n++; m.set(k, e); } return [...m.values()].sort((a, b) => (a.level === 'error' ? 0 : 1) - (b.level === 'error' ? 0 : 1)); }
 function nav() {
   $('#nav').innerHTML = Object.entries(ROUTES).filter(([k]) => allowed(k)).map(([k, [t]]) => `<a data-go="${k}" class="${k === route ? 'on' : ''}">${t}</a>`).join('');
   const opts = db.projects.map((p) => `<option value="${p.id}" ${p.id === ui.projectId ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
-  $('#top').innerHTML = `<h1>${ROUTES[route][0]}</h1><div class="row"><label>المشروع<select id="pj">${opts || '<option>— لا مشاريع —</option>'}</select></label><button class="sec lang" data-act="lang" title="Language / اللغة">${getLang() === 'en' ? 'العربية' : 'English'}</button></div>`;
+  $('#top').innerHTML = `<h1>${ROUTES[route][0]}</h1><div class="tools"><label>المشروع<select id="pj">${opts || '<option>— لا مشاريع —</option>'}</select></label>
+    <button class="sec ic" data-act="bell" title="الإشعارات" aria-label="الإشعارات">${icon('bell')}${notes().length ? `<b class="dot">${notes().length}</b>` : ''}</button>
+    <button class="sec ic" data-act="hints" title="التلميحات" aria-label="التلميحات">${icon('hint')}</button>
+    <button class="sec ic" data-act="theme" title="الوضع المظلم / الفاتح" aria-label="الوضع المظلم / الفاتح">${icon(getTheme() === 'dark' ? 'sun' : 'moon')}</button>
+    <button class="sec lang" data-act="lang" title="Language / اللغة">${getLang() === 'en' ? 'العربية' : 'English'}</button></div>`;
 }
-function go(r) { if (!allowed(r)) r = 'dash'; route = r; charts.forEach((c) => c.destroy()); charts = []; nav(); ROUTES[r][1](); }
+function go(r) { chartTheme(); if (!allowed(r)) r = 'dash'; route = r; charts.forEach((c) => c.destroy()); charts = []; nav(); ROUTES[r][1](); }
 const rerender = () => go(route);
 
 document.addEventListener('click', async (e) => {
@@ -80,7 +88,7 @@ function vDash() {
     <div class="card"><h3>الحضور حسب المركز</h3><canvas id="c5"></canvas></div>
     <div class="card"><h3>الحضور حسب الفئة المستهدفة</h3><canvas id="c6"></canvas></div>
   </div>`;
-  const RED = '#A21008', GOLD = '#E6A901', PINK = '#FF9798', DK = '#5b0a05', GR = '#9a8f8f';
+  const RED = '#A21008', GOLD = '#E6A901', PINK = '#FF9798', DK = getTheme() === 'dark' ? '#d98a82' : '#5b0a05', GR = '#9a8f8f';
   const mk = (id, cfg) => { if (cfg.data) { if (cfg.data.labels) cfg.data.labels = cfg.data.labels.map(tr); (cfg.data.datasets || []).forEach((ds) => { if (ds.label) ds.label = tr(ds.label); }); } const c = new Chart($('#' + id), { ...cfg, options: { responsive: true, plugins: { legend: { labels: { font: { family: 'Tajawal', size: 15 } } } }, scales: cfg.type === 'doughnut' ? {} : { x: { ticks: { font: { family: 'Tajawal', size: 14 } } }, y: { beginAtZero: true } }, ...(cfg.opt || {}) }, data: cfg.data }); charts.push(c); };
   mk('c1', { type: 'doughnut', data: { labels: ['ذكور', 'إناث', 'ذكور (إعاقة)', 'إناث (إعاقة)'], datasets: [{ data: [d.cats.M, d.cats.F, d.cats.CWD_M, d.cats.CWD_F], backgroundColor: [RED, PINK, GOLD, DK] }] } });
   const an = Object.keys(d.byAct);
@@ -342,6 +350,10 @@ const actions = {
     await doSyncFolder({ firstMode: mode }, true); vCloud();
   },
   newProject() { const p = { id: uid('p'), name: 'مشروع جديد', donor: '', start: iso(new Date()).slice(0, 4) + '-01-01', end: iso(new Date()).slice(0, 4) + '-12-31', directRule: { mode: 'once' }, interventions: [], activities: [], outputIndicators: [] }; db.projects.push(p); ui.projectId = p.id; save(); go('projects'); },
+  bell() { const ns = notes(), top = ns.slice(0, 8); openPanel(`<h3>الإشعارات</h3>${ns.length ? `<ul>${top.map((i) => `<li><span class="badge ${i.level === 'error' ? 'b-error' : 'b-warn'}">${i.level === 'error' ? 'خطأ' : 'تنبيه'}</span> ${esc(i.msg)}${i.n > 1 ? ` (×${i.n})` : ''}</li>`).join('')}</ul>${ns.length > 8 ? `<p class="small">+ ${ns.length - 8}</p>` : ''}<p><button data-act="gocheck">فتح شاشة التحقق</button></p>` : '<p class="small">لا إشعارات: كل شيء سليم.</p>'}`); },
+  gocheck() { document.getElementById('panel').style.display = 'none'; go('check'); },
+  hints() { openPanel(hintsHtml(view())); },
+  theme() { toggleTheme(); chartTheme(); nav(); go(route); },
   lang() { toggleLang(); nav(); go(route); setSyncBadge(); },
   demo() { if (db.projects.some((x) => x.id === 'p_fr')) { toast('المشروع التجريبي محمّل مسبقًا'); ui.projectId = 'p_fr'; save(); return go('dash'); } const d = france(); for (const k of Object.keys(d)) db[k].push(...d[k]); ui.projectId = 'p_fr'; save(); toast('تم تحميل المشروع التجريبي (بيانات محاكاة)'); go('dash'); },
   demoGiz() { if (db.projects.some((x) => x.id === GIZ_ID)) { toast('مشروع GIZ النموذجي محمّل مسبقًا'); ui.projectId = GIZ_ID; save(); return go('dash'); } const d = giz(); for (const k of Object.keys(d)) db[k].push(...d[k]); ui.projectId = GIZ_ID; save(); toast('تم تحميل مشروع GIZ النموذجي (بيانات تجريبية)'); go('projects'); },
@@ -398,7 +410,7 @@ const actions = {
 };
 
 $('.logo').src = logoUrl; { const l = document.createElement('link'); l.rel = 'icon'; l.href = logoUrl; document.head.append(l); }
-initPlan({ project, save, rerender, view, empty }); initSheets({ db, project, save, view, empty, ask, toast, myCenters, route: () => route }); initOps({ db, project, save, view, empty, ask, toast, myCenters }); initBuilder({ project, save, rerender }); await load(); applyDoc(); nav(); go('dash'); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
+initPlan({ project, save, rerender, view, empty }); initSheets({ db, project, save, view, empty, ask, toast, myCenters, route: () => route }); initOps({ db, project, save, view, empty, ask, toast, myCenters }); initBuilder({ project, save, rerender }); await load(); initTheme(); applyDoc(); nav(); go('dash'); initHints(view); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
 setInterval(() => { if (sync.cfg.auto) doSync(); else setSyncBadge(); }, 60000);
 window.addEventListener('online', () => sync.cfg.auto && doSync());
 let st; document.addEventListener('change', () => { clearTimeout(st); st = setTimeout(() => sync.cfg.auto && doSync(), 4000); });

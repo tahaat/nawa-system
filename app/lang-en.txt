@@ -840,3 +840,12 @@ PTT يُعبَّأ داخل القالب الأصلي (مع بقاء المخط�
 الحقول المعلَّمة بـ | Fields marked with
 إلزامية. | are mandatory.
 المشاركون | Participants
+التلميحات | Hints
+لا توجد تلميحات في هذه الشاشة. | There are no hints on this screen.
+الإشعارات | Notifications
+الوضع المظلم / الفاتح | Dark / light mode
+لا إشعارات: كل شيء سليم. | No notifications: everything is fine.
+فتح شاشة التحقق | Open the validation screen
+تلميح | Hint
+أخطاء | errors
+تحذيرات | warnings
