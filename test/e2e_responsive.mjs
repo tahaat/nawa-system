@@ -1,5 +1,5 @@
 import { chromium } from '/opt/npm-tools/node_modules/playwright/index.mjs';
-const b = await chromium.launch(); const sizes = [[360, 740], [412, 915], [768, 1024], [1024, 768], [1366, 768], [1920, 1080]];
+const b = await chromium.launch(); const sizes = [[360, 740], [412, 915], [768, 1024], [1024, 768], [1280, 720], [1366, 768], [1440, 900], [1536, 864], [1920, 1080]];
 const routes = ['dash', 'sheets', 'sessions', 'ops', 'bnf', 'projects', 'plan', 'centers', 'check', 'surveys', 'cloud', 'export', 'gloss', 'settings'];
 for (const [w, h] of sizes) {
   const ctx = await b.newContext({ viewport: { width: w, height: h } }), pg = await ctx.newPage();

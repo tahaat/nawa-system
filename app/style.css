@@ -135,3 +135,7 @@ select,input,textarea{max-width:100%}
   #cardtools{display:none!important}
 }
 @media(max-width:480px){body{font-size:15px}.dlg{width:calc(100vw - 24px)!important;max-width:none}}
+/* شاشات اللابتوب المنخفضة الارتفاع (768/720 وما دون): شريط جانبي أكثر إحكامًا فتظهر كل البنود دون تمرير */
+@media(min-width:801px) and (max-height:820px){aside{padding:10px 10px}.logo{width:84px;padding:6px;border-radius:12px}nav a{padding:5px 12px;margin:1px 0;font-size:14.5px}#top{padding:12px 0 10px;margin-bottom:20px}}
+@media(min-width:801px) and (max-height:700px){.logo{width:64px}nav a{padding:3px 10px;font-size:14px}}
+@media(min-width:801px) and (max-width:1100px){main{padding:0 18px 40px}aside{width:200px}}
