@@ -1,0 +1,139 @@
+// شاشة «الكشوفات»: نماذج إدخال مقيّدة تطابق كشوفات الحضور الورقية (Word). الأعداد تُحسب من القائمة ولا تُكتب يدوياً.
+import { KINDS, SG, DTYPES, newSheet, validateSheet, derivedCounts, completion, commitSheet, removeSheet, peopleOf, nameOk, phoneOk, heldMeetings } from '../core/sheets.js';
+import { ageAt, uid } from '../core/model.js';
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const $ = (s, r = document) => r.querySelector(s);
+let ctx, cur = null, bound = false; const q = {}, showAll = {}, quick = {};
+
+export function initSheets(c) { ctx = c; if (bound) return; bound = true; document.addEventListener('input', onInput); document.addEventListener('change', onInput); document.addEventListener('click', onClick); }
+const live = () => ctx.route() === 'sheets' && cur;
+
+// ---------- القائمة ----------
+export function vSheets() {
+  const p = ctx.project(); if (!p) return ctx.empty();
+  if (cur && cur.projectId !== p.id) cur = null;
+  if (cur) return editor();
+  const db = ctx.db, list = db.sheets.filter((s) => s.projectId === p.id).sort((a, b) => ((b.meta.date || b.meta.start || '')).localeCompare(a.meta.date || a.meta.start || ''));
+  ctx.view().innerHTML = `<div class="card"><h2>كشف حضور جديد</h2><p class="small">اختر نوع الكشف كما في الكشوف الورقية. كل ما يُكتب هنا يُفحص قبل الحفظ، ولا يُحفظ كشف فيه خطأ.</p>
+    <div class="row">${Object.entries(KINDS).map(([k, K]) => `<button data-shact="new" data-k="${k}">${esc(K.name)}</button>`).join('')}</div></div>
+  <div class="card"><h2>الكشوف المسجَّلة (${list.length})</h2>${list.length ? `<div class="tw"><table><tr><th>النوع</th><th>العنوان</th><th>التاريخ</th><th>المركز</th><th>الحضور</th><th>الحالة</th><th></th></tr>${list.map((s) => { const K = KINDS[s.kind], d = derivedCounts(s, db), v = validateSheet(s, db, { others: db.sessions.filter((x) => x.sheetId !== s.id) });
+    return `<tr><td>${esc(K.name)}</td><td>${esc(s.meta.title || (s.meta.activities || [])[0] || s.meta.type || s.meta.body || '')}</td><td>${esc(K.multi ? `${s.meta.start || ''} → ${s.meta.end || ''}` : s.meta.date || '')}${K.multi ? `<br><span class="small">${heldMeetings(s).length} / ${s.meta.meetings || '؟'} لقاء</span>` : ''}</td><td>${esc(db.centers.find((c) => c.id === s.centerId)?.name || '')}</td><td><b>${d.total}</b> <span class="small">(${d.M}ذ/${d.F}إ)</span></td><td>${v.errors.length ? `<span class="badge b-error" title="${esc(v.errors.join(' | '))}">${v.errors.length} خطأ</span>` : v.warnings.length ? `<span class="badge b-warn" title="${esc(v.warnings.join(' | '))}">${v.warnings.length} تنبيه</span>` : '<span class="badge b-ok">✔</span>'}</td><td><button class="sec" data-shact="edit" data-id="${s.id}">فتح</button> <button class="x" data-shact="del" data-id="${s.id}">حذف</button></td></tr>`; }).join('')}</table></div>` : '<p class="small">لا كشوف بعد.</p>'}</div>`;
+}
+
+// ---------- المحرر ----------
+const fld = (f) => {
+  const m = cur.meta, v = m[f.key] ?? '', req = f.req ? ' *' : '', L = `${esc(f.label)}${req}`;
+  if (f.type === 'mode') return `<label>${L}<select data-sm="mode"><option value="inperson" ${m.mode !== 'online' ? 'selected' : ''}>وجاهي (مركز/قاعة)</option><option value="online" ${m.mode === 'online' ? 'selected' : ''}>إلكتروني (منصة)</option></select></label>
+    <label><span id="sh-vl">${m.mode === 'online' ? 'المنصة (زوم/تيمز…) *' : 'مكان التنفيذ (القاعة) *'}</span><input data-sm="venue" value="${esc(m.venue)}" style="width:200px"></label>`;
+  if (f.type === 'select') return `<label>${L}<select data-sm="${f.key}"><option value=""></option>${f.opts.map((o) => `<option ${v === o ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select></label>`;
+  if (f.type === 'lines') return `<label>${L}<textarea data-sl="${f.key}" rows="2" style="width:230px" placeholder="كل اسم في سطر">${esc((m[f.key] || []).join('\n'))}</textarea></label>`;
+  const ty = { date: 'date', time: 'time', number: 'number', int: 'number', tel: 'tel' }[f.type] || 'text';
+  return `<label>${L}<input data-sm="${f.key}" data-t="${f.type}" type="${ty}" ${f.type === 'number' ? 'step="0.5"' : f.type === 'int' ? 'step="1"' : ''} ${f.min != null ? `min="${f.min}" max="${f.max}"` : ''} value="${esc(v)}" style="width:${ty === 'text' || ty === 'tel' ? 200 : 150}px"></label>`;
+};
+const eligible = (L, b) => { const gs = (cur.meta.groups || []).filter((k) => L.allowed.includes(k)).map((k) => SG[k]); if (!gs.length) return false; if (!L.age) return true; const a = ageAt(b, cur.meta.date || cur.meta.start || new Date().toISOString().slice(0, 10)); return a != null && gs.some((g) => a >= g.min && a <= g.max); };
+
+function editor() {
+  const K = KINDS[cur.kind], p = ctx.project(), db = ctx.db;
+  ctx.view().innerHTML = `<div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">${esc(K.name)}</h2><button class="sec" data-shact="cancel">إغلاق دون حفظ</button></div>
+    <p class="small">المشروع: <b>${esc(p.name)}</b> — الحقول المعلَّمة بـ * إلزامية.</p>
+    <div class="row"><label>النشاط في المشروع *<select id="sh-act"><option value=""></option>${p.activities.map((a) => `<option value="${a.id}" ${a.id === cur.activityId ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select></label>
+    <label>المركز *<select id="sh-ctr"><option value=""></option>${ctx.myCenters().map((c) => `<option value="${c.id}" ${c.id === cur.centerId ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>${K.fields.map(fld).join('')}</div>
+    <h3>الفئة المشاركة *</h3><div>${K.groups.map((g) => `<label class="chk"><input type="checkbox" data-sg="${g}" ${(cur.meta.groups || []).includes(g) ? 'checked' : ''}> ${esc(SG[g].name)}</label>`).join(' ')}</div></div>
+  <div id="sh-meet">${K.multi ? meetingsCard() : ''}</div>
+  <div id="sh-lists">${K.lists.map(listCard).join('')}</div>
+  <div class="card" id="sh-check"></div>`;
+  refreshCheck();
+}
+
+function meetingsCard() {
+  const n = Math.max(+cur.meta.meetings || 0, cur.meetings.length);
+  return `<div class="card"><h2>اللقاءات الفعلية</h2><p class="small">اكتب تاريخ كل لقاء نُفِّذ فعلاً (اللقاءات بلا تاريخ تُعدّ غير منفَّذة). لا يمكن تسجيل تاريخ مستقبلي أو مكرر أو خارج مدة الدورة.</p>
+  <div class="row">${Array.from({ length: n }, (_, i) => `<label>لقاء ${i + 1}<input type="date" data-sv="${i}" value="${esc(cur.meetings[i]?.date || '')}" style="width:150px"></label>`).join('')}</div></div>`;
+}
+
+function listCard(L) {
+  const K = KINDS[cur.kind], db = ctx.db, ppl = peopleOf(cur, db).filter((x) => x.list === L.key);
+  const meets = K.multi ? cur.meetings.map((m, i) => ({ ...m, i })).filter((m) => m.date) : [];
+  const head = `<tr><th>#</th><th>الاسم</th><th>الجنس</th>${L.age ? '<th>العمر</th>' : ''}<th>إعاقة</th>${meets.map((m) => `<th title="${esc(m.date)}">${m.i + 1}<br><button class="sec" style="padding:0 5px;font-size:13px" data-shact="col" data-i="${m.i}">كل</button></th>`).join('')}${meets.length ? '<th>%</th>' : ''}<th></th></tr>`;
+  const comp = K.multi ? new Map(completion(cur, db).map((c) => [c.id, c])) : null;
+  const rows = ppl.map((x, i) => { const age = x.guest ? x.age : x.bnf ? ageAt(x.bnf, cur.meta.date || cur.meta.start || new Date().toISOString().slice(0, 10)) : '';
+    return `<tr><td>${i + 1}</td><td>${esc(x.missing ? '(محذوف)' : x.name)}</td><td>${x.sex === 'M' ? 'ذكر' : x.sex === 'F' ? 'أنثى' : '؟'}</td>${L.age ? `<td>${age ?? '؟'}</td>` : ''}<td>${x.disability ? esc(x.dtype || 'نعم — النوع؟') : ''}</td>${meets.map((m) => `<td><input type="checkbox" data-sp="${m.i}|${x.id}" ${cur.meetings[m.i].present.includes(x.id) ? 'checked' : ''}></td>`).join('')}${meets.length ? `<td>${comp?.get(x.id) ? `<span class="badge b-${comp.get(x.id).ok === false ? 'warn' : 'ok'}">${comp.get(x.id).pct}%</span>` : ''}</td>` : ''}<td><button class="x" data-shact="rm" data-l="${L.key}" data-id="${x.guest ? x.id.slice(1) : x.id}">إزالة</button></td></tr>`; }).join('');
+  const qa = quick[L.key];
+  return `<div class="card"><h2>${esc(L.label)} (${ppl.length})</h2>
+    ${L.inline ? '' : `<div class="row"><label>بحث في سجل المستفيدين<input data-sq="${L.key}" value="${esc(q[L.key] || '')}" placeholder="اكتب جزءاً من الاسم" style="width:260px"></label>
+      <label class="chk"><input type="checkbox" data-shall="${L.key}" ${showAll[L.key] ? 'checked' : ''}> إظهار غير المطابقين للفئة</label></div><div id="res-${L.key}" class="roll" style="margin:8px 0">${results(L)}</div>`}
+    <div class="row" style="margin:6px 0"><button class="sec" data-shact="quick" data-l="${L.key}">${qa ? 'إغلاق النموذج' : L.inline ? '+ إضافة زائر' : '+ مستفيد جديد (غير موجود في السجل)'}</button></div>${qa ? quickForm(L) : ''}
+    ${ppl.length ? `<div class="tw"><table>${head}${rows}</table></div>` : '<p class="small">لا مشاركين بعد.</p>'}</div>`;
+}
+function results(L) {
+  const db = ctx.db, inList = new Set(cur[L.key] || []), term = (q[L.key] || '').trim();
+  if (!(cur.meta.groups || []).filter((k) => L.allowed.includes(k)).length) return '<span class="small">اختر الفئة المشاركة أعلاه أولاً.</span>';
+  const res = db.beneficiaries.filter((b) => !inList.has(b.id) && (!term || b.name.includes(term)) && (showAll[L.key] || eligible(L, b))).slice(0, 40);
+  return res.map((b) => `<label style="cursor:pointer"><button class="sec" style="padding:0 8px" data-shact="add" data-l="${L.key}" data-id="${b.id}">+</button> ${esc(b.name)} <span class="small">${ageAt(b, iso())}${b.disability ? ' ♿' : ''}</span></label>`).join('') || '<span class="small">لا نتائج — أضف مستفيداً جديداً بالزر أدناه.</span>';
+}
+const iso = () => new Date().toISOString().slice(0, 10);
+function quickForm(L) {
+  return `<div class="card" style="background:#fffaf0"><div class="row"><label>الاسم (3 مقاطع على الأقل) *<input id="qa-name" style="width:260px"></label><label>الجنس *<select id="qa-sex"><option value=""></option><option value="M">ذكر</option><option value="F">أنثى</option></select></label>
+    <label>العمر *<input id="qa-age" type="number" min="3" max="90" style="width:80px"></label><label>إعاقة<select id="qa-dis"><option value="0">لا</option><option value="1">نعم</option></select></label>
+    <label>نوع الإعاقة<select id="qa-dt"><option value=""></option>${DTYPES.map((d) => `<option>${d}</option>`).join('')}</select></label>${L.inline ? '' : '<label>الهاتف (اختياري)<input id="qa-ph" style="width:130px" placeholder="059xxxxxxx"></label>'}
+    <button data-shact="quickSave" data-l="${L.key}">إضافة</button></div><div id="qa-err" class="small" style="color:var(--err)"></div></div>`;
+}
+
+function checkHTML() {
+  const db = ctx.db, K = KINDS[cur.kind], r = validateSheet(cur, db), d = derivedCounts(cur, db), comp = K.multi ? completion(cur, db) : null;
+  const types = Object.entries(d.types).map(([k, n]) => `${k}: ${n}`).join('، ');
+  return `<h2>الأعداد (تُحسب تلقائياً من القائمة)</h2><div class="row"><span class="badge b-info">الإجمالي <b>${d.total}</b></span><span class="badge b-info">ذكور <b>${d.M}</b></span><span class="badge b-info">إناث <b>${d.F}</b></span><span class="badge b-info">ذكور ذوو إعاقة <b>${d.MWD}</b></span><span class="badge b-info">إناث ذوات إعاقة <b>${d.FWD}</b></span>${types ? `<span class="badge b-info">نوع الإعاقة: ${esc(types)}</span>` : ''}
+    ${comp && cur.meta.mandatoryPct != null && cur.meta.mandatoryPct !== '' ? `<span class="badge b-ok">مستوفون لنسبة الحضور (${cur.meta.mandatoryPct}%): <b>${comp.filter((c) => c.ok).length}</b> من ${comp.length}</span>` : ''}</div>
+    <h2>الفحص قبل الحفظ</h2>${r.errors.map((e) => `<p style="margin:3px 0"><span class="badge b-error">خطأ</span> ${esc(e)}</p>`).join('')}${r.warnings.map((e) => `<p style="margin:3px 0"><span class="badge b-warn">تنبيه</span> ${esc(e)}</p>`).join('')}${!r.errors.length && !r.warnings.length ? '<span class="badge b-ok">لا ملاحظات ✔</span>' : ''}
+    <div class="row" style="margin-top:12px"><button data-shact="save" ${r.errors.length ? 'disabled' : ''}>حفظ الكشف</button>${r.errors.length ? `<span class="small">لا يمكن الحفظ قبل معالجة ${r.errors.length} خطأ</span>` : ''}</div>`;
+}
+const relist = () => { const e = $('#sh-lists'); if (e) e.innerHTML = KINDS[cur.kind].lists.map(listCard).join(''); refreshCheck(); };
+const remeet = () => { const e = $('#sh-meet'); if (e) e.innerHTML = KINDS[cur.kind].multi ? meetingsCard() : ''; };
+const refreshCheck = () => { const e = $('#sh-check'); if (e) e.innerHTML = checkHTML(); };
+const syncMeetings = () => { const n = +cur.meta.meetings || 0; while (cur.meetings.length < n) cur.meetings.push({ n: cur.meetings.length + 1, date: '', present: [] }); while (cur.meetings.length > Math.max(n, 1)) { const l = cur.meetings[cur.meetings.length - 1]; if (l.date || l.present.length) break; cur.meetings.pop(); } };
+
+// ---------- الأحداث ----------
+function onInput(e) {
+  if (!live()) return; const t = e.target, d = t.dataset || {}, isChange = e.type === 'change';
+  if (d.sm) { const f = KINDS[cur.kind].fields.find((x) => x.key === d.sm); const raw = t.value; cur.meta[d.sm] = f && (f.type === 'number' || f.type === 'int') ? (raw === '' ? '' : +raw) : raw; if (isChange && d.sm === 'meetings') { syncMeetings(); remeet(); relist(); } else if (d.sm === 'mode') { const e = $('#sh-vl'); if (e) e.textContent = raw === 'online' ? 'المنصة (زوم/تيمز…) *' : 'مكان التنفيذ (القاعة) *'; refreshCheck(); } else refreshCheck(); }
+  else if (d.sl) { cur.meta[d.sl] = t.value.split('\n').map((x) => x.trim()).filter(Boolean); refreshCheck(); }
+  else if (d.sg) { if (!isChange) return; const s = new Set(cur.meta.groups || []); t.checked ? s.add(d.sg) : s.delete(d.sg); cur.meta.groups = [...s]; relist(); }
+  else if (d.sv !== undefined) { if (!isChange) return; const i = +d.sv; while (cur.meetings.length <= i) cur.meetings.push({ n: cur.meetings.length + 1, date: '', present: [] }); cur.meetings[i].date = t.value; if (!t.value) cur.meetings[i].present = []; relist(); }
+  else if (d.sp) { const [i, id] = d.sp.split('|'); const a = cur.meetings[+i].present; if (t.checked) { if (!a.includes(id)) a.push(id); } else cur.meetings[+i].present = a.filter((x) => x !== id); refreshCheck(); }
+  else if (d.sq) { q[d.sq] = t.value; const L = KINDS[cur.kind].lists.find((x) => x.key === d.sq), r = $('#res-' + d.sq); if (r) r.innerHTML = results(L); }
+  else if (d.shall) { if (!isChange) return; showAll[d.shall] = t.checked; const L = KINDS[cur.kind].lists.find((x) => x.key === d.shall), r = $('#res-' + d.shall); if (r) r.innerHTML = results(L); }
+  else if (t.id === 'sh-act') { cur.activityId = t.value || null; refreshCheck(); }
+  else if (t.id === 'sh-ctr') { cur.centerId = t.value || null; refreshCheck(); }
+}
+
+async function onClick(e) {
+  const t = e.target.closest('[data-shact]'); if (!t) return; const a = t.dataset.shact, db = ctx.db, p = ctx.project();
+  if (a === 'new') { cur = newSheet(t.dataset.k, p.id, ctx.myCenters()[0]?.id); return editor(); }
+  if (a === 'edit') { cur = JSON.parse(JSON.stringify(db.sheets.find((s) => s.id === t.dataset.id))); return editor(); }
+  if (a === 'del') { if (!(await ctx.ask('حذف هذا الكشف وكل جلساته؟'))) return; removeSheet(db, t.dataset.id); ctx.save(); return vSheets(); }
+  if (!live()) return;
+  const L = t.dataset.l && KINDS[cur.kind].lists.find((x) => x.key === t.dataset.l);
+  if (a === 'cancel') { if (!(await ctx.ask('إغلاق الكشف دون حفظ التعديلات؟'))) return; cur = null; return vSheets(); }
+  if (a === 'add') { (cur[L.key] ||= []).push(t.dataset.id); return relist(); }
+  if (a === 'rm') { if (L.inline) cur.guests.splice(+t.dataset.id, 1); else { cur[L.key] = cur[L.key].filter((x) => x !== t.dataset.id); cur.meetings.forEach((m) => (m.present = m.present.filter((x) => x !== t.dataset.id))); } return relist(); }
+  if (a === 'col') { const m = cur.meetings[+t.dataset.i], ids = [...new Set(cur.roster || [])], all = ids.every((id) => m.present.includes(id)); m.present = all ? [] : [...ids]; return relist(); }
+  if (a === 'quick') { quick[t.dataset.l] = !quick[t.dataset.l]; return relist(); }
+  if (a === 'quickSave') return quickSave(L);
+  if (a === 'save') return save();
+}
+
+async function quickSave(L) {
+  const db = ctx.db, g = (id) => $('#' + id)?.value ?? '', name = g('qa-name').trim().replace(/\s+/g, ' '), sex = g('qa-sex'), age = g('qa-age') === '' ? null : +g('qa-age'), dis = g('qa-dis') === '1', dt = g('qa-dt'), ph = g('qa-ph').replace(/[\s-]/g, ''), er = [];
+  if (!nameOk(name)) er.push('الاسم يجب أن يكون ثلاثة مقاطع على الأقل'); if (!sex) er.push('اختر الجنس'); if (age == null || !Number.isInteger(age) || age < 3 || age > 90) er.push('العمر مطلوب (3–90)'); if (dis && !dt) er.push('حدّد نوع الإعاقة'); if (ph && !phoneOk(ph)) er.push('الهاتف يبدأ بـ 059 أو 056 ويتكون من 10 أرقام');
+  const rg = L && (cur.meta.groups || []).filter((k) => L.allowed.includes(k)).map((k) => SG[k]); if (L?.age && age != null && rg.length && !rg.some((x) => age >= x.min && age <= x.max)) er.push(`العمر ${age} خارج الفئات المختارة`);
+  if (er.length) { $('#qa-err').textContent = er.join(' — '); return; }
+  if (L.inline) { cur.guests.push({ name, sex, age, disability: dis, dtype: dis ? dt : '' }); quick[L.key] = true; return relist(); }
+  const dup = db.beneficiaries.find((x) => x.name.trim() === name && x.sex === sex); if (dup && !(await ctx.ask('يوجد مستفيد بنفس الاسم والجنس في السجل. هل هو شخص آخر؟ (تأكيد = إضافة كشخص جديد، إلغاء = استخدم الموجود)'))) { (cur[L.key] ||= []).includes(dup.id) || cur[L.key].push(dup.id); return relist(); }
+  const b = { id: uid('b'), name, sex, age, disability: dis, disabilityType: dis ? dt : '', phone: ph, center: cur.centerId }; db.beneficiaries.push(b); (cur[L.key] ||= []).push(b.id); ctx.save(); return relist();
+}
+
+async function save() {
+  const db = ctx.db, r = validateSheet(cur, db); if (r.errors.length) return ctx.toast('عالج الأخطاء أولاً');
+  if (r.warnings.length && !(await ctx.ask('تنبيهات:\n' + r.warnings.map((w) => '• ' + w).join('\n') + '\n\nحفظ رغم ذلك؟'))) return;
+  commitSheet(db, cur); ctx.save(); ctx.toast('تم حفظ الكشف وتوليد جلساته'); cur = null; vSheets();
+}

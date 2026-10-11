@@ -2,7 +2,7 @@
 import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path'; import crypto from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 
-export const COLLS = ['projects', 'centers', 'beneficiaries', 'sessions', 'enrollments', 'surveyResponses'];
+export const COLLS = ['projects', 'centers', 'beneficiaries', 'sessions', 'enrollments', 'surveyResponses', 'sheets'];
 export const sha = (s) => crypto.createHash('sha256').update(s).digest('hex');
 
 export function openDb(file = ':memory:') {
@@ -22,12 +22,12 @@ const ALL = Object.fromEntries(COLLS.map((c) => [c, 'all']));
 export const DEFAULT_POLICY = {
   admin: { read: ALL, write: ALL, hidden: {}, routes: '*', manageUsers: true },
   meal: { read: ALL, write: ALL, hidden: {}, routes: '*' },
-  entry: { read: ALL, write: { sessions: 'all', beneficiaries: 'all', centers: 'all', surveyResponses: 'all', enrollments: 'all' }, hidden: {}, routes: ['dash', 'sessions', 'bnf', 'centers', 'check', 'surveys', 'export', 'cloud'] },
-  coordinator: { read: { projects: 'all', centers: 'all', beneficiaries: 'all', sessions: 'own', surveyResponses: 'own', enrollments: 'all' }, write: { sessions: 'own', beneficiaries: 'all', surveyResponses: 'own' }, hidden: { beneficiaries: ['phone', 'disabilityType'] }, routes: ['dash', 'sessions', 'bnf', 'check', 'surveys', 'cloud'] },
+  entry: { read: ALL, write: { sessions: 'all', sheets: 'all', beneficiaries: 'all', centers: 'all', surveyResponses: 'all', enrollments: 'all' }, hidden: {}, routes: ['dash', 'sheets', 'sessions', 'bnf', 'centers', 'check', 'surveys', 'export', 'cloud'] },
+  coordinator: { read: { projects: 'all', centers: 'all', beneficiaries: 'all', sessions: 'own', sheets: 'own', surveyResponses: 'own', enrollments: 'all' }, write: { sessions: 'own', sheets: 'own', beneficiaries: 'all', surveyResponses: 'own' }, hidden: { beneficiaries: ['phone', 'disabilityType'] }, routes: ['dash', 'sheets', 'sessions', 'bnf', 'check', 'surveys', 'cloud'] },
 };
 export function getPolicy(db) { const r = db.prepare("SELECT v FROM policy WHERE k='roles'").get(); return r ? { ...DEFAULT_POLICY, ...JSON.parse(r.v), admin: DEFAULT_POLICY.admin } : DEFAULT_POLICY; }
 export function setPolicy(db, p) { db.prepare("INSERT OR REPLACE INTO policy VALUES('roles',?)").run(JSON.stringify(p)); }
-export const centerOf = (coll, d) => (!d ? null : coll === 'sessions' ? d.centerId ?? null : coll === 'surveyResponses' ? d.answers?.center ?? null : null);
+export const centerOf = (coll, d) => (!d ? null : (coll === 'sessions' || coll === 'sheets') ? d.centerId ?? null : coll === 'surveyResponses' ? d.answers?.center ?? null : null);
 const userCenters = (u) => { try { return JSON.parse(u.centers || '[]'); } catch { return []; } };
 const stripHidden = (coll, data, pol) => { const h = pol.hidden?.[coll]; if (!h || !data) return data; const d = { ...data }; for (const f of h) delete d[f]; return d; };
 

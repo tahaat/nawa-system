@@ -9,6 +9,8 @@ import { initBuilder, builderCard } from './form-builder.js';
 import { importResponses, computeOutcomes } from '../core/outcomes.js';
 import { france } from './sim_france.js';
 import { vPlan, initPlan } from './plan-view.js';
+import { vSheets, initSheets } from './sheets-view.js';
+import { commitSheet } from '../core/sheets.js';
 import { purgeDemo, uid, GROUPS, AGE_BANDS, ageAt, bandOf, iso } from '../core/model.js';
 import { dashboard, sttRows, sessionCats, sumCats, context } from '../core/aggregate.js';
 import { validateEntry, reconcile } from '../core/validate.js';
@@ -22,7 +24,7 @@ const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const view = () => $('#view');
 const toast = (m) => { const t = $('#toast'); t.textContent = m; t.style.display = 'block'; setTimeout(() => (t.style.display = 'none'), 3500); };
-const ROUTES = { dash: ['لوحة القيادة', vDash], sessions: ['الجلسات (STT)', vSessions], bnf: ['المستفيدون (BTT)', vBnf], projects: ['المشاريع (PTT)', vProjects], plan: ['ملف PTT الكامل', vPlan], centers: ['المراكز', vCenters], check: ['التحقق والتكامل', vCheck], surveys: ['الاستبيانات (KoBo)', vSurveys], users: ['المستخدمون والصلاحيات', vUsers], cloud: ['السحابة والمزامنة', vCloud], export: ['التصدير والنسخ', vExport] };
+const ROUTES = { dash: ['لوحة القيادة', vDash], sheets: ['كشوفات الحضور (إدخال)', vSheets], sessions: ['الجلسات (STT)', vSessions], bnf: ['المستفيدون (BTT)', vBnf], projects: ['المشاريع (PTT)', vProjects], plan: ['ملف PTT الكامل', vPlan], centers: ['المراكز', vCenters], check: ['التحقق والتكامل', vCheck], surveys: ['الاستبيانات (KoBo)', vSurveys], users: ['المستخدمون والصلاحيات', vUsers], cloud: ['السحابة والمزامنة', vCloud], export: ['التصدير والنسخ', vExport] };
 const me = () => sync.cfg.me || null;
 const allowed = (r) => { const p = me()?.policy; if (r === 'users') return !!p?.manageUsers; return !p || p.routes === '*' || p.routes.includes(r); };
 const myCenters = () => { const x = me(); return x?.role === 'coordinator' || x?.policy?.write?.sessions === 'own' ? db.centers.filter((c) => x.centers.includes(c.id)) : db.centers; };
@@ -94,7 +96,7 @@ function outcomeBlock(p) {
   return `<div class="card"><h3>مؤشرات النتائج (من الاستبيانات)</h3><table><tr><th>المؤشر</th><th>ذكور</th><th>إناث</th><th>ذكور (إعاقة)</th><th>إناث (إعاقة)</th><th>الإجمالي</th></tr>${os.map((o) => { const N = { M: 0, F: 0, CWD_M: 0, CWD_F: 0 }, D = { ...N }; o.quarters.forEach((q) => Object.keys(N).forEach((k) => { N[k] += q.N[k]; D[k] += q.D[k]; })); const tn = Object.values(N).reduce((a, b) => a + b, 0), td = Object.values(D).reduce((a, b) => a + b, 0);
     return `<tr><td>${esc(o.ind.name)}${o.issues.length ? ` <span class="badge b-warn" title="${esc(o.issues.slice(0, 5).join(' | '))}">${o.issues.length}</span>` : ''}</td>${['M', 'F', 'CWD_M', 'CWD_F'].map((k) => `<td>${N[k]}/${D[k]} (${pct(N[k], D[k])})</td>`).join('')}<td><b>${tn}/${td} (${pct(tn, td)})</b></td></tr>`; }).join('')}</table></div>`;
 }
-const hasDemo = () => ['projects', 'centers', 'beneficiaries', 'sessions', 'surveyResponses'].some((k) => db[k].some((r) => r.demo));
+const hasDemo = () => ['projects', 'centers', 'beneficiaries', 'sessions', 'surveyResponses', 'sheets'].some((k) => db[k].some((r) => r.demo));
 const empty = () => (view().innerHTML = `<div class="card"><h2>ابدأ</h2><p>لا يوجد مشروع بعد.</p><button data-act="newProject">إنشاء مشروع</button> <button class="sec" data-act="demo">تحميل مشروع تجريبي</button></div>`);
 
 // ======================= المشاريع =======================
@@ -355,7 +357,7 @@ const actions = {
     db.beneficiaries.push(b); save(); rerender();
   },
   async quickBnf() { const n = await askText('الاسم الرباعي؟'); if (!n) return; const age = await askText('العمر؟'); const sx = await ask('هل هو ذكر؟ (إلغاء = أنثى)') ? 'M' : 'F'; const b = { id: uid('b'), name: n.trim(), sex: sx, age: +age || null, disability: await ask('هل لديه إعاقة؟'), disabilityType: '' }; db.beneficiaries.push(b); sess.att.add(b.id); save(); sess.rd?.(); vSessions(); },
-  async delBnf(t) { if (db.sessions.some((s) => s.attendance?.includes(t.dataset.id)) && !(await ask('للمستفيد حضور مسجّل؛ سيُحذف من الجلسات أيضًا. متابعة؟'))) return; db.sessions.forEach((s) => s.attendance && (s.attendance = s.attendance.filter((x) => x !== t.dataset.id))); db.beneficiaries = db.beneficiaries.filter((b) => b.id !== t.dataset.id); save(); rerender(); },
+  async delBnf(t) { if (db.sessions.some((s) => s.attendance?.includes(t.dataset.id)) && !(await ask('للمستفيد حضور مسجّل؛ سيُحذف من الجلسات أيضًا. متابعة؟'))) return; db.sessions.forEach((s) => s.attendance && (s.attendance = s.attendance.filter((x) => x !== t.dataset.id))); db.sheets.forEach((sh) => { const had = [sh.roster, sh.rosterP].some((a) => a?.includes(t.dataset.id)); if (!had) return; sh.roster = sh.roster.filter((x) => x !== t.dataset.id); sh.rosterP = (sh.rosterP || []).filter((x) => x !== t.dataset.id); sh.meetings.forEach((m) => (m.present = m.present.filter((x) => x !== t.dataset.id))); commitSheet(db, sh); }); db.beneficiaries = db.beneficiaries.filter((b) => b.id !== t.dataset.id); save(); rerender(); },
   async impBnf() {
     const f = $('#bimp').files[0]; if (!f) return toast('اختر ملفًا'); const wb = new ExcelJS.Workbook(); await wb.xlsx.load(await f.arrayBuffer()); const ws = wb.worksheets[0];
     const head = ws.getRow(1).values.map((v) => String(v?.result ?? v ?? '').trim()); const col = (re) => head.findIndex((h) => re.test(h));
@@ -378,7 +380,7 @@ const actions = {
     if (warn.length && !(await ask('تحذيرات:\n' + warn.map((i) => '• ' + i.msg).join('\n') + '\nحفظ رغم ذلك؟'))) return;
     db.sessions.push(s); sess.att = new Set(); sess.counts = null; sess.bandCounts = null; save(); toast('تم حفظ الجلسة'); vSessions();
   },
-  async delSess(t) { if (!(await ask('حذف الجلسة؟'))) return; db.sessions = db.sessions.filter((s) => s.id !== t.dataset.id); save(); rerender(); },
+  async delSess(t) { if (db.sessions.find((x) => x.id === t.dataset.id)?.sheetId) return toast('هذه الجلسة من كشف حضور؛ عدّلها أو احذفها من شاشة «كشوفات الحضور»'); if (!(await ask('حذف الجلسة؟'))) return; db.sessions = db.sessions.filter((s) => s.id !== t.dataset.id); save(); rerender(); },
   async xPTT() {
     const p = project(), tpl = await (await fetch(pttTemplate)).arrayBuffer(); const { data, warnings } = await exportPTT(tpl, p, db, DOMParser, XMLSerializer);
     dl(data, `PTT_${p.name}.xlsx`, XL); $('#xw').innerHTML = warnings.length ? `<h3>ملاحظات على الملف المصدَّر</h3>${warnings.map((w) => `<p><span class="badge b-warn">!</span> ${esc(w)}</p>`).join('')}` : '<span class="badge b-ok">لا ملاحظات</span>';
@@ -391,7 +393,7 @@ const actions = {
 };
 
 $('.logo').src = logoUrl; { const l = document.createElement('link'); l.rel = 'icon'; l.href = logoUrl; document.head.append(l); }
-initPlan({ project, save, rerender, view, empty }); initBuilder({ project, save, rerender }); await load(); nav(); go('dash'); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
+initPlan({ project, save, rerender, view, empty }); initSheets({ db, project, save, view, empty, ask, toast, myCenters, route: () => route }); initBuilder({ project, save, rerender }); await load(); nav(); go('dash'); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
 setInterval(() => { if (sync.cfg.auto) doSync(); else setSyncBadge(); }, 60000);
 window.addEventListener('online', () => sync.cfg.auto && doSync());
 let st; document.addEventListener('change', () => { clearTimeout(st); st = setTimeout(() => sync.cfg.auto && doSync(), 4000); });
