@@ -4,6 +4,7 @@ import { ageAt, bandOf, iso, uid } from '../core/model.js';
 import { DTYPES, commitSheet } from '../core/sheets.js';
 import { nameState, phoneState, idState, emailState, normPhone, phoneOkStrict, digits, emailOk, ATT_TYPES, ATT_MAX, urlOk, nameNeed, words, toLatin } from '../core/bnf.js';
 import { putFile, getFile, delFile, fileIds } from './store.js';
+import { putDraft, delDraft, draftsCard, newDraftId } from './drafts.js';
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const $ = (s, r = document) => r.querySelector(s);
 let ctx; const st = { q: '', edit: null, keep: [], pend: [], gone: [], have: new Set() };
@@ -48,18 +49,29 @@ function formHtml(b) {
     <label>اسم جهة اتصال الطوارئ<input id="ben" placeholder="مثال: والد/ة أو قريب" value="${esc(v.emergencyName || '')}" style="width:200px"></label>
     <label>هاتف الطوارئ<input id="bep" data-chk="ephone" inputmode="numeric" dir="ltr" placeholder="0561234567" value="${esc(v.emergencyPhone || '')}" style="width:150px"><span class="fh"></span></label></div>
     <div id="batt">${attHtml()}</div></details>
-    <div class="row" style="margin-top:10px"><button type="button" data-act="bSave">${b ? 'حفظ التعديل' : '+ إضافة'}</button>${b ? '<button type="button" class="sec" data-act="bCancel">إلغاء</button>' : ''}</div></div>`;
+    <div class="row" style="margin-top:10px"><button type="button" data-act="bSave">${b ? 'حفظ التعديل' : '+ إضافة'}</button>${b ? '' : '<button type="button" class="sec" data-act="bDraft" title="احفظ ما كتبته كمسودة وأكمله لاحقًا">حفظ كمسودة</button>'}${b ? '<button type="button" class="sec" data-act="bCancel">إلغاء</button>' : ''}</div></div>`;
 }
+// مسودة مستفيد جديد: الحقول النصية فقط (المرفقات الجديدة لا تُحفظ في المسودة)
+const FIELDS = ['bn', 'bs', 'ba', 'bd', 'bdis', 'bdt', 'bp', 'bem', 'bnid', 'ben', 'bep'];
+const snap = () => Object.fromEntries(FIELDS.map((i) => [i, $('#' + i)?.value ?? '']));
+const snapDirty = (d) => !!(d.bn.trim() || d.ba || d.bd || d.bp.trim() || d.bem.trim() || d.bnid.trim() || d.ben.trim() || d.bep.trim());
+export function bnfAuto(clear = false) {
+  if (!$('#bnform') || st.edit) return false; const d = snap(); if (!snapDirty(d)) return false; st.draftId ||= newDraftId('bnf');
+  putDraft({ id: st.draftId, type: 'bnf', projectId: ctx.ui?.projectId, title: `مستفيد — ${d.bn.trim() || 'بلا اسم بعد'}`, data: d });
+  if (clear) { st.draftId = null; st.fill = null; } return true;
+}
+export function restoreBnf(d, id) { st.edit = null; st.keep = []; st.pend = []; st.gone = []; st.fill = d; st.draftId = id; }
 export async function openBnf(id) { if (!ctx.db.beneficiaries.some((b) => b.id === id)) return false; st.edit = id; await loadAtt(cur()); vBnf(); scrollTo({ top: 0 }); return true; }
 export function vBnf() {
   const db = ctx.db, q = st.q.trim(), list = db.beneficiaries.filter((b) => !q || b.name.includes(q) || (b.phone || '').includes(q) || (b.nationalId || '').includes(q)).slice(0, 400), need = nameNeed(), today = iso(new Date());
-  ctx.view().innerHTML = formHtml(cur()) + `
+  ctx.view().innerHTML = (st.edit ? '' : draftsCard(null, 'bnf')) + formHtml(cur()) + `
   <div class="card"><h2>استيراد من Excel</h2><p class="small">الأعمدة المدعومة: الاسم، الجنس، العمر، تاريخ الميلاد، الإعاقة، نوع الإعاقة، الجوال، الهوية، البريد، اسم الطوارئ، هاتف الطوارئ. تُتجاهل القيم غير الصحيحة (جوال/هوية/بريد) وتُعدّ في التقرير.</p>
   <div class="row"><label>الملف<input type="file" id="bimp" accept=".xlsx"></label><button class="sec" data-act="bImp">استيراد</button><button class="sec" data-act="bTpl">تنزيل قالب الاستيراد</button></div><p id="bimsg" class="small"></p></div>
   <div class="card"><div class="row"><label>بحث<input id="bq" placeholder="اسم أو جوال أو هوية" value="${esc(q)}"></label><span class="small">${db.beneficiaries.length} مستفيد</span></div>
   <div class="tw"><table><tr><th>الاسم</th><th>الجنس</th><th>العمر</th><th>الفئة</th><th>إعاقة</th><th>الجوال</th><th>مرفقات</th><th>جلسات حضور</th><th></th></tr>${list.map((b) => { const age = ageAt(b, today), n = db.sessions.filter((s) => s.mode === 'roll' && s.attendance.includes(b.id)).length, short = words(b.name) < need;
     return `<tr><td>${esc(b.name)}${short ? ' <span class="badge b-warn">منقوص</span>' : ''}</td><td>${b.sex === 'M' ? 'ذكر' : 'أنثى'}</td><td>${age ?? '؟'}</td><td>${bandOf(age)?.key || '—'}</td><td>${b.disability ? esc(b.disabilityType || 'نعم') : ''}</td><td dir="ltr">${esc(b.phone || '')}</td><td>${(b.attachments || []).length || ''}</td><td>${n}</td><td><button class="sec" data-act="bEdit" data-id="${b.id}">تعديل</button> <button class="x" data-act="bDel" data-id="${b.id}">حذف</button></td></tr>`; }).join('')}</table></div></div>`;
   $('#bq').addEventListener('input', (e) => { st.q = e.target.value; clearTimeout(vBnf.t); vBnf.t = setTimeout(() => { vBnf(); const x = $('#bq'); x.focus(); x.setSelectionRange(x.value.length, x.value.length); }, 300); });
+  if (st.fill && !st.edit) { for (const [i, v] of Object.entries(st.fill)) { const e = $('#' + i); if (e) e.value = v; } if ($('#bdtw')) $('#bdtw').hidden = $('#bdis')?.value !== '1'; st.fill = null; }
   document.querySelectorAll('#bnform [data-chk]').forEach((t) => t.value && paint(t));
 }
 async function loadAtt(b) { st.keep = (b?.attachments || []).map((a) => ({ ...a })); st.pend = []; st.gone = []; st.have = await fileIds(); }
@@ -87,6 +99,7 @@ export function bnfActions({ toast, ask, save, rerender, dl }) {
   });
   const X = {
     async bEdit(t) { st.edit = t.dataset.id; await loadAtt(cur()); vBnf(); scrollTo({ top: 0, behavior: 'smooth' }); },
+    bDraft() { if (!bnfAuto(true)) return toast('اكتب بعض البيانات أولاً'); toast('حُفظ كمسودة'); vBnf(); },
     bCancel() { st.edit = null; st.keep = []; st.pend = []; vBnf(); },
     async bSave() {
       const b0 = cur(), r = read(); if (!r.name) { $('#bn').focus(); return toast('الاسم مطلوب'); }
@@ -105,7 +118,7 @@ export function bnfActions({ toast, ask, save, rerender, dl }) {
       const att = [...st.keep, ...st.pend].map(({ blob, ...m }) => m), now = new Date().toISOString();
       if (b0) Object.assign(b0, r, { attachments: att, updatedAt: now }); else ctx.db.beneficiaries.push({ id: uid('b'), ...r, attachments: att, createdAt: now });
       if (!att.length) { const x = b0 || ctx.db.beneficiaries.at(-1); delete x.attachments; }
-      st.edit = null; st.keep = []; st.pend = []; st.gone = []; save(); toast(b0 ? 'حُفظ التعديل' : 'أُضيف المستفيد'); vBnf();
+      if (st.draftId) delDraft(st.draftId); st.draftId = null; st.edit = null; st.keep = []; st.pend = []; st.gone = []; save(); toast(b0 ? 'حُفظ التعديل' : 'أُضيف المستفيد'); vBnf();
     },
     async bDel(t) { const b = ctx.db.beneficiaries.find((x) => x.id === t.dataset.id); if (ctx.db.sessions.some((s) => s.attendance?.includes(b.id)) && !(await ask('للمستفيد حضور مسجّل؛ سيُحذف من الجلسات أيضًا. متابعة؟'))) return; if ((b.attachments || []).length && !(await ask('ستُحذف مرفقاته أيضًا. متابعة؟'))) return; await delBnfFull(b.id); if (st.edit === b.id) st.edit = null; save(); vBnf(); },
     async bAttAdd() {

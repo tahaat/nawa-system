@@ -1,21 +1,32 @@
 // شاشة «الكشوفات»: نماذج إدخال مقيّدة تطابق كشوفات الحضور الورقية (Word). الأعداد تُحسب من القائمة ولا تُكتب يدوياً.
 import { KINDS, SG, DTYPES, newSheet, validateSheet, derivedCounts, completion, commitSheet, removeSheet, peopleOf, nameOk, phoneOk, heldMeetings } from '../core/sheets.js';
 import { ageAt, uid } from '../core/model.js';
+import { putDraft, delDraft, getDraft, draftsCard } from './drafts.js';
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const $ = (s, r = document) => r.querySelector(s);
-let ctx, cur = null, bound = false; const q = {}, showAll = {}, quick = {};
+let ctx, cur = null, base = '', bound = false; const q = {}, showAll = {}, quick = {};
 
 export function initSheets(c) { ctx = c; if (bound) return; bound = true; document.addEventListener('input', onInput); document.addEventListener('change', onInput); document.addEventListener('click', onClick); }
 const live = () => ctx.route() === 'sheets' && cur;
+const setCur = (x, draft = false) => { cur = x; base = draft ? '__draft__' : JSON.stringify(x); };
+const dId = () => 'sheet:' + cur.id;
+const sheetTitle = (c) => `${KINDS[c.kind].name}${c.meta.title || (c.meta.activities || [])[0] || c.meta.type || c.meta.body ? ' — ' + (c.meta.title || (c.meta.activities || [])[0] || c.meta.type || c.meta.body) : ''}${c.meta.date || c.meta.start ? ' — ' + (c.meta.date || c.meta.start) : ''}`;
+// حفظ الكشف الجاري كمسودة (إن تغيّر شيء). clear=true عند مغادرة الشاشة فيعود المستخدم لقائمة الكشوف والمسودات
+export function sheetAuto(clear = false) {
+  if (!cur) return false; const dirty = JSON.stringify(cur) !== base; let saved = false;
+  if (dirty) { putDraft({ id: dId(), type: 'sheet', projectId: cur.projectId, title: sheetTitle(cur), data: cur }); saved = true; }
+  if (clear) { cur = null; base = ''; } return saved;
+}
+export function restoreSheet(data) { setCur(JSON.parse(JSON.stringify(data)), true); }
 
 // ---------- القائمة ----------
-export function openSheet(id) { const x = ctx.db.sheets.find((s) => s.id === id); if (!x) return false; cur = JSON.parse(JSON.stringify(x)); editor(); return true; }
+export function openSheet(id) { const x = ctx.db.sheets.find((s) => s.id === id); if (!x) return false; setCur(JSON.parse(JSON.stringify(x))); editor(); return true; }
 export function vSheets() {
   const p = ctx.project(); if (!p) return ctx.empty();
   if (cur && cur.projectId !== p.id) cur = null;
   if (cur) return editor();
   const db = ctx.db, list = db.sheets.filter((s) => s.projectId === p.id).sort((a, b) => ((b.meta.date || b.meta.start || '')).localeCompare(a.meta.date || a.meta.start || ''));
-  ctx.view().innerHTML = `<div class="card"><h2>كشف حضور جديد</h2><p class="small">اختر نوع الكشف كما في الكشوف الورقية. كل ما يُكتب هنا يُفحص قبل الحفظ، ولا يُحفظ كشف فيه خطأ.</p>
+  ctx.view().innerHTML = draftsCard(p.id, 'sheet') + `<div class="card"><h2>كشف حضور جديد</h2><p class="small">اختر نوع الكشف كما في الكشوف الورقية. كل ما يُكتب هنا يُفحص قبل الحفظ، ولا يُحفظ كشف فيه خطأ.</p>
     <div class="row">${Object.entries(KINDS).map(([k, K]) => `<button data-shact="new" data-k="${k}">${esc(K.name)}</button>`).join('')}</div></div>
   <div class="card"><h2>الكشوف المسجَّلة (${list.length})</h2>${list.length ? `<div class="tw"><table><tr><th>النوع</th><th>العنوان</th><th>التاريخ</th><th>المركز</th><th>الحضور</th><th>الحالة</th><th></th></tr>${list.map((s) => { const K = KINDS[s.kind], d = derivedCounts(s, db), v = validateSheet(s, db, { others: db.sessions.filter((x) => x.sheetId !== s.id) });
     return `<tr><td>${esc(K.name)}</td><td>${esc(s.meta.title || (s.meta.activities || [])[0] || s.meta.type || s.meta.body || '')}</td><td>${esc(K.multi ? `${s.meta.start || ''} → ${s.meta.end || ''}` : s.meta.date || '')}${K.multi ? `<br><span class="small">${heldMeetings(s).length} / ${s.meta.meetings || '؟'} لقاء</span>` : ''}</td><td>${esc(db.centers.find((c) => c.id === s.centerId)?.name || '')}</td><td><b>${d.total}</b> <span class="small">(${d.M}ذ/${d.F}إ)</span></td><td>${v.errors.length ? `<span class="badge b-error" title="${esc(v.errors.join(' | '))}">${v.errors.length} خطأ</span>` : v.warnings.length ? `<span class="badge b-warn" title="${esc(v.warnings.join(' | '))}">${v.warnings.length} تنبيه</span>` : '<span class="badge b-ok">✔</span>'}</td><td><button class="sec" data-shact="edit" data-id="${s.id}">فتح</button> <button class="x" data-shact="del" data-id="${s.id}">حذف</button></td></tr>`; }).join('')}</table></div>` : '<p class="small">لا كشوف بعد.</p>'}</div>`;
@@ -86,11 +97,12 @@ function checkHTML() {
   return `<h2>الأعداد (تُحسب تلقائياً من القائمة)</h2><div class="row"><span class="badge b-info">الإجمالي <b>${d.total}</b></span><span class="badge b-info">ذكور <b>${d.M}</b></span><span class="badge b-info">إناث <b>${d.F}</b></span><span class="badge b-info">ذكور ذوو إعاقة <b>${d.MWD}</b></span><span class="badge b-info">إناث ذوات إعاقة <b>${d.FWD}</b></span>${types ? `<span class="badge b-info">نوع الإعاقة: ${esc(types)}</span>` : ''}
     ${comp && cur.meta.mandatoryPct != null && cur.meta.mandatoryPct !== '' ? `<span class="badge b-ok">مستوفون لنسبة الحضور (${cur.meta.mandatoryPct}%): <b>${comp.filter((c) => c.ok).length}</b> من ${comp.length}</span>` : ''}</div>
     <h2>الفحص قبل الحفظ</h2>${r.errors.map((e) => `<p style="margin:3px 0"><span class="badge b-error">خطأ</span> ${esc(e)}</p>`).join('')}${r.warnings.map((e) => `<p style="margin:3px 0"><span class="badge b-warn">تنبيه</span> ${esc(e)}</p>`).join('')}${!r.errors.length && !r.warnings.length ? '<span class="badge b-ok">لا ملاحظات ✔</span>' : ''}
-    <div class="row" style="margin-top:12px"><button data-shact="save" ${r.errors.length ? 'disabled' : ''}>حفظ الكشف</button>${r.errors.length ? `<span class="small">لا يمكن الحفظ قبل معالجة ${r.errors.length} خطأ</span>` : ''}</div>`;
+    <div class="row" style="margin-top:12px"><button data-shact="save" ${r.errors.length ? 'disabled' : ''}>حفظ الكشف</button><button class="sec" data-shact="draft" title="احفظ ما أنجزته الآن كمسودة وأكمله لاحقًا">حفظ كمسودة</button>${r.errors.length ? `<span class="small">لا يمكن الحفظ قبل معالجة ${r.errors.length} خطأ</span>` : ''}</div>`;
 }
 const relist = () => { const e = $('#sh-lists'); if (e) e.innerHTML = KINDS[cur.kind].lists.map(listCard).join(''); refreshCheck(); };
 const remeet = () => { const e = $('#sh-meet'); if (e) e.innerHTML = KINDS[cur.kind].multi ? meetingsCard() : ''; };
-const refreshCheck = () => { const e = $('#sh-check'); if (e) e.innerHTML = checkHTML(); };
+// لا نستبدل العقدة إن لم يتغير المحتوى: وإلا ضاعت نقرة الزر حين يُطلق «change» عند فقدان التركيز قبل رفع الفأرة
+const refreshCheck = () => { const e = $('#sh-check'); if (!e) return; const h = checkHTML(); if (e.dataset.h !== h) { e.innerHTML = h; e.dataset.h = h; } };
 const syncMeetings = () => { const n = +cur.meta.meetings || 0; while (cur.meetings.length < n) cur.meetings.push({ n: cur.meetings.length + 1, date: '', present: [] }); while (cur.meetings.length > Math.max(n, 1)) { const l = cur.meetings[cur.meetings.length - 1]; if (l.date || l.present.length) break; cur.meetings.pop(); } };
 
 // ---------- الأحداث ----------
@@ -109,12 +121,13 @@ function onInput(e) {
 
 async function onClick(e) {
   const t = e.target.closest('[data-shact]'); if (!t) return; const a = t.dataset.shact, db = ctx.db, p = ctx.project();
-  if (a === 'new') { cur = newSheet(t.dataset.k, p.id, ctx.myCenters()[0]?.id); return editor(); }
-  if (a === 'edit') { cur = JSON.parse(JSON.stringify(db.sheets.find((s) => s.id === t.dataset.id))); return editor(); }
+  if (a === 'new') { setCur(newSheet(t.dataset.k, p.id, ctx.myCenters()[0]?.id)); return editor(); }
+  if (a === 'edit') { setCur(JSON.parse(JSON.stringify(db.sheets.find((s) => s.id === t.dataset.id)))); return editor(); }
   if (a === 'del') { if (!(await ctx.ask('حذف هذا الكشف وكل جلساته؟'))) return; removeSheet(db, t.dataset.id); ctx.save(); return vSheets(); }
   if (!live()) return;
   const L = t.dataset.l && KINDS[cur.kind].lists.find((x) => x.key === t.dataset.l);
-  if (a === 'cancel') { if (!(await ctx.ask('إغلاق الكشف دون حفظ التعديلات؟'))) return; cur = null; return vSheets(); }
+  if (a === 'draft') { putDraft({ id: dId(), type: 'sheet', projectId: cur.projectId, title: sheetTitle(cur), data: cur }); cur = null; base = ''; ctx.toast('حُفظ كمسودة — تجدها في أعلى هذه الشاشة وفي زر المسودات'); return vSheets(); }
+  if (a === 'cancel') { const has = !!getDraft(dId()); if (!(await ctx.ask(has ? 'إغلاق الكشف دون حفظ؟ سيبقى آخر ما حُفظ في المسودة. (لحذف المسودة نفسها استخدم «حذف» من قائمة المسودات)' : 'إغلاق الكشف دون حفظ التعديلات؟'))) return; cur = null; base = ''; return vSheets(); }
   if (a === 'add') { (cur[L.key] ||= []).push(t.dataset.id); return relist(); }
   if (a === 'rm') { if (L.inline) cur.guests.splice(+t.dataset.id, 1); else { cur[L.key] = cur[L.key].filter((x) => x !== t.dataset.id); cur.meetings.forEach((m) => (m.present = m.present.filter((x) => x !== t.dataset.id))); } return relist(); }
   if (a === 'col') { const m = cur.meetings[+t.dataset.i], ids = [...new Set(cur.roster || [])], all = ids.every((id) => m.present.includes(id)); m.present = all ? [] : [...ids]; return relist(); }
@@ -136,5 +149,5 @@ async function quickSave(L) {
 async function save() {
   const db = ctx.db, r = validateSheet(cur, db); if (r.errors.length) return ctx.toast('عالج الأخطاء أولاً');
   if (r.warnings.length && !(await ctx.ask('تنبيهات:\n' + r.warnings.map((w) => '• ' + w).join('\n') + '\n\nحفظ رغم ذلك؟'))) return;
-  commitSheet(db, cur); ctx.save(); ctx.toast('تم حفظ الكشف وتوليد جلساته'); cur = null; vSheets();
+  commitSheet(db, cur); delDraft(dId()); ctx.save(); ctx.toast('تم حفظ الكشف وتوليد جلساته'); cur = null; base = ''; vSheets();
 }

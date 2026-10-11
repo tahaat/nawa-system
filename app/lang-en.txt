@@ -1135,3 +1135,29 @@ English (يُستعمل في تصدير PTT) | English (used in the PTT export)
 تسجيل إنجاز | Record output
 تم حفظ التعديل | Edit saved
 تعديل | Edit
+المسودات | Drafts
+المسودة | Draft
+حفظ كمسودة | Save as draft
+آخر تعديل | Last modified
+متابعة | Resume
+النوع | Type
+كشف حضور | Attendance sheet
+جلسة | Session
+إنجاز تشغيلي | Operational output
+مستفيد | Beneficiary
+عمل غير مكتمل محفوظ على هذا الجهاز. اضغط «متابعة» لاستئنافه وإكماله ثم حفظه نهائيًا؛ ولا تُحتسب المسودات في التقارير والتحقق حتى تُحفظ. | Unfinished work saved on this device. Press "Resume" to continue, complete it and save it as final; drafts are not counted in reports or validation until saved.
+احفظ ما أنجزته الآن كمسودة وأكمله لاحقًا | Save what you have done as a draft and finish later
+احفظ ما أنجزته كمسودة وأكمله لاحقًا | Save what you have done as a draft and finish later
+احفظ ما كتبته كمسودة وأكمله لاحقًا | Save what you typed as a draft and finish later
+حُفظ كمسودة — تجدها في أعلى هذه الشاشة وفي زر المسودات | Saved as a draft — find it at the top of this screen and in the Drafts button
+حُفظ كمسودة | Saved as a draft
+حُفظ عملك غير المكتمل كمسودة | Your unfinished work was saved as a draft
+حُفظت الجلسة كمسودة — تجدها أعلى هذه الشاشة | Session saved as a draft — find it at the top of this screen
+تم فتح المسودة — أكملها ثم احفظ نهائيًا | Draft opened — complete it, then save as final
+حذف هذه المسودة نهائيًا؟ | Delete this draft permanently?
+لا يوجد ما يُحفظ بعد — اختر الحاضرين أو اكتب بيانات الجلسة | Nothing to save yet — select attendees or enter session data
+اكتب المرجع أو الملاحظة أو غيّر الكمية أولاً | Enter the reference or note, or change the quantity, first
+اكتب بعض البيانات أولاً | Enter some data first
+لا توجد مسودات. من أي نموذج اضغط «حفظ كمسودة» لحفظ عملك غير المكتمل، كما تُحفظ تلقائيًا عند الانتقال إلى شاشة أخرى. | No drafts. In any form press "Save as draft" to keep unfinished work; it is also saved automatically when you switch to another screen.
+إغلاق الكشف دون حفظ؟ سيبقى آخر ما حُفظ في المسودة. (لحذف المسودة نفسها استخدم «حذف» من قائمة المسودات) | Close the sheet without saving? The last saved draft will remain. (To delete the draft itself use "Delete" in the drafts list)
+مستفيد — بلا اسم بعد | Beneficiary — no name yet

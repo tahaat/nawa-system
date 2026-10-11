@@ -19,12 +19,13 @@ import { loadConfig } from '../core/settings.js';
 import { DTYPES } from '../core/sheets.js';
 import { kvGet } from './store.js';
 import { initOffline, offlineCard, offlineActions } from './offline.js';
-import { vBnf, initBnf, bnfActions } from './bnf-view.js';
-import { initPlaceholders, icon, getTheme, toggleTheme, initTheme, initHints, openPanel, hintsHtml } from './ui-tools.js';
-import { vSheets, initSheets, openSheet } from './sheets-view.js';
+import { vBnf, initBnf, bnfActions, bnfAuto, restoreBnf } from './bnf-view.js';
+import { initPlaceholders, icon, getTheme, toggleTheme, initTheme, initHints, openPanel, closePanel, hintsHtml } from './ui-tools.js';
+import { vSheets, initSheets, openSheet, sheetAuto, restoreSheet } from './sheets-view.js';
+import { loadDrafts, putDraft, delDraft, getDraft, draftsCard, draftsOf, draftCount, draftRows, newDraftId, TYPES as DTYPES_D } from './drafts.js';
 import { openOp } from './ops-view.js';
 import { initFix, fixActions, render as fixRender, start as fixStart, end as fixEnd, issuesOf, HOW, resolve as fixResolve, active as fixActive } from './fix.js';
-import { vOps, initOps } from './ops-view.js';
+import { vOps, initOps, opsAuto, restoreOp } from './ops-view.js';
 import { commitSheet } from '../core/sheets.js';
 import { purgeDemo, uid, GROUPS, AGE_BANDS, ageAt, bandOf, iso } from '../core/model.js';
 import { dashboard, sttRows, sessionCats, sumCats, context } from '../core/aggregate.js';
@@ -53,11 +54,13 @@ function nav() {
   const opts = db.projects.map((p) => `<option value="${p.id}" ${p.id === ui.projectId ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
   $('#top').innerHTML = `<div class="tl"><button class="sec ic" data-act="side" title="إظهار/إخفاء الشريط الجانبي" aria-label="إظهار/إخفاء الشريط الجانبي">${icon('menu')}</button><h1>${ROUTES[route][0]}</h1></div><div class="tools"><label>المشروع<select id="pj">${opts || '<option>— لا مشاريع —</option>'}</select></label>
     <button class="sec ic" data-act="bell" title="الإشعارات" aria-label="الإشعارات">${icon('bell')}${notes().length ? `<b class="dot">${notes().length}</b>` : ''}</button>
+    <button class="sec ic" data-act="drafts" title="المسودات" aria-label="المسودات">${icon('clip')}${draftCount(ui.projectId) ? `<b class="dot">${draftCount(ui.projectId)}</b>` : ''}</button>
     <button class="sec ic" data-act="hints" title="التلميحات" aria-label="التلميحات">${icon('hint')}</button>
     <button class="sec ic" data-act="theme" title="الوضع المظلم / الفاتح" aria-label="الوضع المظلم / الفاتح">${icon(getTheme() === 'dark' ? 'sun' : 'moon')}</button>
     <button class="sec lang" data-act="lang" title="Language / اللغة">${getLang() === 'en' ? 'العربية' : 'English'}</button></div>`;
 }
-function go(r) { chartTheme(); if (!allowed(r)) r = 'dash'; route = r; charts.forEach((c) => c.destroy()); charts = []; nav(); ROUTES[r][1](); if (fixActive()) { if (r === 'check') fixEnd(false); else fixRender(); } }
+function autoAll(clear = false) { const a = [sheetAuto(clear), sessAuto(clear), opsAuto(clear), bnfAuto(clear)]; return a.some(Boolean); }
+function go(r) { chartTheme(); if (!allowed(r)) r = 'dash'; if (r !== route && autoAll(true)) toast('حُفظ عملك غير المكتمل كمسودة'); route = r; charts.forEach((c) => c.destroy()); charts = []; nav(); ROUTES[r][1](); if (fixActive()) { if (r === 'check') fixEnd(false); else fixRender(); } }
 const rerender = () => go(route);
 const grpOf = (t) => { const f = (a) => { const m = new Map(); for (const i of a) { if (ckf !== 'all' && i.level !== ckf) continue; const k = i.level + i.code + i.msg; const e = m.get(k) || { ...i, items: [] }; e.items.push(i); m.set(k, e); } return [...m.values()].sort((a, b) => ['error', 'warn', 'info'].indexOf(a.level) - ['error', 'warn', 'info'].indexOf(b.level)); }; return f(t.dataset.s === 'r' ? reconcile(db) : validateEntry(db))[+t.dataset.k]; };
 function openSession(id) { const x = db.sessions.find((r) => r.id === id); if (!x || x.sheetId) return false; ui.projectId = x.projectId; Object.assign(sess, { editId: id, act: x.activityId, center: x.centerId, date: x.date, educator: x.educator || '', grp: x.grp || '', units: x.units || 1, notes: x.notes || '', mode: x.mode, att: new Set(x.attendance || []), counts: x.counts || null, bands: !!x.bandCounts, bandCounts: x.bandCounts || null }); vSessions(); scrollTo({ top: 0 }); return true; }
@@ -69,7 +72,7 @@ document.addEventListener('click', async (e) => {
   const f = actions[t.dataset.act]; if (f) { try { await f(t, e); } catch (err) { console.error(err); toast('خطأ: ' + err.message); } }
 });
 document.addEventListener('change', (e) => {
-  if (e.target.id === 'pj') { ui.projectId = e.target.value; save(); rerender(); }
+  if (e.target.id === 'pj') { autoAll(true); ui.projectId = e.target.value; save(); rerender(); }
   const b = e.target.dataset?.bind; if (b) bind(e.target);
 });
 function bind(el) { // data-bind="list|idx|field"  أو "obj|field"
@@ -228,12 +231,21 @@ function vCenters() {
 
 // ======================= المستفيدون =======================
 // ======================= الجلسات =======================
+const sessDirty = () => !sess.editId && !!(sess.att.size || sess.notes?.trim() || (sess.counts && Object.values(sess.counts).some((v) => v)) || (sess.bandCounts && /[1-9]/.test(JSON.stringify(sess.bandCounts))));
+const sessSnap = () => { try { sess.rd?.(); } catch { /* الشاشة غير معروضة */ } return { act: sess.act, center: sess.center, date: sess.date, educator: sess.educator, grp: sess.grp, units: sess.units, notes: sess.notes, mode: sess.mode, att: [...sess.att], counts: sess.counts || null, bands: !!sess.bands, bandCounts: sess.bandCounts || null }; };
+const sessClear = () => { sess.draftId = null; sess.att = new Set(); sess.counts = null; sess.bandCounts = null; sess.bands = false; sess.notes = ''; sess.grp = ''; };
+function sessAuto(clear = false) {
+  const pid = sess.pid; let saved = false; if (route === 'sessions') { try { sess.rd?.(); } catch { /* x */ } }
+  if (pid && sessDirty()) { const d = sessSnap(), a = db.projects.find((x) => x.id === pid)?.activities.find((x) => x.id === d.act); sess.draftId ||= newDraftId('session'); putDraft({ id: sess.draftId, type: 'session', projectId: pid, title: `جلسة${a ? ' — ' + a.name : ''}${d.date ? ' — ' + d.date : ''}${d.mode === 'roll' ? ` (${d.att.length} حاضر)` : ''}`, data: d }); saved = true; }
+  if (clear && saved) sessClear(); return saved;
+}
+function restoreSess(d) { Object.assign(sess, { editId: null, act: d.act, center: d.center, date: d.date, educator: d.educator || '', grp: d.grp || '', units: d.units || 1, notes: d.notes || '', mode: d.mode, att: new Set(d.att || []), counts: d.counts, bands: !!d.bands, bandCounts: d.bandCounts }); }
 function vSessions() {
   const p = project(); if (!p) return empty();
-  const cx = context(db), acts = p.activities.filter((x) => !x.ops), a = acts.find((x) => x.id === sess.act) || acts[0]; sess.act = a?.id;
+  const cx = context(db), acts = p.activities.filter((x) => !x.ops), a = acts.find((x) => x.id === sess.act) || acts[0]; sess.act = a?.id; sess.pid = p.id;
   const list = db.beneficiaries.filter((b) => !sess.q || b.name.includes(sess.q)).slice(0, 300);
   const today = iso(new Date());
-  view().innerHTML = `
+  view().innerHTML = (sess.editId ? '' : draftsCard(p.id, 'session')) + `
   <div class="card"><h2>${sess.editId ? 'تعديل جلسة' : 'جلسة جديدة'}</h2><div class="row">
     <label>النشاط<select id="sa">${acts.map((x) => `<option value="${x.id}" ${x.id === a?.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></label>
     <label>المركز<select id="sc">${myCenters().map((c) => `<option value="${c.id}" ${c.id === sess.center ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>
@@ -246,7 +258,7 @@ function vSessions() {
   : `<div class="row">${[['M', 'ذكور'], ['F', 'إناث'], ['MWD', 'ذكور (إعاقة)'], ['FWD', 'إناث (إعاقة)']].map(([k, t]) => `<label>${t}<input type="number" min="0" id="n-${k}" style="width:100px" value="${sess.counts?.[k] ?? ''}"></label>`).join('')}
     <label style="flex-direction:row;align-items:center"><input type="checkbox" id="bandsOn" ${sess.bands ? 'checked' : ''} data-act="toggleBands"> توزيع الفئات العمرية</label></div>
     ${sess.bands ? `<table><tr><th></th>${AGE_BANDS.map((b) => `<th>${b.key}</th>`).join('')}</tr>${[['M', 'ذكور'], ['F', 'إناث'], ['MWD', 'ذكور (إعاقة)'], ['FWD', 'إناث (إعاقة)']].map(([k, t]) => `<tr><td>${t}</td>${AGE_BANDS.map((b, i) => `<td><input type="number" min="0" style="width:60px" id="bd-${k}-${i}" value="${sess.bandCounts?.[k]?.[i] ?? ''}"></td>`).join('')}</tr>`).join('')}</table>` : '<p class="small">بدون توزيع عمري لن تظهر هذه الجلسة في جدول الفئات العمرية (يظهر تنبيه).</p>'}`}
-  <div class="row" style="margin-top:10px"><label>ملاحظات<input id="sn" style="width:320px" value="${esc(sess.notes || '')}"></label><button data-act="saveSession">${sess.editId ? 'حفظ التعديل' : 'حفظ الجلسة'}</button>${sess.editId ? '<button class="sec" data-act="cancelEditSess">إلغاء التعديل</button>' : ''}<span id="sres"></span></div></div>
+  <div class="row" style="margin-top:10px"><label>ملاحظات<input id="sn" style="width:320px" value="${esc(sess.notes || '')}"></label><button data-act="saveSession">${sess.editId ? 'حفظ التعديل' : 'حفظ الجلسة'}</button>${sess.editId ? '' : '<button class="sec" data-act="saveSessDraft" title="احفظ ما أنجزته كمسودة وأكمله لاحقًا">حفظ كمسودة</button>'}${sess.editId ? '<button class="sec" data-act="cancelEditSess">إلغاء التعديل</button>' : ''}<span id="sres"></span></div></div>
   <div class="card"><h2>آخر الجلسات</h2><div class="tw"><table><tr><th>التاريخ</th><th>النشاط</th><th>المركز</th><th>المنشّط</th><th>النمط</th><th>ذ</th><th>إ</th><th>ذ-إ</th><th>إ-إ</th><th>المجموع</th><th>تحقق</th><th></th></tr>
   ${db.sessions.filter((s) => s.projectId === p.id).sort((x, y) => y.date.localeCompare(x.date)).slice(0, 150).map((s) => { const c = sessionCats(s, cx), v = validateEntry({ ...db, sessions: [s] }).filter((i) => i.ref === s.id || i.ref === s.activityId); const lv = v.some((i) => i.level === 'error') ? 'error' : v.some((i) => i.level === 'warn') ? 'warn' : 'ok';
     return `<tr><td>${s.date}</td><td>${esc(cx.act.get(s.activityId)?.name)}</td><td>${esc(cx.ctr.get(s.centerId)?.name)}</td><td>${esc(s.educator)}</td><td>${s.mode === 'roll' ? 'أسماء' : 'أعداد'}</td><td>${c.M}</td><td>${c.F}</td><td>${c.CWD_M}</td><td>${c.CWD_F}</td><td><b>${sumCats(c)}</b></td><td><span class="badge b-${lv}" title="${esc(v.map((i) => i.msg).join(' | '))}">${lv === 'ok' ? '✔' : v.length}</span></td><td>${s.sheetId ? `<button class="sec" data-act="openSheetOf" data-id="${s.sheetId}">فتح الكشف</button>` : `<button class="sec" data-act="editSess" data-id="${s.id}">تعديل</button>`} <button class="x" data-act="delSess" data-id="${s.id}">حذف</button></td></tr>`; }).join('')}</table></div></div>`;
@@ -437,8 +449,12 @@ const actions = {
     if (errs.length) { $('#sres').innerHTML = errs.map((i) => `<span class="badge b-error">${esc(i.msg)}</span>`).join(' '); return; }
     const warn = v.filter((i) => i.level === 'warn' && !i.code.startsWith('B'));
     if (warn.length && !(await ask('تحذيرات:\n' + warn.map((i) => '• ' + i.msg).join('\n') + '\nحفظ رغم ذلك؟'))) return;
-    const ix = db.sessions.findIndex((x) => x.id === s.id); if (ix >= 0) db.sessions[ix] = s; else db.sessions.push(s); const was = sess.editId; sess.editId = null; sess.att = new Set(); sess.counts = null; sess.bandCounts = null; sess.bands = false; save(); toast(was ? 'تم حفظ التعديل' : 'تم حفظ الجلسة'); vSessions(); window.dispatchEvent(new CustomEvent('nawa:saved'));
+    const ix = db.sessions.findIndex((x) => x.id === s.id); if (ix >= 0) db.sessions[ix] = s; else db.sessions.push(s); const was = sess.editId; if (sess.draftId) delDraft(sess.draftId); sess.draftId = null; sess.editId = null; sess.att = new Set(); sess.counts = null; sess.bandCounts = null; sess.bands = false; save(); toast(was ? 'تم حفظ التعديل' : 'تم حفظ الجلسة'); vSessions(); window.dispatchEvent(new CustomEvent('nawa:saved'));
   },
+  saveSessDraft() { if (!sessDirty()) { sess.rd?.(); if (!sessDirty()) return toast('لا يوجد ما يُحفظ بعد — اختر الحاضرين أو اكتب بيانات الجلسة'); } if (sessAuto(true)) { toast('حُفظت الجلسة كمسودة — تجدها أعلى هذه الشاشة'); vSessions(); } },
+  draftResume(t) { const d = getDraft(t.dataset.id); if (!d) return; autoAll(false); if (d.projectId !== ui.projectId) { ui.projectId = d.projectId; save(); } if (d.type === 'sheet') restoreSheet(d.data); else if (d.type === 'session') { restoreSess(d.data); sess.draftId = d.id; } else if (d.type === 'op') restoreOp(d.data, d.id); else if (d.type === 'bnf') restoreBnf(d.data, d.id); closePanel(); go(DTYPES_D[d.type][1]); scrollTo({ top: 0 }); toast('تم فتح المسودة — أكملها ثم احفظ نهائيًا'); },
+  async draftDel(t) { if (!(await ask('حذف هذه المسودة نهائيًا؟'))) return; const d = getDraft(t.dataset.id); delDraft(t.dataset.id); if (d?.type === 'session' && sess.draftId === d.id) sess.draftId = null; closePanel(); rerender(); },
+  drafts() { const l = draftsOf(ui.projectId); openPanel(`<h3>المسودات (${l.length})</h3>${l.length ? draftRows(l, true) : '<p class="small">لا توجد مسودات. من أي نموذج اضغط «حفظ كمسودة» لحفظ عملك غير المكتمل، كما تُحفظ تلقائيًا عند الانتقال إلى شاشة أخرى.</p>'}`); },
   ckf(t) { ckf = t.dataset.f; vCheck(); },
   fixOne(t) { const it = grpOf(t); if (it) fixStart([it.items[0]]); },
   fixGroup(t) { const it = grpOf(t); if (it) fixStart(it.items); },
@@ -459,8 +475,10 @@ const actions = {
 };
 
 $('.logo').src = logoUrl; { const l = document.createElement('link'); l.rel = 'icon'; l.href = logoUrl; document.head.append(l); }
-initPlan({ project, save, rerender, view, empty }); initSheets({ db, project, save, view, empty, ask, toast, myCenters, route: () => route }); initOps({ db, project, save, view, empty, ask, toast, myCenters }); initBuilder({ project, save, rerender }); initGloss({ view, ask }); initFix({ db, ui, go, toast, openSession, openOp, route: () => route }); Object.assign(actions, fixActions); initSettings({ view, db, ask, askText }); initBnf({ view, db, ask }); Object.assign(actions, offlineActions, bnfActions({ toast, ask, save, rerender, dl }), glossActions({ toast, dl }), settingsActions({ toast, dl, go, save, rerender, ui, ask })); loadConfig(await kvGet('config'), DTYPES); await load(); await loadGlossary(); try { if (localStorage.getItem('nawa.nonav')) document.body.classList.add('nonav'); } catch { /* خاص */ } initTheme(); applyDoc(); nav(); go('dash'); initHints(view); initCopy({ toast }); initOffline(); initPlaceholders(); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
+initPlan({ project, save, rerender, view, empty }); initSheets({ db, project, save, view, empty, ask, toast, myCenters, route: () => route }); initOps({ db, project, save, view, empty, ask, toast, myCenters }); initBuilder({ project, save, rerender }); initGloss({ view, ask }); initFix({ db, ui, go, toast, openSession, openOp, route: () => route }); Object.assign(actions, fixActions); initSettings({ view, db, ask, askText }); initBnf({ view, db, ask, ui }); Object.assign(actions, offlineActions, bnfActions({ toast, ask, save, rerender, dl }), glossActions({ toast, dl }), settingsActions({ toast, dl, go, save, rerender, ui, ask })); loadConfig(await kvGet('config'), DTYPES); await load(); await loadGlossary(); await loadDrafts(); try { if (localStorage.getItem('nawa.nonav')) document.body.classList.add('nonav'); } catch { /* خاص */ } initTheme(); applyDoc(); nav(); go('dash'); initHints(view); initCopy({ toast }); initOffline(); initPlaceholders(); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
 setInterval(() => { if (sync.cfg.auto) doSync(); else setSyncBadge(); }, 60000);
 window.addEventListener('online', () => sync.cfg.auto && doSync());
+window.addEventListener('nawa:drafts', () => nav());
+document.addEventListener('visibilitychange', () => { if (document.hidden) autoAll(false); }); window.addEventListener('pagehide', () => autoAll(false));
 let st; document.addEventListener('change', () => { clearTimeout(st); st = setTimeout(() => sync.cfg.auto && doSync(), 4000); });
 window.__nawa = { db, ui, go, sync, charts: () => charts, useHandle: async (h) => { sync.handle = h; fsync = null; await saveHandle(h); } };
