@@ -942,3 +942,66 @@ PTT يُعبَّأ داخل القالب الأصلي (مع بقاء المخط�
 حذف هذه الترجمة المخصصة؟ | Delete this custom translation?
 اختر ملفًا | Choose a file
 العربية | Arabic
+القوائم والإعدادات | Lists and settings
+القوائم | Lists
+المتغيرات | Variables
+الثوابت | Constants
+حزمة الإعدادات | Settings bundle
+القوائم المدمجة | Built-in lists
+الفئات المستهدفة | Target groups
+المفتاح | Key
+عربي | Arabic
+English (يُستعمل في تصدير PTT) | English (used in the PTT export)
+ذكر | Male
+أنثى | Female
+كشف أسماء | Name roll
+أعداد فقط | Counts only
+أنواع الإعاقة (قائمة الاختيار في كشوف الحضور) | Disability types (choice list in attendance sheets)
+حفظ القائمة | Save list
+استعادة الأصلية | Restore original
+السجلات القديمة تحتفظ بنصها الأصلي؛ التعديل يغيّر خيارات الإدخال الجديد فقط. | Old records keep their original text; the change only affects new entry choices.
+القوائم المخصصة | Custom lists
++ قائمة جديدة | + New list
+حذف القائمة | Delete list
+القائمة | List
+— لا قوائم — | — No lists —
+الاسم (عربي) | Name (Arabic)
+المعرّف (لاتيني، لـ XLSForm) | Identifier (Latin, for XLSForm)
+القيمة | Value
++ بند | + Item
+تصدير كل القوائم (Excel — choices) | Export all lists (Excel — choices)
+استيراد ودمج | Import and merge
+المتغير | Variable
+الافتراضي | Default
+استعادة | Restore
+استعادة كل الافتراضيات | Restore all defaults
+الفارغ يعني القيمة الافتراضية. | Empty means the default value.
+قيم تضبط قواعد التحقق في كشوف الحضور. الفارغ يعني القيمة الافتراضية. | Values that tune the validation rules in attendance sheets. Empty means the default value.
+أقل عدد كلمات للاسم (كشوف الحضور) | Minimum words in a name (attendance sheets)
+أقصى مدة جلسة قبل التحذير (ساعات) | Maximum session length before a warning (hours)
+بداية الدوام المعتاد (ساعة) | Usual working day start (hour)
+آخر ساعة بدء معتادة | Latest usual start hour
+نهاية الدوام المعتاد (ساعة) | Usual working day end (hour)
+الفئات العمرية (أعمدة PTT) | Age bands (PTT columns)
+تصنيفات الحضور | Attendance categories
+مراحل القياس | Measurement rounds
+مقاييس الاستبيانات | Survey scales
+من | From
+إلى | To
+عمود القالب | Template column
+المشاريع | Projects
+الممول | Donor
+المدة | Duration
+جلسات | Sessions
+كشوفات | Sheets
+إنجاز | Output
+ردود | Responses
+تصدير حزمة | Export package
+نسخ الهيكل | Copy structure
+تجريبي | Demo
+استيراد حزمة مشروع | Import project package
+استيراد | Import
+تصدير الإعدادات (JSON) | Export settings (JSON)
+استيراد وتطبيق | Import and apply
+ملء من قائمة… | Fill from a list…
+حُفظ | Saved

@@ -4,6 +4,7 @@ import { CATS } from './model.js';
 import { computeOutcomes } from './outcomes.js';
 import { exportPlanSheets } from './plan.js';
 
+import { groupEn } from './settings.js';
 const monthStart = (project, i) => { const s = new Date(`${project.start}T00:00:00Z`); return new Date(Date.UTC(s.getUTCFullYear(), s.getUTCMonth() + i, 1)).toISOString().slice(0, 10); };
 const OUT_SLOTS = { 'output 1': [4, 5, 6], 'output 2': [7, 8, 9, 10], 'output 3': [11, 12, 13, 14, 15, 16] };
 const BD_BLOCKS = { 1: { M: 43, F: 51 }, 2: { M: 60, F: 68 }, 3: { M: 77, F: 85 }, 4: { M: 94, F: 102 } };
@@ -70,7 +71,7 @@ export async function exportPTT(templateBuf, project, db, DOMParserCtor, XMLSeri
   warnings.push(...(await exportPlanSheets(x, project, db)));
   return { data: await x.save(), warnings };
 }
-const GROUP_LABEL = { community: 'Community (elders / history bearers)', child: 'Children', youth: 'Youth', parent: 'Parents', localEducator: 'Local Educator', nawaEducator: 'NAWA educators' };
+const GROUP_LABEL = new Proxy({}, { get: (_, k) => groupEn(String(k)) });
 function spreadPlan(a) { // يوزّع الجلسات المخططة على أشهر الخطة (a.planMonths=[من,إلى]) أسبوعيًا
   const [from, to] = a.planMonths || [0, 11], total = a.plannedSessions || 0, weeks = [], span = (to - from + 1) * 4, arr = Array(48).fill(0);
   for (let i = 0; i < total; i++) arr[from * 4 + Math.floor((i * span) / Math.max(total, 1))]++;

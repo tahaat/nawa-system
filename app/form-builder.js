@@ -1,4 +1,5 @@
 // منشئ الاستبيانات: نماذج مخصصة تُحفظ داخل المشروع (p.forms) وتُنزَّل بصيغة XLSForm لـ KoBo
+import { cfg, listById, listChoices } from '../core/settings.js';
 import { TEMPLATES, QTYPES, SCALES, SCALE_NAMES, questionsOf } from '../core/forms.js';
 import { ask } from './dialogs.js';
 import { uid } from '../core/model.js';
@@ -19,7 +20,7 @@ export function initBuilder(c) {
     else return;
     ctx.save(); ctx.rerender();
   });
-  document.addEventListener('change', (e) => { if (e.target.dataset?.fbre) setTimeout(() => ctx.rerender(), 0); });
+  document.addEventListener('change', (e) => { const d = e.target.dataset; if (d?.fbre) setTimeout(() => ctx.rerender(), 0); else if (d?.fblist != null && e.target.value) { const l = listById(e.target.value), f = ctx.project()?.forms?.[editing]; if (l && f) { f.questions[+d.fblist].choices = listChoices(l); ctx.save(); ctx.rerender(); } } });
 }
 export const isEditing = () => editing;
 const p_ = (path, v, extra = '') => `<input data-p="${path}" value="${esc(v)}" ${extra}>`;
@@ -41,7 +42,7 @@ function editor(f, i) {
     <td><select data-p="${P}.questions.${k}.type" data-fbre="1">${QTYPES.map(([v, t]) => `<option value="${v}" ${q.type === v ? 'selected' : ''}>${t}</option>`).join('')}</select></td>
     <td>${p_(`${P}.questions.${k}.ar`, q.ar, 'style="width:260px"')}</td><td>${p_(`${P}.questions.${k}.en`, q.en, 'style="width:200px"')}</td>
     <td>${q.type === 'scale' ? `<select data-p="${P}.questions.${k}.scale">${Object.entries(SCALE_NAMES).map(([v, t]) => `<option value="${v}" ${q.scale === v ? 'selected' : ''}>${t}: ${SCALES[v].map((x) => x[1]).join(' / ')}</option>`).join('')}</select>`
-      : q.type === 'select_one' || q.type === 'select_multiple' ? `<textarea data-lines="${P}.questions.${k}.choices" rows="3" placeholder="خيار في كل سطر (عربي|English)">${esc((q.choices || []).join('\n'))}</textarea>`
+      : q.type === 'select_one' || q.type === 'select_multiple' ? `<textarea data-lines="${P}.questions.${k}.choices" rows="3" placeholder="خيار في كل سطر (عربي|English)">${esc((q.choices || []).join('\n'))}</textarea>${cfg.lists.length ? `<select data-fblist="${k}"><option value="">ملء من قائمة…</option>${cfg.lists.map((l) => `<option value="${l.id}">${esc(l.ar || l.name)}</option>`).join('')}</select>` : ''}`
       : q.type === 'integer' || q.type === 'decimal' ? `من <input type="number" data-t="number" data-p="${P}.questions.${k}.min" value="${q.min ?? ''}" style="width:60px"> إلى <input type="number" data-t="number" data-p="${P}.questions.${k}.max" value="${q.max ?? ''}" style="width:60px">` : '<span class="small">—</span>'}</td>
     <td>${q.type === 'note' ? '' : `<input type="checkbox" data-pb="${P}.questions.${k}.required" ${q.required === false ? '' : 'checked'}>`}</td>
     <td><button class="sec" data-fb="up" data-i="${k}">↑</button><button class="sec" data-fb="down" data-i="${k}">↓</button><button class="x" data-fb="delq" data-i="${k}">✕</button></td></tr>`).join('')}</table></div>

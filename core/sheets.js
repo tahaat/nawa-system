@@ -1,6 +1,7 @@
 // كشوفات الحضور الورقية (Word) كنماذج إدخال مقيّدة: ثمانية أنواع، لكل نوع ترويسته وفئاته وقواعد تحققه.
 // الكشف = مصدر البيانات؛ الجلسات (STT) تُولَّد منه، فتبقى كل المحركات (BTT/PTT/لوحة القيادة) كما هي.
 import { ageAt, catOf, emptyCats, AGE_BANDS, bandOf } from './model.js';
+import { V } from './settings.js';
 
 // الفئات المشاركة كما في الكشوفات الورقية (النطاق العمري يُستعمل للتحقق من كل مشارك)
 export const SG = {
@@ -16,7 +17,7 @@ export const SG = {
   elders: { name: 'كبار السن / أصحاب الرواية', min: 40, max: 100, grp: 'community' },
 };
 const KIDS = ['c46', 'c712', 'y1315', 'y1618', 'adult'], EDU = ['edN', 'edG', 'edS'];
-export const DTYPES = ['سمعية', 'بصرية', 'حركية', 'ذهنية', 'أخرى'];
+export const DTYPES = ['سمعية', 'بصرية', 'حركية', 'ذهنية', 'أخرى']; // قابلة للتعديل من الإعدادات (تُعدَّل في مكانها)
 const F = (key, label, type = 'text', o = {}) => ({ key, label, type, ...o });
 const MODE = [F('mode', 'آلية التنفيذ', 'mode', { req: true })]; // وجاهي (قاعة) | إلكتروني (منصة)
 const TIME = [F('from', 'من الساعة', 'time', { req: true }), F('to', 'حتى الساعة', 'time', { req: true })];
@@ -69,7 +70,7 @@ export const newSheet = (kind, projectId, centerId) => ({ id: 'sh_' + Date.now()
 export const allIds = (sh) => [...new Set([...(sh.roster || []), ...(sh.rosterP || [])])];
 const hm = (t) => (/^\d{1,2}:\d{2}$/.test(t || '') ? +t.split(':')[0] * 60 + +t.split(':')[1] : null);
 export const phoneOk = (p) => !p || /^05[69]\d{7}$/.test(String(p).replace(/[\s-]/g, ''));
-export const nameOk = (n) => String(n || '').trim().split(/\s+/).filter(Boolean).length >= 3;
+export const nameOk = (n) => String(n || '').trim().split(/\s+/).filter(Boolean).length >= V('nameMinWords');
 
 // الأشخاص في كشف: مرجع مستفيد أو زائر مضمَّن
 export function peopleOf(sh, db) {
@@ -126,8 +127,8 @@ export function validateSheet(sh, db, { today = new Date().toISOString().slice(0
   for (const d of dates) if (d && p.start && (d < p.start || d > p.end)) E(`التاريخ ${d} خارج مدة المشروع (${p.start} → ${p.end})`);
   if (K.multi && m.start && m.end && m.end < m.start) E('تاريخ الانتهاء قبل تاريخ البدء');
   const a = hm(m.from), b = hm(m.to);
-  if (a != null && b != null) { if (b <= a) E('وقت النهاية يجب أن يكون بعد وقت البداية'); else { if (b - a > 600) W('مدة الجلسة أكثر من 10 ساعات'); if (K.multi && m.hours && m.meetings) { const per = (m.hours / m.meetings) * 60; if (Math.abs(per - (b - a)) > Math.max(30, (b - a) * 0.5)) W(`ساعات الدورة (${m.hours}) على ${m.meetings} لقاء = ${(per / 60).toFixed(1)} ساعة للقاء، بينما الوقت المسجَّل ${((b - a) / 60).toFixed(1)} ساعة`); } } }
-  if ((a != null && (a < 360 || a > 1200)) || (b != null && b > 1260)) W('وقت الجلسة خارج الدوام المعتاد (6:00–21:00)');
+  if (a != null && b != null) { if (b <= a) E('وقت النهاية يجب أن يكون بعد وقت البداية'); else { if (b - a > V('maxSessionHours') * 60) W(`مدة الجلسة أكثر من ${V('maxSessionHours')} ساعات`); if (K.multi && m.hours && m.meetings) { const per = (m.hours / m.meetings) * 60; if (Math.abs(per - (b - a)) > Math.max(30, (b - a) * 0.5)) W(`ساعات الدورة (${m.hours}) على ${m.meetings} لقاء = ${(per / 60).toFixed(1)} ساعة للقاء، بينما الوقت المسجَّل ${((b - a) / 60).toFixed(1)} ساعة`); } } }
+  if ((a != null && (a < V('dayStartHour') * 60 || a > V('lastStartHour') * 60)) || (b != null && b > V('dayEndHour') * 60)) W(`وقت الجلسة خارج الدوام المعتاد (${V('dayStartHour')}:00–${V('dayEndHour')}:00)`);
   // اللقاءات
   const held = heldMeetings(sh), seenD = new Set();
   if (K.multi) {

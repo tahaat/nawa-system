@@ -66,6 +66,9 @@ export async function importGlossary(file) {
   if (/\.xlsx$/i.test(file.name)) { const wb = new ExcelJS.Workbook(); await wb.xlsx.load(await file.arrayBuffer()); wb.worksheets[0].eachRow((r, i) => { const v = (k) => { const x = r.getCell(k).value; return String(x?.result ?? x?.text ?? x ?? '').trim(); }; if (i > 1 || !/^(العربية|arabic)$/i.test(v(1))) pairs.push({ ar: v(1), en: v(2) }); }); }
   else if (/\.json$/i.test(file.name)) { const j = JSON.parse(await file.text()); pairs = Array.isArray(j) ? j : j.pairs || Object.entries(j).map(([ar, en]) => ({ ar, en })); }
   else pairs = parseCSV(await file.text()).map((r) => ({ ar: (r[0] || '').trim(), en: (r[1] || '').trim() }));
+  return mergePairs(pairs);
+}
+export function mergePairs(pairs) {
   let add = 0, upd = 0; for (const p of pairs) { if (!p.ar || !p.en || !/[؀-ۿ]/.test(p.ar) || /^(arabic|العربية)$/i.test(p.ar)) continue; const i = gl.entries.findIndex((e) => e.ar === p.ar.trim()); if (i >= 0) { gl.entries[i].en = p.en.trim(); gl.entries[i].src = 'user'; upd++; } else { gl.entries.push({ ar: p.ar.trim(), en: p.en.trim(), src: 'user' }); add++; } }
   apply(); persist(); refresh(); return { add, upd };
 }
