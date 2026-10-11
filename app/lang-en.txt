@@ -853,3 +853,4 @@ PTT يُعبَّأ داخل القالب الأصلي (مع بقاء المخط�
 المصدر: سجل المستفيدين (BTT) وتعريف المشروع | Source: beneficiary register (BTT) and the project definition
 المصدر: كشوفات الحضور بالأسماء | Source: name-based attendance sheets
 المصدر: التحقق والتكامل | Source: validation and integrity
+إظهار/إخفاء الشريط الجانبي | Show / hide the sidebar

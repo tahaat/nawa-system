@@ -9,6 +9,7 @@ const ICONS = {
   idcard: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="11" r="2.2"/><path d="M5.8 16c.6-1.6 1.8-2.4 3.2-2.4s2.6.8 3.2 2.4M15 10h3.5M15 14h3.5"/></svg>',
   shield: '<svg viewBox="0 0 24 24"><path d="M12 3l7.5 3v5.5c0 4.6-3.1 8.2-7.5 9.5-4.4-1.3-7.5-4.9-7.5-9.5V6z"/><path d="M8.8 12.2l2.2 2.2 4.2-4.4"/></svg>',
   alert: '<svg viewBox="0 0 24 24"><path d="M12 3.5l9.5 16.5h-19z"/><path d="M12 10v4.5M12 17.4v.1"/></svg>',
+  menu: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg>',
   moon: '<svg viewBox="0 0 24 24"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z"/></svg>',
   sun: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
 };
@@ -36,18 +37,18 @@ export const closePanel = () => { if (panel) panel.style.display = 'none'; };
 // ---- التلميحات ----
 const POP = () => document.getElementById('hintpop') || document.body.appendChild(Object.assign(document.createElement('div'), { id: 'hintpop', role: 'tooltip' }));
 function showPop(h) {
-  const p = POP(); p.innerHTML = h.querySelector('.ht').innerHTML; p.style.display = 'block';
+  const p = POP(); if (h.dataset.tip) p.textContent = h.dataset.tip; else p.innerHTML = h.querySelector('.ht').innerHTML; p.style.display = 'block';
   const r = h.getBoundingClientRect(), w = p.offsetWidth, ph = p.offsetHeight;
   let x = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), innerWidth - w - 8), y = r.bottom + 8; if (y + ph > innerHeight - 8) y = Math.max(8, r.top - ph - 8);
   p.style.left = x + 'px'; p.style.top = y + 'px';
 }
 const hidePop = () => { const p = document.getElementById('hintpop'); if (p) p.style.display = 'none'; document.querySelectorAll('.hint.on').forEach((e) => e.classList.remove('on')); };
 export function initHints(view) {
-  document.addEventListener('mouseover', (e) => { const h = e.target.closest?.('.hint'); if (h) showPop(h); });
-  document.addEventListener('mouseout', (e) => { if (e.target.closest?.('.hint')) hidePop(); });
-  document.addEventListener('focusin', (e) => { const h = e.target.closest?.('.hint'); if (h) showPop(h); });
-  document.addEventListener('focusout', (e) => { if (e.target.closest?.('.hint')) hidePop(); });
-  document.addEventListener('click', (e) => { const h = e.target.closest?.('.hint'); if (h) { h.classList.toggle('on'); h.classList.contains('on') ? showPop(h) : hidePop(); } else hidePop(); });
+  document.addEventListener('mouseover', (e) => { const h = e.target.closest?.('.hint,[data-tip]'); if (h) showPop(h); });
+  document.addEventListener('mouseout', (e) => { if (e.target.closest?.('.hint,[data-tip]')) hidePop(); });
+  document.addEventListener('focusin', (e) => { const h = e.target.closest?.('.hint,[data-tip]'); if (h) showPop(h); });
+  document.addEventListener('focusout', (e) => { if (e.target.closest?.('.hint,[data-tip]')) hidePop(); });
+  document.addEventListener('click', (e) => { const h = e.target.closest?.('.hint,[data-tip]'); if (h) { h.classList.toggle('on'); h.classList.contains('on') ? showPop(h) : hidePop(); } else hidePop(); });
   const run = () => hintify(view());
   new MutationObserver(run).observe(view(), { childList: true, subtree: true }); run();
 }

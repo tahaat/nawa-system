@@ -20,7 +20,7 @@ export function tr(s) {
   if (!AR.test(out)) out = out.replace(/،/g, ',').replace(/؟/g, '?').replace(/؛/g, ';');
   return out;
 }
-const ATTRS = ['placeholder', 'title', 'aria-label', 'alt'];
+const ATTRS = ['placeholder', 'title', 'aria-label', 'alt', 'data-tip'];
 const SKIP = new Set(['SCRIPT', 'STYLE', 'TEXTAREA']);
 function doText(n) { const v = n.data; if (n.__en === v) return; const o = tr(v); if (o !== v) { n.__ar = v; n.__en = o; n.data = o; } }
 function doEl(e) { for (const a of ATTRS) { const v = e.getAttribute?.(a); if (v && AR.test(v)) { const o = tr(v); if (o !== v) { e.setAttribute('data-ar-' + a, v); e.setAttribute(a, o); } } } }

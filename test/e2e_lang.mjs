@@ -20,4 +20,9 @@ log('الملاحظات التوجيهية صارت تلميحات (ⓘ)', (awai
 await (await pg.$('.hint')).hover(); await pg.waitForTimeout(200); log('البوب يظهر عند اقتراب المؤشر', await pg.isVisible('#hintpop'));
 const bg0 = await pg.evaluate(() => getComputedStyle(document.body).backgroundColor); await pg.click('[data-act=theme]'); await pg.waitForTimeout(300);
 const bg1 = await pg.evaluate(() => getComputedStyle(document.body).backgroundColor); log(`الوضع المظلم: ${bg0} → ${bg1}`, bg0 !== bg1 && (await pg.evaluate(() => document.documentElement.dataset.theme)) === 'dark');
+await pg.click('a[data-go=dash]'); await pg.waitForTimeout(300); await (await pg.$('a.kpi')).hover(); await pg.waitForTimeout(250);
+log('مصدر البطاقة يظهر كبوب عند التمرير', /المصدر|Source/.test(await pg.textContent('#hintpop')) && (await pg.$$('a.kpi .src')).length === 0);
+const w0 = await pg.evaluate(() => document.querySelector('main').getBoundingClientRect().width); await pg.click('[data-act=side]'); await pg.waitForTimeout(500);
+const w1 = await pg.evaluate(() => document.querySelector('main').getBoundingClientRect().width); log(`طي الشريط الجانبي: عرض الصفحة ${Math.round(w0)} → ${Math.round(w1)}`, w1 > w0 + 150);
+await pg.click('[data-act=side]'); await pg.waitForTimeout(500); log('إظهاره من جديد', (await pg.evaluate(() => document.querySelector('main').getBoundingClientRect().width)) < w1 - 150);
 console.log('أخطاء الصفحة:', errs.length ? errs : 'لا شيء'); await b.close();

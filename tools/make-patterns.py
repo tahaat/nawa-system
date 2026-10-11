@@ -79,6 +79,11 @@ for name, sel in (('light', ':root'), ('dark', ':root[data-theme="dark"]')):
     pal = PAL[name]
     out.append(f"{sel}{{--p-keff:{uri(keffiyeh(pal))};--p-wave:{uri(waves(pal))};--p-band-star:{uri(band_star(pal))};--p-band-zig:{uri(band_zig(pal))};--p-star:{uri(star(1.7, pal))};--p-star-s:{uri(star(1.15, pal))};--p-olive:{uri(olive(pal))};--p-olive-w:{uri(olive(pal, opacity=.5))}}}")
 out.append(f":root{{--p-band-star-l:{uri(band_star(PAL['light']))};--p-olive-l:{uri(olive(PAL['light']))}}}")
+WP = dict(PAL['light'], net='rgba(255,255,255,.13)', wave='rgba(255,255,255,.07)')
+W = dict(r='rgba(255,255,255,.13)', g='rgba(255,255,255,.13)', o='rgba(255,255,255,.13)', k='rgba(255,255,255,.13)')
+def stars_tile(pw):   # بلاط نجوم تطريز بيضاء شفافة (للشريط الجانبي)
+    c = star_cells(); return svg(120, 120, rects(c, 1.7, 49, 49, pw) + rects(c, 1.7, -11, -11, pw) + rects(c, 1.7, 109, -11, pw) + rects(c, 1.7, -11, 109, pw) + rects(c, 1.7, 109, 109, pw))
+out.append(f":root{{--p-keff-w:{uri(keffiyeh(WP))};--p-stars-w:{uri(stars_tile(W))}}}")
 open('app/patterns.css', 'w', encoding='utf8').write('\n'.join(out) + '\n')
 # معاينة
 open('/tmp/pat_preview.html', 'w', encoding='utf8').write(''.join(f"<div style='display:flex;gap:20px;align-items:center;padding:10px;background:{bg}'>{svg_}</div>" for bg, svg_ in [('#fff', star(4, PAL['light'])+olive(PAL['light'])+band_star(PAL['light'], 3)+band_zig(PAL['light'])), ('#1b1415', star(4, PAL['dark'])+olive(PAL['dark'])+band_star(PAL['dark'], 3)+band_zig(PAL['dark']))]))
