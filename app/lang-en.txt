@@ -1166,3 +1166,19 @@ English (يُستعمل في تصدير PTT) | English (used in the PTT export)
 غير موجود على هذا الجهاز | Not on this device
 الصيغة | Format
 مرفقات: | Attachments:
+الفئة العمرية | Age group
+الكل | All
+ذوو إعاقة | With disability
+بلا إعاقة | No disability
+لديه مرفقات | Has attachments
+بلا مرفقات | No attachments
+منقوص المقاطع | Incomplete name
+له حضور | Has attendance
+بلا حضور | No attendance
+بلا عمر | No age
+مسح الفلاتر | Clear filters
+لا نتائج مطابقة. | No matching results.
+حدّد نوع الإعاقة (أخرى) * | Specify disability type (other) *
+حدّد النوع (أخرى) * | Specify type (other) *
+اكتب نوع الإعاقة | Type the disability type
+اكتب نوع الإعاقة (أخرى) | Type the disability type (other)

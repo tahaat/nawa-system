@@ -76,8 +76,8 @@ export const nameOk = (n) => String(n || '').trim().split(/\s+/).filter(Boolean)
 export function peopleOf(sh, db) {
   const m = new Map(db.beneficiaries.map((b) => [b.id, b])); const out = [];
   for (const L of KINDS[sh.kind].lists) {
-    if (L.inline) (sh.guests || []).forEach((g, i) => out.push({ list: L.key, id: 'g' + i, name: g.name, sex: g.sex, age: g.age, disability: !!g.disability, dtype: g.dtype, phone: g.phone, guest: true }));
-    else for (const id of sh[L.key] || []) { const b = m.get(id); out.push(b ? { list: L.key, id, name: b.name, sex: b.sex, age: b.age ?? null, bnf: b, disability: !!b.disability, dtype: b.disabilityType, phone: b.phone } : { list: L.key, id, missing: true }); }
+    if (L.inline) (sh.guests || []).forEach((g, i) => out.push({ list: L.key, id: 'g' + i, name: g.name, sex: g.sex, age: g.age, disability: !!g.disability, dtype: g.dtype, dtypeOther: g.dtypeOther, phone: g.phone, guest: true }));
+    else for (const id of sh[L.key] || []) { const b = m.get(id); out.push(b ? { list: L.key, id, name: b.name, sex: b.sex, age: b.age ?? null, bnf: b, disability: !!b.disability, dtypeOther: b.disabilityOther, dtype: b.disabilityType, phone: b.phone } : { list: L.key, id, missing: true }); }
   }
   return out;
 }

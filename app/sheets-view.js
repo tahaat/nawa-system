@@ -69,7 +69,7 @@ function listCard(L) {
   const head = `<tr><th>#</th><th>الاسم</th><th>الجنس</th>${L.age ? '<th>العمر</th>' : ''}<th>إعاقة</th>${meets.map((m) => `<th title="${esc(m.date)}">${m.i + 1}<br><button class="sec" style="padding:0 5px;font-size:13px" data-shact="col" data-i="${m.i}">كل</button></th>`).join('')}${meets.length ? '<th>%</th>' : ''}<th></th></tr>`;
   const comp = K.multi ? new Map(completion(cur, db).map((c) => [c.id, c])) : null;
   const rows = ppl.map((x, i) => { const age = x.guest ? x.age : x.bnf ? ageAt(x.bnf, cur.meta.date || cur.meta.start || new Date().toISOString().slice(0, 10)) : '';
-    return `<tr><td>${i + 1}</td><td>${esc(x.missing ? '(محذوف)' : x.name)}</td><td>${x.sex === 'M' ? 'ذكر' : x.sex === 'F' ? 'أنثى' : '؟'}</td>${L.age ? `<td>${age ?? '؟'}</td>` : ''}<td>${x.disability ? esc(x.dtype || 'نعم — النوع؟') : ''}</td>${meets.map((m) => `<td><input type="checkbox" data-sp="${m.i}|${x.id}" ${cur.meetings[m.i].present.includes(x.id) ? 'checked' : ''}></td>`).join('')}${meets.length ? `<td>${comp?.get(x.id) ? `<span class="badge b-${comp.get(x.id).ok === false ? 'warn' : 'ok'}">${comp.get(x.id).pct}%</span>` : ''}</td>` : ''}<td><button class="x" data-shact="rm" data-l="${L.key}" data-id="${x.guest ? x.id.slice(1) : x.id}">إزالة</button></td></tr>`; }).join('');
+    return `<tr><td>${i + 1}</td><td>${esc(x.missing ? '(محذوف)' : x.name)}</td><td>${x.sex === 'M' ? 'ذكر' : x.sex === 'F' ? 'أنثى' : '؟'}</td>${L.age ? `<td>${age ?? '؟'}</td>` : ''}<td>${x.disability ? esc(x.dtype ? x.dtype + (x.dtypeOther ? ': ' + x.dtypeOther : '') : 'نعم — النوع؟') : ''}</td>${meets.map((m) => `<td><input type="checkbox" data-sp="${m.i}|${x.id}" ${cur.meetings[m.i].present.includes(x.id) ? 'checked' : ''}></td>`).join('')}${meets.length ? `<td>${comp?.get(x.id) ? `<span class="badge b-${comp.get(x.id).ok === false ? 'warn' : 'ok'}">${comp.get(x.id).pct}%</span>` : ''}</td>` : ''}<td><button class="x" data-shact="rm" data-l="${L.key}" data-id="${x.guest ? x.id.slice(1) : x.id}">إزالة</button></td></tr>`; }).join('');
   const qa = quick[L.key];
   return `<div class="card"><h2>${esc(L.label)} (${ppl.length})</h2>
     ${L.inline ? '' : `<div class="row"><label>بحث في سجل المستفيدين<input data-sq="${L.key}" value="${esc(q[L.key] || '')}" placeholder="اكتب جزءاً من الاسم" style="width:260px"></label>
@@ -87,7 +87,7 @@ const iso = () => new Date().toISOString().slice(0, 10);
 function quickForm(L) {
   return `<div class="card" style="background:var(--warnbg)"><div class="row"><label>الاسم (3 مقاطع على الأقل) *<input id="qa-name" style="width:260px"></label><label>الجنس *<select id="qa-sex"><option value=""></option><option value="M">ذكر</option><option value="F">أنثى</option></select></label>
     <label>العمر *<input id="qa-age" type="number" min="3" max="90" style="width:80px"></label><label>إعاقة<select id="qa-dis"><option value="0">لا</option><option value="1">نعم</option></select></label>
-    <label>نوع الإعاقة<select id="qa-dt"><option value=""></option>${DTYPES.map((d) => `<option>${d}</option>`).join('')}</select></label>${L.inline ? '' : '<label>الهاتف (اختياري)<input id="qa-ph" style="width:130px" placeholder="059xxxxxxx"></label>'}
+    <label>نوع الإعاقة<select id="qa-dt"><option value=""></option>${DTYPES.map((d) => `<option>${d}</option>`).join('')}</select></label><label id="qa-dow" hidden>حدّد النوع (أخرى) *<input id="qa-do" style="width:160px" placeholder="اكتب نوع الإعاقة"></label>${L.inline ? '' : '<label>الهاتف (اختياري)<input id="qa-ph" style="width:130px" placeholder="059xxxxxxx"></label>'}
     <button data-shact="quickSave" data-l="${L.key}">إضافة</button></div><div id="qa-err" class="small" style="color:var(--err)"></div></div>`;
 }
 
@@ -115,6 +115,7 @@ function onInput(e) {
   else if (d.sp) { const [i, id] = d.sp.split('|'); const a = cur.meetings[+i].present; if (t.checked) { if (!a.includes(id)) a.push(id); } else cur.meetings[+i].present = a.filter((x) => x !== id); refreshCheck(); }
   else if (d.sq) { q[d.sq] = t.value; const L = KINDS[cur.kind].lists.find((x) => x.key === d.sq), r = $('#res-' + d.sq); if (r) r.innerHTML = results(L); }
   else if (d.shall) { if (!isChange) return; showAll[d.shall] = t.checked; const L = KINDS[cur.kind].lists.find((x) => x.key === d.shall), r = $('#res-' + d.shall); if (r) r.innerHTML = results(L); }
+  else if (t.id === 'qa-dt' || t.id === 'qa-dis') { const w = $('#qa-dow'); if (w) w.hidden = !($('#qa-dis').value === '1' && $('#qa-dt').value === 'أخرى'); }
   else if (t.id === 'sh-act') { cur.activityId = t.value || null; refreshCheck(); }
   else if (t.id === 'sh-ctr') { cur.centerId = t.value || null; refreshCheck(); }
 }
@@ -137,13 +138,13 @@ async function onClick(e) {
 }
 
 async function quickSave(L) {
-  const db = ctx.db, g = (id) => $('#' + id)?.value ?? '', name = g('qa-name').trim().replace(/\s+/g, ' '), sex = g('qa-sex'), age = g('qa-age') === '' ? null : +g('qa-age'), dis = g('qa-dis') === '1', dt = g('qa-dt'), ph = g('qa-ph').replace(/[\s-]/g, ''), er = [];
-  if (!nameOk(name)) er.push('الاسم يجب أن يكون ثلاثة مقاطع على الأقل'); if (!sex) er.push('اختر الجنس'); if (age == null || !Number.isInteger(age) || age < 3 || age > 90) er.push('العمر مطلوب (3–90)'); if (dis && !dt) er.push('حدّد نوع الإعاقة'); if (ph && !phoneOk(ph)) er.push('الهاتف يبدأ بـ 059 أو 056 ويتكون من 10 أرقام');
+  const db = ctx.db, g = (id) => $('#' + id)?.value ?? '', name = g('qa-name').trim().replace(/\s+/g, ' '), sex = g('qa-sex'), age = g('qa-age') === '' ? null : +g('qa-age'), dis = g('qa-dis') === '1', dt = g('qa-dt'), dto = g('qa-do').trim(), ph = g('qa-ph').replace(/[\s-]/g, ''), er = [];
+  if (!nameOk(name)) er.push('الاسم يجب أن يكون ثلاثة مقاطع على الأقل'); if (!sex) er.push('اختر الجنس'); if (age == null || !Number.isInteger(age) || age < 3 || age > 90) er.push('العمر مطلوب (3–90)'); if (dis && !dt) er.push('حدّد نوع الإعاقة'); if (dis && dt === 'أخرى' && !dto) er.push('اكتب نوع الإعاقة (أخرى)'); if (ph && !phoneOk(ph)) er.push('الهاتف يبدأ بـ 059 أو 056 ويتكون من 10 أرقام');
   const rg = L && (cur.meta.groups || []).filter((k) => L.allowed.includes(k)).map((k) => SG[k]); if (L?.age && age != null && rg.length && !rg.some((x) => age >= x.min && age <= x.max)) er.push(`العمر ${age} خارج الفئات المختارة`);
   if (er.length) { $('#qa-err').textContent = er.join(' — '); return; }
-  if (L.inline) { cur.guests.push({ name, sex, age, disability: dis, dtype: dis ? dt : '' }); quick[L.key] = true; return relist(); }
+  if (L.inline) { cur.guests.push({ name, sex, age, disability: dis, dtype: dis ? dt : '', ...(dis && dt === 'أخرى' ? { dtypeOther: dto } : {}) }); quick[L.key] = true; return relist(); }
   const dup = db.beneficiaries.find((x) => x.name.trim() === name && x.sex === sex); if (dup && !(await ctx.ask('يوجد مستفيد بنفس الاسم والجنس في السجل. هل هو شخص آخر؟ (تأكيد = إضافة كشخص جديد، إلغاء = استخدم الموجود)'))) { (cur[L.key] ||= []).includes(dup.id) || cur[L.key].push(dup.id); return relist(); }
-  const b = { id: uid('b'), name, sex, age, disability: dis, disabilityType: dis ? dt : '', phone: ph, center: cur.centerId }; db.beneficiaries.push(b); (cur[L.key] ||= []).push(b.id); ctx.save(); return relist();
+  const b = { id: uid('b'), name, sex, age, disability: dis, disabilityType: dis ? dt : '', ...(dis && dt === 'أخرى' ? { disabilityOther: dto } : {}), phone: ph, center: cur.centerId }; db.beneficiaries.push(b); (cur[L.key] ||= []).push(b.id); ctx.save(); return relist();
 }
 
 async function save() {

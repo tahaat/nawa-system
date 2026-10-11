@@ -1,13 +1,13 @@
 // شاشة «المستفيدون (BTT)»: إضافة/تعديل بتحقق لحظي (توهج)، نوع إعاقة مشروط، معلومات إضافية، مرفقات (ملف/رابط)، استيراد Excel بقالب
 import ExcelJS from 'exceljs';
-import { ageAt, bandOf, iso, uid } from '../core/model.js';
+import { ageAt, bandOf, iso, uid, AGE_BANDS } from '../core/model.js';
 import { DTYPES, commitSheet } from '../core/sheets.js';
 import { nameState, phoneState, idState, emailState, normPhone, phoneOkStrict, digits, emailOk, ATT_TYPES, ATT_MAX, urlOk, nameNeed, words, toLatin } from '../core/bnf.js';
 import { putFile, getFile, delFile, fileIds } from './store.js';
 import { putDraft, delDraft, draftsCard, newDraftId } from './drafts.js';
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const $ = (s, r = document) => r.querySelector(s);
-let ctx; const st = { q: '', edit: null, keep: [], pend: [], gone: [], have: new Set() };
+let ctx; const st = { f: {}, q: '', edit: null, keep: [], pend: [], gone: [], have: new Set() };
 export const initBnf = (c) => { ctx = c; };
 const TYPE = Object.fromEntries(ATT_TYPES);
 const CHK = { name: nameState, phone: phoneState, ephone: phoneState, nid: idState, email: emailState };
@@ -41,6 +41,7 @@ function formHtml(b) {
     <label>أو تاريخ الميلاد<input id="bd" type="date" value="${esc(v.dob || '')}"></label>
     <label>الإعاقة<select id="bdis"><option value="0">لا</option><option value="1" ${dis ? 'selected' : ''}>نعم</option></select></label>
     <label id="bdtw" ${dis ? '' : 'hidden'}>نوع الإعاقة<select id="bdt"><option value="">— اختر النوع —</option>${DTYPES.map((d) => `<option ${v.disabilityType === d ? 'selected' : ''}>${esc(d)}</option>`).join('')}${v.disabilityType && !DTYPES.includes(v.disabilityType) ? `<option selected>${esc(v.disabilityType)}</option>` : ''}</select></label>
+    <label id="bdow" ${dis && v.disabilityType === 'أخرى' ? '' : 'hidden'}>حدّد نوع الإعاقة (أخرى) *<input id="bdo" placeholder="اكتب نوع الإعاقة" value="${esc(v.disabilityOther || '')}" style="width:200px"></label>
     <label>رقم الجوال<input id="bp" data-chk="phone" inputmode="numeric" dir="ltr" placeholder="0591234567" value="${esc(v.phone || '')}" style="width:150px"><span class="fh"></span></label></div>
     <p class="small" id="bhint">الاسم يُعدّ مكتملًا عند ${nw} مقاطع فأكثر (يتوهج الحقل بالأحمر ثم بالأخضر)، والجوال 10 أرقام يبدأ بـ 059 أو 056.</p>
     <details ${b && (v.nationalId || v.email || v.emergencyPhone || (v.attachments || []).length) ? 'open' : ''}><summary>معلومات إضافية ومرفقات (اختيارية)</summary><div class="row">
@@ -52,9 +53,10 @@ function formHtml(b) {
     <div class="row" style="margin-top:10px"><button type="button" data-act="bSave">${b ? 'حفظ التعديل' : '+ إضافة'}</button>${b ? '<button type="button" class="sec" data-act="bCancel">إلغاء</button>' : ''}</div></div>`;
 }
 // مسودة مستفيد جديد: الحقول النصية فقط (المرفقات الجديدة لا تُحفظ في المسودة)
-const FIELDS = ['bn', 'bs', 'ba', 'bd', 'bdis', 'bdt', 'bp', 'bem', 'bnid', 'ben', 'bep'];
+const FIELDS = ['bn', 'bs', 'ba', 'bd', 'bdis', 'bdt', 'bdo', 'bp', 'bem', 'bnid', 'ben', 'bep'];
+const showOther = () => { const w = $('#bdow'); if (w) w.hidden = !($('#bdis')?.value === '1' && $('#bdt')?.value === 'أخرى'); };
 const snap = () => Object.fromEntries(FIELDS.map((i) => [i, $('#' + i)?.value ?? '']));
-const snapDirty = (d) => !!(d.bn.trim() || d.ba || d.bd || d.bp.trim() || d.bem.trim() || d.bnid.trim() || d.ben.trim() || d.bep.trim());
+const snapDirty = (d) => !!(d.bn.trim() || (d.bdo || '').trim() || d.ba || d.bd || d.bp.trim() || d.bem.trim() || d.bnid.trim() || d.ben.trim() || d.bep.trim());
 export function bnfAuto(clear = false) {
   if (!$('#bnform') || st.edit) return false; const d = snap(); if (!snapDirty(d)) return false; st.draftId ||= newDraftId('bnf');
   putDraft({ id: st.draftId, type: 'bnf', projectId: ctx.ui?.projectId, title: `مستفيد — ${d.bn.trim() || 'بلا اسم بعد'}`, data: d });
@@ -63,16 +65,42 @@ export function bnfAuto(clear = false) {
 export function restoreBnf(d, id) { st.edit = null; st.keep = []; st.pend = []; st.gone = []; st.fill = d; st.draftId = id; }
 export async function openBnf(id) { if (!ctx.db.beneficiaries.some((b) => b.id === id)) return false; st.edit = id; await loadAtt(cur()); vBnf(); scrollTo({ top: 0 }); return true; }
 export function vBnf() {
-  const db = ctx.db, q = st.q.trim(), list = db.beneficiaries.filter((b) => !q || b.name.includes(q) || (b.phone || '').includes(q) || (b.nationalId || '').includes(q)).slice(0, 400), need = nameNeed(), today = iso(new Date());
+  const q = st.q.trim();
   ctx.view().innerHTML = (st.edit ? '' : draftsCard(null, 'bnf')) + formHtml(cur()) + `
   <div class="card"><h2>استيراد من Excel</h2><p class="small">الأعمدة المدعومة: الاسم، الجنس، العمر، تاريخ الميلاد، الإعاقة، نوع الإعاقة، الجوال، الهوية، البريد، اسم الطوارئ، هاتف الطوارئ. تُتجاهل القيم غير الصحيحة (جوال/هوية/بريد) وتُعدّ في التقرير.</p>
   <div class="row"><label>الملف<input type="file" id="bimp" accept=".xlsx"></label><button class="sec" data-act="bImp">استيراد</button><button class="sec" data-act="bTpl">تنزيل قالب الاستيراد</button></div><p id="bimsg" class="small"></p></div>
-  <div class="card"><div class="row"><label>بحث<input id="bq" placeholder="اسم أو جوال أو هوية" value="${esc(q)}"></label><span class="small">${db.beneficiaries.length} مستفيد</span></div>
-  <div class="tw"><table><tr><th>الاسم</th><th>الجنس</th><th>العمر</th><th>الفئة</th><th>إعاقة</th><th>الجوال</th><th>مرفقات</th><th>جلسات حضور</th><th></th></tr>${list.map((b) => { const age = ageAt(b, today), n = db.sessions.filter((s) => s.mode === 'roll' && s.attendance.includes(b.id)).length, short = words(b.name) < need;
-    return `<tr><td>${esc(b.name)}${short ? ' <span class="badge b-warn">منقوص</span>' : ''}</td><td>${b.sex === 'M' ? 'ذكر' : 'أنثى'}</td><td>${age ?? '؟'}</td><td>${bandOf(age)?.key || '—'}</td><td>${b.disability ? esc(b.disabilityType || 'نعم') : ''}</td><td dir="ltr">${esc(b.phone || '')}</td><td>${(b.attachments || []).length ? `<button class="sec attb" data-act="bAtts" data-id="${b.id}" title="عرض المرفقات">📎 ${b.attachments.length}</button>` : '<span class="small">—</span>'}</td><td>${n}</td><td><button class="sec" data-act="bEdit" data-id="${b.id}">تعديل</button> <button class="x" data-act="bDel" data-id="${b.id}">حذف</button></td></tr>`; }).join('')}</table></div></div>`;
-  $('#bq').addEventListener('input', (e) => { st.q = e.target.value; clearTimeout(vBnf.t); vBnf.t = setTimeout(() => { vBnf(); const x = $('#bq'); x.focus(); x.setSelectionRange(x.value.length, x.value.length); }, 300); });
-  if (st.fill && !st.edit) { for (const [i, v] of Object.entries(st.fill)) { const e = $('#' + i); if (e) e.value = v; } if ($('#bdtw')) $('#bdtw').hidden = $('#bdis')?.value !== '1'; st.fill = null; }
+  <div class="card"><div class="row"><label>بحث<input id="bq" placeholder="اسم أو جوال أو هوية" value="${esc(q)}"></label>
+    <label>الجنس<select id="bf-sex" data-bf="sex"><option value="">الكل</option><option value="M">ذكر</option><option value="F">أنثى</option></select></label>
+    <label>الفئة العمرية<select id="bf-band" data-bf="band"><option value="">الكل</option>${AGE_BANDS.map((x) => `<option>${x.key}</option>`).join('')}<option value="?">بلا عمر</option></select></label>
+    <label>الإعاقة<select id="bf-dis" data-bf="dis"><option value="">الكل</option><option value="1">ذوو إعاقة</option><option value="0">بلا إعاقة</option>${DTYPES.map((d) => `<option value="t:${esc(d)}">نوع: ${esc(d)}</option>`).join('')}</select></label>
+    <label>المرفقات<select id="bf-att" data-bf="att"><option value="">الكل</option><option value="1">لديه مرفقات</option><option value="0">بلا مرفقات</option></select></label>
+    <label>الاسم<select id="bf-name" data-bf="name"><option value="">الكل</option><option value="short">منقوص المقاطع</option></select></label>
+    <label>الحضور<select id="bf-att2" data-bf="att2"><option value="">الكل</option><option value="1">له حضور</option><option value="0">بلا حضور</option></select></label>
+    <button class="sec" data-act="bfReset">مسح الفلاتر</button></div><div id="bnres"></div></div>`;
+  paintList();
+  const bf = { ...st.f }; for (const [k, v] of Object.entries(bf)) { const e = $('#bf-' + k); if (e) e.value = v; }
+  document.querySelectorAll('[data-bf]').forEach((e) => (e.onchange = () => { st.f[e.dataset.bf] = e.value; paintList(); }));
+  $('#bq').addEventListener('input', (e) => { st.q = e.target.value; clearTimeout(vBnf.t); vBnf.t = setTimeout(paintList, 200); });
+  if (st.fill && !st.edit) { for (const [i, v] of Object.entries(st.fill)) { const e = $('#' + i); if (e) e.value = v; } if ($('#bdtw')) $('#bdtw').hidden = $('#bdis')?.value !== '1'; showOther(); st.fill = null; }
   document.querySelectorAll('#bnform [data-chk]').forEach((t) => t.value && paint(t));
+}
+function paintList() {
+  const e = $('#bnres'); if (!e) return; const db = ctx.db, q = st.q.trim(), f = st.f, need = nameNeed(), today = iso(new Date());
+  const att = new Map(); for (const x of db.sessions) if (x.mode === 'roll') for (const id of x.attendance || []) att.set(id, (att.get(id) || 0) + 1);
+  const all = db.beneficiaries.filter((b) => {
+    if (q && !(b.name.includes(q) || (b.phone || '').includes(q) || (b.nationalId || '').includes(q))) return false;
+    const age = ageAt(b, today);
+    if (f.sex && b.sex !== f.sex) return false;
+    if (f.band && (f.band === '?' ? age != null : bandOf(age)?.key !== f.band)) return false;
+    if (f.dis === '1' && !b.disability) return false; if (f.dis === '0' && b.disability) return false; if (f.dis?.startsWith('t:') && !(b.disability && b.disabilityType === f.dis.slice(2))) return false;
+    if (f.att === '1' && !(b.attachments || []).length) return false; if (f.att === '0' && (b.attachments || []).length) return false;
+    if (f.name === 'short' && words(b.name) >= need) return false;
+    if (f.att2 === '1' && !att.get(b.id)) return false; if (f.att2 === '0' && att.get(b.id)) return false;
+    return true;
+  }), list = all.slice(0, 400);
+  e.innerHTML = `<p class="small">${all.length === db.beneficiaries.length ? `${all.length} مستفيد` : `النتيجة: <b>${all.length}</b> من ${db.beneficiaries.length} مستفيد`}${all.length > 400 ? ' — يُعرض أول 400، ضيّق الفلاتر' : ''}</p>
+  <div class="tw"><table><tr><th>الاسم</th><th>الجنس</th><th>العمر</th><th>الفئة</th><th>إعاقة</th><th>الجوال</th><th>مرفقات</th><th>جلسات حضور</th><th></th></tr>${list.map((b) => { const age = ageAt(b, today), n = att.get(b.id) || 0, short = words(b.name) < need;
+    return `<tr><td>${esc(b.name)}${short ? ' <span class="badge b-warn">منقوص</span>' : ''}</td><td>${b.sex === 'M' ? 'ذكر' : 'أنثى'}</td><td>${age ?? '؟'}</td><td>${bandOf(age)?.key || '—'}</td><td>${b.disability ? esc(b.disabilityType ? b.disabilityType + (b.disabilityOther ? ': ' + b.disabilityOther : '') : 'نعم') : ''}</td><td dir="ltr">${esc(b.phone || '')}</td><td>${(b.attachments || []).length ? `<button class="sec attb" data-act="bAtts" data-id="${b.id}" title="عرض المرفقات">📎 ${b.attachments.length}</button>` : '<span class="small">—</span>'}</td><td>${n}</td><td><button class="sec" data-act="bEdit" data-id="${b.id}">تعديل</button> <button class="x" data-act="bDel" data-id="${b.id}">حذف</button></td></tr>`; }).join('') || '<tr><td colspan="9" class="small">لا نتائج مطابقة.</td></tr>'}</table></div>`;
 }
 function openAtts(html) {
   $('#attmodal')?.remove(); const m = document.createElement('div'); m.id = 'attmodal'; m.innerHTML = `<div class="modal-box" role="dialog" aria-modal="true">${html}</div>`;
@@ -86,7 +114,7 @@ async function shrink(file) {
 }
 const read = () => {
   const g = (i) => ($(i)?.value ?? '').trim(), dis = g('#bdis') === '1';
-  return { name: g('#bn').replace(/\s+/g, ' '), sex: g('#bs'), age: g('#ba') === '' ? null : +g('#ba'), dob: g('#bd') || null, disability: dis, disabilityType: dis ? g('#bdt') : '', phone: normPhone(g('#bp')), nationalId: digits(g('#bnid')), email: g('#bem').toLowerCase(), emergencyName: g('#ben'), emergencyPhone: normPhone(g('#bep')) };
+  return { name: g('#bn').replace(/\s+/g, ' '), sex: g('#bs'), age: g('#ba') === '' ? null : +g('#ba'), dob: g('#bd') || null, disability: dis, disabilityType: dis ? g('#bdt') : '', disabilityOther: dis && g('#bdt') === 'أخرى' ? g('#bdo') : '', phone: normPhone(g('#bp')), nationalId: digits(g('#bnid')), email: g('#bem').toLowerCase(), emergencyName: g('#ben'), emergencyPhone: normPhone(g('#bep')) };
 };
 async function delBnfFull(id) {
   const db = ctx.db; db.sessions.forEach((s) => s.attendance && (s.attendance = s.attendance.filter((x) => x !== id)));
@@ -98,7 +126,8 @@ export function bnfActions({ toast, ask, save, rerender, dl }) {
   document.addEventListener('input', (e) => { if (e.target.dataset?.chk && $('#bnform')?.contains(e.target)) paint(e.target); });
   document.addEventListener('change', (e) => {
     const t = e.target; if (!$('#bnform')?.contains(t)) return;
-    if (t.id === 'bdis') { $('#bdtw').hidden = t.value !== '1'; if (t.value !== '1') $('#bdt').value = ''; }
+    if (t.id === 'bdis') { $('#bdtw').hidden = t.value !== '1'; if (t.value !== '1') { $('#bdt').value = ''; $('#bdo').value = ''; } showOther(); }
+    else if (t.id === 'bdt') { if (t.value !== 'أخرى') $('#bdo').value = ''; showOther(); if (t.value === 'أخرى') $('#bdo').focus(); }
     else if (t.id === 'at-kind') { $('#at-fw').hidden = t.value !== 'file'; $('#at-uw').hidden = t.value !== 'link'; }
   });
   const X = {
@@ -111,6 +140,7 @@ export function bnfActions({ toast, ask, save, rerender, dl }) {
       openAtts(`<div class="modal-h"><h3>مرفقات: ${esc(b.name)}</h3><button class="sec" data-act="bAttsClose">إغلاق</button></div><div class="tw"><table><tr><th>العنوان</th><th>النوع</th><th>الصيغة</th><th></th></tr>${rows}</table></div>`);
     },
     bAttsClose() { $('#attmodal')?.remove(); },
+    bfReset() { st.f = {}; st.q = ''; vBnf(); },
     bCancel() { st.edit = null; st.keep = []; st.pend = []; vBnf(); },
     async bSave() {
       const b0 = cur(), r = read(); if (!r.name) { $('#bn').focus(); return toast('الاسم مطلوب'); }
@@ -119,6 +149,8 @@ export function bnfActions({ toast, ask, save, rerender, dl }) {
       if (r.email && !emailOk(r.email)) { $('#bem').focus(); return toast('البريد الإلكتروني غير صحيح'); }
       if (r.nationalId && idState(r.nationalId).s === 'bad') { $('#bnid').focus(); return toast('رقم الهوية 9 أرقام'); }
       if (r.disability && !r.disabilityType) { $('#bdt').focus(); return toast('اختر نوع الإعاقة'); }
+      if (r.disabilityType === 'أخرى' && !r.disabilityOther) { showOther(); $('#bdo').focus(); return toast('اكتب نوع الإعاقة (أخرى)'); }
+      if (!r.disabilityOther) delete r.disabilityOther;
       if (r.age != null && (!Number.isInteger(r.age) || r.age < 0 || r.age > 120)) return toast('العمر غير صحيح');
       if (nameState(r.name).s === 'bad' && !(await ctx.ask(`الاسم أقل من ${nameNeed()} مقاطع. حفظ رغم ذلك؟`))) return;
       const dup = ctx.db.beneficiaries.find((x) => x.id !== b0?.id && x.name.trim() === r.name && x.sex === r.sex); if (dup && !(await ctx.ask('يوجد مستفيد بنفس الاسم والجنس. حفظ رغم ذلك؟'))) return;
@@ -162,7 +194,7 @@ export function bnfActions({ toast, ask, save, rerender, dl }) {
         const sex = /^(ذكر|m|male)$/i.test(sx) ? 'M' : /^(أنثى|انثى|f|female)$/i.test(sx) ? 'F' : null; if (!sex) { R.noSex++; return; } if (seen.has(name + '|' + sex)) { R.dup++; return; }
         const b = { id: uid('b'), name, sex, age: null, dob: null, disability: /^(نعم|yes|1|true)$/i.test(cell(r, C.d)) || !!cell(r, C.dt), disabilityType: '' };
         const dob = cell(r, C.dob); if (/^\d{4}-\d{2}-\d{2}$/.test(toLatin(dob))) b.dob = toLatin(dob); else { const a = parseInt(toLatin(cell(r, C.a)), 10); b.age = Number.isFinite(a) ? a : null; }
-        const dt = cell(r, C.dt); if (b.disability) b.disabilityType = DTYPES.includes(dt) ? dt : dt || ''; if (dt && !DTYPES.includes(dt) && b.disability) R.bt++;
+        const dt = cell(r, C.dt); if (b.disability) { if (DTYPES.includes(dt)) b.disabilityType = dt; else if (dt) { b.disabilityType = 'أخرى'; b.disabilityOther = dt; R.bt++; } }
         const ph = normPhone(cell(r, C.p)); if (ph) { if (phoneOkStrict(ph)) b.phone = ph; else R.bp++; } const ep = normPhone(cell(r, C.ep)); if (ep) { if (phoneOkStrict(ep)) b.emergencyPhone = ep; else R.bp++; }
         const id = digits(cell(r, C.id)); if (id) { if (/^\d{9}$/.test(id)) b.nationalId = id; else R.bi++; } const em = cell(r, C.em).toLowerCase(); if (em) { if (emailOk(em)) b.email = em; else R.be++; } const en = cell(r, C.en); if (en) b.emergencyName = en;
         if (words(name) < nameNeed()) R.short++; db.beneficiaries.push(b); seen.add(name + '|' + sex); R.n++;

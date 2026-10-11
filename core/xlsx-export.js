@@ -27,7 +27,7 @@ export async function exportBTT(db, projectId) {
   ws.addRow(head); hdr(ws, ws.getRow(1)); ws.getColumn(2).width = 30; [1, 3, 4, 5, 6, 7, 8, 9, 10, 11].forEach((i) => (ws.getColumn(i).width = 13));
   const a0 = 12;
   for (const b of rows) { const age = ageAt(b, new Date().toISOString().slice(0, 10)), n = ws.rowCount + 1;
-    ws.addRow([b.id, b.name, age, bandOf(age)?.key || '', b.sex === 'M' ? 'ذكر' : 'أنثى', b.disability ? 'نعم' : 'لا', b.disabilityType || '', b.dob ? new Date(b.dob + 'T00:00:00Z') : null, b.phone || '', b.status || '', b.previous || '', ...acts.map((a) => b.attendance[a.id] || null),
+    ws.addRow([b.id, b.name, age, bandOf(age)?.key || '', b.sex === 'M' ? 'ذكر' : 'أنثى', b.disability ? 'نعم' : 'لا', (b.disabilityType || '') + (b.disabilityOther ? ': ' + b.disabilityOther : ''), b.dob ? new Date(b.dob + 'T00:00:00Z') : null, b.phone || '', b.status || '', b.previous || '', ...acts.map((a) => b.attendance[a.id] || null),
       { formula: `SUM(${colL(a0)}${n}:${colL(a0 + acts.length - 1)}${n})`, result: b.totalSessions }]); }
   body(ws); return wb.xlsx.writeBuffer();
 }
