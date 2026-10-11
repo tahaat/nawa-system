@@ -18,6 +18,7 @@ import { vSettings, initSettings, settingsActions } from './settings-view.js';
 import { loadConfig } from '../core/settings.js';
 import { DTYPES } from '../core/sheets.js';
 import { kvGet } from './store.js';
+import { initOffline, offlineCard, offlineActions } from './offline.js';
 import { icon, getTheme, toggleTheme, initTheme, initHints, openPanel, hintsHtml } from './ui-tools.js';
 import { vSheets, initSheets } from './sheets-view.js';
 import { vOps, initOps } from './ops-view.js';
@@ -278,7 +279,7 @@ function vExport() {
   view().innerHTML = `<div class="card"><h2>تصدير Excel</h2><div class="row">
    ${!me() || ['admin', 'meal'].includes(me().role) ? '<button data-act="xPTT">PTT — قالب Annex 5 معبأ</button>' : ''}<button data-act="xSTT" class="gold">STT — الجلسات</button><button data-act="xBTT" class="gold">BTT — المستفيدون</button><button data-act="xSum" class="sec">ملخص المشروع</button></div>
    <p class="small">PTT يُعبَّأ داخل القالب الأصلي (مع بقاء المخططات والمعادلات) وتُعاد حساباته عند فتحه في Excel.</p><div id="xw"></div></div>
-  <div class="card"><h2>نسخة احتياطية</h2><div class="row"><button data-act="backup">حفظ نسخة JSON</button><label>استرجاع<input type="file" id="rf" accept=".json"></label><button class="sec" data-act="restore">استرجاع</button></div></div>`;
+  <div class="card"><h2>نسخة احتياطية</h2><div class="row"><button data-act="backup">حفظ نسخة JSON</button><label>استرجاع<input type="file" id="rf" accept=".json"></label><button class="sec" data-act="restore">استرجاع</button></div></div>${offlineCard()}`;
 }
 const IN_ARTIFACT = () => typeof window.claude?.use === 'function';
 const dl = async (data, name, type = 'application/octet-stream') => {
@@ -470,7 +471,7 @@ const actions = {
 };
 
 $('.logo').src = logoUrl; { const l = document.createElement('link'); l.rel = 'icon'; l.href = logoUrl; document.head.append(l); }
-initPlan({ project, save, rerender, view, empty }); initSheets({ db, project, save, view, empty, ask, toast, myCenters, route: () => route }); initOps({ db, project, save, view, empty, ask, toast, myCenters }); initBuilder({ project, save, rerender }); initGloss({ view, ask }); initSettings({ view, db, ask, askText }); Object.assign(actions, glossActions({ toast, dl }), settingsActions({ toast, dl, go, save, rerender, ui, ask })); loadConfig(await kvGet('config'), DTYPES); await load(); await loadGlossary(); try { if (localStorage.getItem('nawa.nonav')) document.body.classList.add('nonav'); } catch { /* خاص */ } initTheme(); applyDoc(); nav(); go('dash'); initHints(view); initCopy({ toast }); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
+initPlan({ project, save, rerender, view, empty }); initSheets({ db, project, save, view, empty, ask, toast, myCenters, route: () => route }); initOps({ db, project, save, view, empty, ask, toast, myCenters }); initBuilder({ project, save, rerender }); initGloss({ view, ask }); initSettings({ view, db, ask, askText }); Object.assign(actions, offlineActions, glossActions({ toast, dl }), settingsActions({ toast, dl, go, save, rerender, ui, ask })); loadConfig(await kvGet('config'), DTYPES); await load(); await loadGlossary(); try { if (localStorage.getItem('nawa.nonav')) document.body.classList.add('nonav'); } catch { /* خاص */ } initTheme(); applyDoc(); nav(); go('dash'); initHints(view); initCopy({ toast }); initOffline(); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
 setInterval(() => { if (sync.cfg.auto) doSync(); else setSyncBadge(); }, 60000);
 window.addEventListener('online', () => sync.cfg.auto && doSync());
 let st; document.addEventListener('change', () => { clearTimeout(st); st = setTimeout(() => sync.cfg.auto && doSync(), 4000); });

@@ -1,0 +1,16 @@
+{
+  "name": "نظام نوى للمشاريع والمستفيدين",
+  "short_name": "نوى",
+  "description": "تتبع المشاريع والمستفيدين (PTT / STT / BTT) — يعمل بلا إنترنت",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#A21008",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

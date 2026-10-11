@@ -1005,3 +1005,10 @@ English (يُستعمل في تصدير PTT) | English (used in the PTT export)
 استيراد وتطبيق | Import and apply
 ملء من قائمة… | Fill from a list…
 حُفظ | Saved
+العمل بلا إنترنت | Working offline
+بعد أول فتح بالإنترنت يُخزَّن البرنامج في المتصفح ويُفتح لاحقًا من الرابط نفسه دون اتصال، وبياناتك تبقى على جهازك. الترجمة عبر الإنترنت والمزامنة السحابية فقط تحتاجان اتصالًا. خذ نسخة احتياطية دورية. | After the first online visit the program is stored in the browser and opens later from the same link without a connection; your data stays on your device. Only online translation and cloud sync need a connection. Take regular backups.
+جاهز للعمل بلا إنترنت | Ready to work offline
+جارٍ التخزين… أعد فتح الصفحة بعد لحظات | Caching… reopen the page in a moment
+يعمل بلا إنترنت بفتح ملف index.html المحفوظ على الجهاز | Works offline by opening the saved index.html file on this device
+تثبيت كتطبيق | Install as an app
+إن لم يظهر زر التثبيت: في Chrome/Edge افتح قائمة المتصفح ← «تثبيت التطبيق»، وفي الهاتف «إضافة إلى الشاشة الرئيسية» (في iPhone: مشاركة ← إضافة إلى الشاشة الرئيسية). | If the install button does not appear: in Chrome/Edge open the browser menu then "Install app"; on a phone choose "Add to Home screen" (iPhone: Share then Add to Home Screen).
