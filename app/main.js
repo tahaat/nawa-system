@@ -180,7 +180,7 @@ function vProjects() {
   view().innerHTML = `
   <div class="card row"><button data-act="newProject">+ مشروع جديد</button><button class="sec" data-act="demo">مشروع تجريبي</button><button class="sec" data-act="demoGiz">مشروع GIZ النموذجي</button>${hasDemo() ? '<button class="x" data-act="purgeDemo">مسح بيانات المحاكاة كلها</button>' : ''}<button class="sec" data-act="delProject">حذف هذا المشروع</button></div>
   <div class="card"><h2>بيانات المشروع</h2><div class="row">
-    <label>الاسم<input data-bind="p|name" value="${esc(p.name)}" style="width:280px"></label>
+    <label>الاسم بالإنجليزية (اختياري)<input data-bind="p|nameEn" dir="ltr" value="${esc(p.nameEn || '')}" placeholder="Project name in English"></label><label>الاسم<input data-bind="p|name" value="${esc(p.name)}" style="width:280px"></label>
     <label>الممول<input data-bind="p|donor" value="${esc(p.donor)}"></label>
     <label>البداية<input type="date" data-bind="p|start" value="${p.start}" data-re="1"></label>
     <label>النهاية<input type="date" data-bind="p|end" value="${p.end}"></label></div>
@@ -189,31 +189,31 @@ function vProjects() {
       <label>الطريقة<select data-bind="directRule|mode" data-re="1">${sel([['once', 'حضور جلسة واحدة'], ['threshold', 'حد أدنى للحضور / نسبة'], ['manual', 'يدوي (تحديد من السجل)']], p.directRule?.mode)}</select></label>
       ${p.directRule?.mode === 'threshold' ? `<label>أقل عدد جلسات<input type="number" min="1" data-bind="directRule|minSessions" value="${p.directRule.minSessions ?? 1}" style="width:90px"></label><label>أو نسبة % من جلسات النشاط<input type="number" min="0" max="100" data-bind="directRule|minPct" value="${p.directRule.minPct ?? 0}" style="width:90px"></label>` : ''}</div></div>
   <div class="card"><h2>بنود تفصيل المستفيدين (حتى 5)</h2><p class="small">كل بند يظهر كصف في جدول «Beneficiaries Breakdown».</p>
-  <table><tr><th>النتيجة</th><th>اسم البند</th><th>الفئة</th><th></th></tr>${p.interventions.map((i, k) => `<tr>
+  <table><tr><th>النتيجة</th><th>اسم البند</th><th>English</th><th>الفئة</th><th></th></tr>${p.interventions.map((i, k) => `<tr>
     <td><select data-bind="interventions|${k}|result">${sel(['R1', 'R2', 'R3'].map((x) => [x, x]), i.result)}</select></td>
-    <td><input data-bind="interventions|${k}|name" value="${esc(i.name)}" style="width:100%"></td>
+    <td><input data-bind="interventions|${k}|name" value="${esc(i.name)}" style="width:100%"></td><td><input data-bind="interventions|${k}|en" dir="ltr" value="${esc(i.en || '')}" placeholder="English" style="width:100%"></td>
     <td><select data-bind="interventions|${k}|group">${sel(Object.entries(GROUPS), i.group)}</select></td>
     <td><button class="x" data-act="delIv" data-i="${k}">حذف</button></td></tr>`).join('')}</table>
   <button class="sec" data-act="addIv" ${p.interventions.length >= 5 ? 'disabled' : ''}>+ بند</button></div>
-  <div class="card"><h2>الأنشطة</h2><div class="tw"><table><tr><th>النشاط</th><th>النوع</th><th>البند</th><th>الفئة</th><th>عمر من</th><th>إلى</th><th>جلسات/وحدات مخططة</th><th>أشهر الخطة (من–إلى)</th><th>تشغيلي</th><th></th></tr>${p.activities.map((a, k) => `<tr>
-    <td><input data-bind="activities|${k}|name" value="${esc(a.name)}"></td><td><input data-bind="activities|${k}|type" value="${esc(a.type)}" style="width:100px"></td>
+  <div class="card"><h2>الأنشطة</h2><div class="tw"><table><tr><th>النشاط</th><th>English</th><th>النوع</th><th>البند</th><th>الفئة</th><th>عمر من</th><th>إلى</th><th>جلسات/وحدات مخططة</th><th>أشهر الخطة (من–إلى)</th><th>تشغيلي</th><th></th></tr>${p.activities.map((a, k) => `<tr>
+    <td><input data-bind="activities|${k}|name" value="${esc(a.name)}"></td><td><input data-bind="activities|${k}|en" dir="ltr" value="${esc(a.en || '')}" placeholder="English" style="width:170px"></td><td><input data-bind="activities|${k}|type" value="${esc(a.type)}" style="width:100px"></td>
     <td><select data-bind="activities|${k}|interventionId">${sel(iv, a.interventionId)}</select></td>
     <td><select data-bind="activities|${k}|group">${sel(Object.entries(GROUPS), a.group)}</select></td>
     <td><input type="number" style="width:60px" data-bind="activities|${k}|ageMin" value="${a.ageMin ?? ''}"></td><td><input type="number" style="width:60px" data-bind="activities|${k}|ageMax" value="${a.ageMax ?? ''}"></td>
     <td><input type="number" style="width:80px" data-bind="activities|${k}|plannedSessions" value="${a.plannedSessions ?? ''}"></td>
     <td>${planMonths(a, k)}</td><td title="نشاط بلا حضور (تدقيق، صيانة، مشتريات…)"><input type="checkbox" data-bind="activities|${k}|ops" ${a.ops ? 'checked' : ''}></td><td><button class="x" data-act="delAct" data-i="${k}">حذف</button></td></tr>`).join('')}</table></div>
   <button class="sec" data-act="addAct" ${!p.interventions.length ? 'disabled title="أضف بندًا أولًا"' : ''}>+ نشاط</button></div>
-  <div class="card"><h2>مؤشرات المخرجات (Output indicators)</h2><table><tr><th>المخرج</th><th>المؤشر</th><th>الأنشطة المحتسبة</th><th>طريقة العد</th><th></th></tr>${p.outputIndicators.map((o, k) => `<tr>
+  <div class="card"><h2>مؤشرات المخرجات (Output indicators)</h2><table><tr><th>المخرج</th><th>المؤشر</th><th>English</th><th>الأنشطة المحتسبة</th><th>طريقة العد</th><th></th></tr>${p.outputIndicators.map((o, k) => `<tr>
     <td><select data-bind="outputIndicators|${k}|output">${sel(['output 1', 'output 2', 'output 3'].map((x) => [x, x]), o.output)}</select></td>
-    <td><input data-bind="outputIndicators|${k}|name" value="${esc(o.name)}" style="width:100%"></td>
+    <td><input data-bind="outputIndicators|${k}|name" value="${esc(o.name)}" style="width:100%"></td><td><input data-bind="outputIndicators|${k}|en" dir="ltr" value="${esc(o.en || '')}" placeholder="English" style="width:100%"></td>
     <td><select multiple size="3" data-bind="outputIndicators|${k}|activityIds">${p.activities.map((a) => `<option value="${a.id}" ${o.activityIds.includes(a.id) ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select></td>
     <td><select data-bind="outputIndicators|${k}|measure">${sel([['unique', 'أفراد فريدون في الشهر'], ['sessions-attendance', 'مشاركات (كل حضور)'], ['sessions-held', 'عدد الجلسات المنفَّذة (تلقائي)'], ['count', 'عدد منجز (من سجل الإنجاز التشغيلي)']], o.measure)}</select></td>
     <td><button class="x" data-act="delOut" data-i="${k}">حذف</button></td></tr>`).join('')}</table><button class="sec" data-act="addOut">+ مؤشر</button>
   <p class="small">قيود القالب: output 1 = 3 مؤشرات، output 2 = 4، output 3 = 6. المؤشرات العدّية (عدد جلسات/عدد منجز) تُكتب في عمود الفئة الأولى لأن القالب بلا عمود إجمالي؛ اكتب مستهدفها في خانة «ذكور» في تبويب المستهدفات.</p></div>
   <div class="card"><h2>مؤشرات النتائج (Outcome indicators)</h2><p class="small">تُحسب من ردود الاستبيانات وتُكتب في ورقة Outcome indicators (البسط والمقام لكل ربع وفئة).</p>
-  <table><tr><th>الصف</th><th>المؤشر</th><th>الاستبيان</th><th>النوع</th><th>الحد (% من الدرجة)</th><th>المرحلة</th><th></th></tr>${(p.outcomeIndicators || []).map((o, k) => `<tr>
+  <table><tr><th>الصف</th><th>المؤشر</th><th>English</th><th>الاستبيان</th><th>النوع</th><th>الحد (% من الدرجة)</th><th>المرحلة</th><th></th></tr>${(p.outcomeIndicators || []).map((o, k) => `<tr>
     <td><select data-bind="outcomeIndicators|${k}|row">${sel([4, 5, 7, 8, 9, 10, 11, 12].map((x) => [x, x === 4 || x === 5 ? 'هدف عام ' + x : 'نتيجة ' + x]), String(o.row))}</select></td>
-    <td><input data-bind="outcomeIndicators|${k}|name" value="${esc(o.name)}" style="width:100%"></td>
+    <td><input data-bind="outcomeIndicators|${k}|name" value="${esc(o.name)}" style="width:100%"></td><td><input data-bind="outcomeIndicators|${k}|en" dir="ltr" value="${esc(o.en || '')}" placeholder="English" style="width:100%"></td>
     <td><select data-bind="outcomeIndicators|${k}|formId">${sel(allForms(p).map((t) => [t.id, t.ar]), o.formId)}</select></td>
     <td><select data-bind="outcomeIndicators|${k}|kind" data-re="1">${sel([['threshold', 'نسبة من تجاوز حدًّا'], ['improvement', 'نسبة من تحسّنت درجته (قبلي→بعدي)']], o.kind)}</select></td>
     <td>${o.kind === 'improvement' ? `<input type="number" style="width:70px" data-bind="outcomeIndicators|${k}|minGain" value="${o.minGain ?? 1}" title="أقل مكسب بالدرجات">` : `<input type="number" style="width:70px" data-bind="outcomeIndicators|${k}|valuePct" value="${o.valuePct ?? 70}">`}</td>
@@ -223,10 +223,11 @@ function vProjects() {
 const planMonths = (a, k) => { const m = a.planMonths || [0, 11]; const o = (v) => Array.from({ length: 12 }, (_, i) => `<option value="${i}" ${i === v ? 'selected' : ''}>${i + 1}</option>`).join(''); return `<select class="pm" data-i="${k}" data-w="0">${o(m[0])}</select> – <select class="pm" data-i="${k}" data-w="1">${o(m[1])}</select>`; };
 document.addEventListener('change', (e) => { if (e.target.classList?.contains('pm')) { const a = project().activities[+e.target.dataset.i]; a.planMonths = a.planMonths || [0, 11]; a.planMonths[+e.target.dataset.w] = +e.target.value; save(); } });
 
+document.addEventListener('change', (e) => { const id = e.target.dataset?.cen; if (id) { const c = db.centers.find((x) => x.id === id); if (c) { c.en = e.target.value.trim(); if (!c.en) delete c.en; save(); } } });
 // ======================= المراكز =======================
 function vCenters() {
   view().innerHTML = `<div class="card"><div class="row"><label>اسم المركز<input id="cn"></label><button data-act="addCenter">+ إضافة</button></div>
-  <table><tr><th>المركز</th><th>جلسات</th><th></th></tr>${db.centers.map((c) => `<tr><td>${esc(c.name)}</td><td>${db.sessions.filter((s) => s.centerId === c.id).length}</td><td><button class="x" data-act="delCenter" data-id="${c.id}">حذف</button></td></tr>`).join('')}</table></div>`;
+  <table><tr><th>المركز</th><th>English</th><th>جلسات</th><th></th></tr>${db.centers.map((c) => `<tr><td>${esc(c.name)}</td><td><input data-cen="${c.id}" dir="ltr" value="${esc(c.en || '')}" placeholder="English name"></td><td>${db.sessions.filter((s) => s.centerId === c.id).length}</td><td><button class="x" data-act="delCenter" data-id="${c.id}">حذف</button></td></tr>`).join('')}</table></div>`;
 }
 
 // ======================= المستفيدون =======================

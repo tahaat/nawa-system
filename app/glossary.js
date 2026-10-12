@@ -9,7 +9,16 @@ export const PROVIDERS = {
   mymemory: { name: 'MyMemory', url: (q) => `https://api.mymemory.translated.net/get?q=${encodeURIComponent(q)}&langpair=ar|en`, pick: (j) => (j?.responseStatus === 200 && !/MYMEMORY WARNING/i.test(j.responseData?.translatedText || '') ? j.responseData.translatedText : '') },
 };
 export const gl = { entries: [], auto: false, provider: 'google', busy: false, last: '' }; // entries: {ar, en, src: 'user'|'online'}
-const apply = () => setUserPairs(gl.entries.filter((e) => e.en).map((e) => [e.ar, e.en]));
+// أسماء المشاريع والأنشطة والمراكز... التي أدخل لها المستخدم مقابلًا إنجليزيًا تُترجَم تلقائيًا (وترجمات المستخدم في الذاكرة تتقدّم عليها)
+export function entityPairs() {
+  const m = new Map(), add = (a, e) => { a = (a || '').trim(); e = (e || '').trim(); if (a && e && a !== e) m.set(a, e); };
+  for (const p of db.projects) { add(p.name, p.nameEn); for (const k of ['interventions', 'activities', 'outputIndicators', 'outcomeIndicators']) for (const x of p[k] || []) add(x.name, x.en); }
+  for (const c of db.centers) add(c.name, c.en);
+  for (const s of db.sheets) add(s.meta?.title, s.meta?.titleEn);
+  return [...m];
+}
+const apply = () => setUserPairs([...entityPairs(), ...gl.entries.filter((e) => e.en).map((e) => [e.ar, e.en])]);
+let et; window.addEventListener('nawa:dbsave', () => { clearTimeout(et); et = setTimeout(() => { apply(); if (getLang() === 'en') refresh(); }, 400); });
 const persist = () => kvSet('glossary', { entries: gl.entries, auto: gl.auto, provider: gl.provider });
 
 export async function loadGlossary() {

@@ -1182,3 +1182,38 @@ English (يُستعمل في تصدير PTT) | English (used in the PTT export)
 حدّد النوع (أخرى) * | Specify type (other) *
 اكتب نوع الإعاقة | Type the disability type
 اكتب نوع الإعاقة (أخرى) | Type the disability type (other)
+الاسم بالإنجليزية (اختياري) | Name in English (optional)
+العنوان بالإنجليزية (اختياري) | Title in English (optional)
+ذ | M
+إ | F
+ذ-إ | M (disab.)
+إ-إ | F (disab.)
+الاسم يُعدّ مكتملًا عند 4 مقاطع فأكثر (يتوهج الحقل بالأحمر ثم بالأخضر)، والجوال 10 أرقام يبدأ بـ 059 أو 056. | The name counts as complete at 4 or more parts (the field glows red, then green), and the mobile number is 10 digits starting with 059 or 056.
+نوع: سمعية | Type: Hearing
+نوع: بصرية | Type: Visual
+نوع: حركية | Type: Mobility
+نوع: ذهنية | Type: Intellectual
+نوع: أخرى | Type: Other
+المرفقات | Attachments
+الجوال | Mobile
+قيود القالب: output 1 = 3 مؤشرات، output 2 = 4، output 3 = 6. المؤشرات العدّية (عدد جلسات/عدد منجز) تُكتب في عمود الفئة الأولى لأن القالب بلا عمود إجمالي؛ اكتب مستهدفها في خانة «ذكور» في تبويب المستهدفات. | Template limits: output 1 = 3 indicators, output 2 = 4, output 3 = 6. Count indicators (number of sessions / number delivered) are written in the first group column because the template has no total column; enter their target in the "Males" cell of the targets tab.
+تُحسب من ردود الاستبيانات وتُكتب في ورقة Outcome indicators (البسط والمقام لكل ربع وفئة). | Calculated from survey responses and written to the Outcome indicators sheet (numerator and denominator per quarter and group).
++ مؤشر نتائج | + Outcome indicator
+يتأكد أن STT = BTT = PTT = لوحة القيادة (الحضور، المؤشرات، الفئات العمرية، خطة العمل، المستفيد المباشر). | Checks that STT = BTT = PTT = Dashboard (attendance, indicators, age groups, work plan, direct beneficiaries).
+أنشئ استبيانك الخاص أو انسخ قالبًا جاهزًا وعدّله، ثم نزّل ملف XLSForm وارفعه في KoBo. الأسئلة من نوع «مقياس» تُجمع في الدرجة الكلية التي تُبنى عليها مؤشرات النتائج. | Create your own survey or copy a ready template and edit it, then download the XLSForm file and upload it to KoBo. Questions of type "Scale" are summed into the total score on which outcome indicators are built.
+أو انسخ قالبًا | Or copy a template
+نزّل النموذج وارفعه في KoboToolbox (Deploy). كل نموذج يحوي رمز المستفيد ومرحلة القياس والمركز ودرجة كلية محسوبة، لربط الردّ بسجل المستفيدين. | Download the form and upload it to KoboToolbox (Deploy). Every form contains the beneficiary code, measurement stage, center and a calculated total score, to link each response to the beneficiary register.
+من KoBo: Data → Downloads → XLSX، بصيغة «قيم XML» (XML values and headers). يُتخطّى المكرر تلقائيًا. | From KoBo: Data → Downloads → XLSX, in "XML values" format (XML values and headers). Duplicates are skipped automatically.
+إعداد المجلدات والصلاحيات (مرة واحدة، من حساب OneDrive للمؤسسة) | Folders and permissions setup (once, from the organization's OneDrive account)
+و | and
+لكل مركز (الرمز يظهر أعلاه بعد أول مزامنة، أو اتركه ينشئها النظام على جهازك ثم شاركها). | for each center (the code appears above after the first sync, or let the system create them on your device and then share them).
+(الهواتف ونوع الإعاقة): مع المكتب الرئيسي وMEAL فقط. | (phones and disability type): with the head office and MEAL only.
+على جهاز المنسق: أضف المجلدات المشاركة إلى OneDrive («إضافة اختصار إلى ملفاتي»)، ثم اختر مجلد | On the coordinator's device: add the shared folders to OneDrive ("Add shortcut to My files"), then choose the folder
+تسميات الفئات والجنس وأنماط الجلسة تظهر في كل البرنامج وفي تصدير PTT (الإنجليزية). المفاتيح الداخلية ثابتة لأن قالب Annex 5 يعتمد عليها؛ تُعدَّل التسمية فقط. | Group, sex and session-mode labels appear throughout the program and in the PTT export (English). Internal keys are fixed because the Annex 5 template depends on them; only the label can be changed.
+قوائم اختيار تبنيها بنفسك (مثل الأحياء، جهات الإحالة، أنواع المواد…) وتُستعمل في منشئ الاستبيانات، وتُصدَّر وتُستورد بصيغة | Choice lists you build yourself (such as neighborhoods, referral sources, material types…), used in the survey builder, exported and imported in
+المتوافقة مع XLSForm/KoBo. | XLSForm/KoBo-compatible format.
+رسم حر | Free drawing
+R1 — الدعم النفسي-الاجتماعي (أطفال 4-15) | R1 — Psychosocial support (Children 4-15)
+R1 — التعليم (أطفال 4-15) | R1 — Education (Children 4-15)
+R2 — دعم الأهالي | R2 — Parent support
+R3 — توثيق التراث الشفوي (المُحاوَرون) | R3 — Oral heritage documentation (Interviewees)

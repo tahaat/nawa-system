@@ -21,8 +21,17 @@ export function refresh() { if (lang === 'en') walk(document.body); }
 const AR = /[؀-ۿ]/;
 let lang = 'ar'; try { lang = localStorage.getItem('nawa.lang') || 'ar'; } catch { /* خاص */ }
 export const getLang = () => lang;
+// عبارات مركّبة فيها أرقام (لا يصلح فيها القاموس الثابت)
+const PATS = [
+  [/النتيجة: (\d+) من (\d+) مستفيد/g, 'Result: $1 of $2 beneficiaries'],
+  [/\((\d+)ذ\/(\d+)إ\)/g, (m, a, b) => `(M${a}/F${b})`],
+  [/(\d+) \/ (\d+|؟) لقاء/g, (m, a, b) => `${a} / ${b} meetings`],
+  [/لقاء (\d+) \/ (\d+|؟)/g, (m, a, b) => `Meeting ${a} / ${b}`],
+  [/(\d+) خطأ/g, '$1 error(s)'], [/(\d+) تنبيه/g, '$1 warning(s)'], [/(\d+) مستفيد(?![؀-ۿ])/g, '$1 beneficiaries'],
+];
 export function tr(s) {
   if (lang !== 'en' || typeof s !== 'string' || !AR.test(s)) return s;
+  let t0 = s; for (const [r, f] of PATS) t0 = t0.replace(r, f); if (t0 !== s && !AR.test(t0)) return t0; if (t0 !== s) s = t0;
   const t = s.trim(), ex = EXACT.get(t);
   let out = ex !== undefined ? s.replace(t, ex) : s.replace(RX, (m) => EXACT.get(m));
   if (out === s) { const m2 = t.match(/^([\s\S]*?)(\s*\*|\s*:|\s*\(\d+\))$/); if (m2 && EXACT.has(m2[1].trim())) out = s.replace(t, EXACT.get(m2[1].trim()) + m2[2]); }

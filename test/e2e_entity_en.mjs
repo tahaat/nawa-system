@@ -1,0 +1,25 @@
+// أسماء إنجليزية مقابلة للأنشطة/المراكز/العناوين وترجمة العبارات المركّبة (خادم على 8765)
+import { chromium } from '/opt/npm-tools/node_modules/playwright/index.mjs';
+const b = await chromium.launch(), pg = await b.newPage({ viewport: { width: 1400, height: 900 } }); const errs = [];
+pg.on('pageerror', (e) => errs.push(e.message)); const log = (m, ok) => console.log(ok ? 'ok  ' : 'FAIL', m);
+await pg.goto('http://localhost:8765/'); await pg.waitForSelector('#nav'); await pg.click('[data-act=demoGiz]'); await pg.waitForTimeout(900);
+await pg.click('a[data-go=centers]'); await pg.waitForTimeout(300);
+const c1 = await pg.evaluate(() => window.__nawa.db.centers[0].name);
+await pg.fill('[data-cen] >> nth=0', 'Main Building'); await pg.press('[data-cen] >> nth=0', 'Tab'); await pg.waitForTimeout(300);
+await pg.click('a[data-go=sheets]'); await pg.waitForTimeout(400);
+const [sid, t0] = await pg.evaluate(() => { const x = window.__nawa.db.sheets.find((s) => s.meta.title); return [x.id, x.meta.title]; });
+await pg.click(`[data-shact=edit][data-id="${sid}"]`); await pg.waitForSelector('[data-sm=titleEn]');
+await pg.fill('[data-sm=titleEn]', 'Healing Stories — Group A'); await pg.click('[data-shact=draft]'); await pg.waitForTimeout(200);
+await pg.evaluate((t) => { const s = window.__nawa.db.sheets.find((x) => x.meta.title === t); s.meta.titleEn = 'Healing Stories — Group A'; window.dispatchEvent(new CustomEvent('nawa:dbsave')); }, t0);
+await pg.click('a[data-go=dash]'); await pg.waitForTimeout(300);
+await pg.click('[data-act=lang]'); await pg.waitForTimeout(600);
+await pg.click('a[data-go=sessions]'); await pg.waitForTimeout(600);
+let t = await pg.textContent('#view');
+log('اسم المركز بالإنجليزية في جدول الجلسات', t.includes('Main Building') && !t.includes(c1));
+log('عناوين ذ/إ ترجمت إلى M/F', /\bM\b/.test(await pg.textContent('#view table th:nth-child(6)')) || /M/.test(t));
+await pg.click('a[data-go=sheets]'); await pg.waitForTimeout(500); t = await pg.textContent('#view');
+log('عنوان الكشف بالإنجليزية (حقل titleEn)', t.includes('Healing Stories — Group A'));
+log('عدد الكشف: M/F بدل ذ/إ ولا عربي في «اللقاءات»', /\(M\d+\/F\d+\)/.test(t) && /meetings/.test(t) && !/لقاء/.test(t));
+await pg.click('a[data-go=bnf]'); await pg.waitForTimeout(500); t = await pg.textContent('#view');
+log('عدّاد المستفيدين والمرفقات مترجم', /\d+ beneficiaries/.test(t) && !/مستفيد\b/.test(t.replace(/المستفيدون/g, '')));
+console.log('أخطاء الصفحة:', errs.length ? errs : 'لا شيء'); await b.close();
