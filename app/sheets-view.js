@@ -4,7 +4,7 @@ import { ageAt, uid } from '../core/model.js';
 import { putDraft, delDraft, getDraft, draftsCard } from './drafts.js';
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const $ = (s, r = document) => r.querySelector(s);
-let ctx, cur = null, base = '', bound = false; const q = {}, showAll = {}, quick = {};
+let ctx, cur = null, base = '', bound = false; const q = {}, showAll = {}, quick = {}, flt = {}, pick = {}, lim = {};
 
 export function initSheets(c) { ctx = c; if (bound) return; bound = true; document.addEventListener('input', onInput); document.addEventListener('change', onInput); document.addEventListener('click', onClick); }
 // شارات ملونة وغامقة بعلامة = لتمييز الذكور/الإناث/ذوي الإعاقة/بدون إعاقة بسهولة
@@ -76,15 +76,45 @@ function listCard(L) {
   const qa = quick[L.key];
   return `<div class="card"><h2>${esc(L.label)} (${ppl.length})</h2>
     ${L.inline ? '' : `<div class="row"><label>بحث في سجل المستفيدين<input data-sq="${L.key}" value="${esc(q[L.key] || '')}" placeholder="اكتب جزءاً من الاسم" style="width:260px"></label>
-      <label class="chk"><input type="checkbox" data-shall="${L.key}" ${showAll[L.key] ? 'checked' : ''}> إظهار غير المطابقين للفئة</label></div><div id="res-${L.key}" class="roll" style="margin:8px 0">${results(L)}</div>`}
+      <label class="chk"><input type="checkbox" data-shall="${L.key}" ${showAll[L.key] ? 'checked' : ''}> إظهار غير المطابقين للفئة</label></div>
+      ${filterBar(L)}<div id="res-${L.key}" style="margin:8px 0">${results(L)}</div>`}
     <div class="row" style="margin:6px 0"><button class="sec" data-shact="quick" data-l="${L.key}">${qa ? 'إغلاق النموذج' : L.inline ? '+ إضافة زائر' : '+ مستفيد جديد (غير موجود في السجل)'}</button></div>${qa ? quickForm(L) : ''}
     ${ppl.length ? `<div class="tw"><table>${head}${rows}</table></div>` : '<p class="small">لا مشاركين بعد.</p>'}</div>`;
 }
+const F0 = () => ({ sex: '', amin: '', amax: '', dis: '', ctr: '', act: '', sort: 'name' });
+const fl = (k) => (flt[k] ||= F0());
+function filterBar(L) {
+  const f = fl(L.key), p = ctx.project(), K = (n, v, o) => `<label>${n}<select data-sf="${L.key}|${v}">${o.map(([a, b]) => `<option value="${a}" ${f[v] === a ? 'selected' : ''}>${b}</option>`).join('')}</select></label>`;
+  return `<div class="row fbar">${K('الجنس', 'sex', [['', 'الكل'], ['M', 'ذكر'], ['F', 'أنثى']])}
+    <label>العمر من<input type="number" min="0" max="99" data-sf="${L.key}|amin" value="${esc(f.amin)}" style="width:70px"></label><label>إلى<input type="number" min="0" max="99" data-sf="${L.key}|amax" value="${esc(f.amax)}" style="width:70px"></label>
+    ${K('الإعاقة', 'dis', [['', 'الكل'], ['1', 'ذوو إعاقة'], ['0', 'بلا إعاقة']])}
+    ${K('المركز', 'ctr', [['', 'الكل'], ...ctx.myCenters().map((c) => [c.id, c.name])])}
+    ${K('سبق حضوره نشاط', 'act', [['', 'أي نشاط'], ...p.activities.filter((a) => !a.ops).map((a) => [a.id, a.name])])}
+    ${K('الترتيب', 'sort', [['name', 'الاسم'], ['age', 'العمر'], ['new', 'الأحدث إضافة']])}
+    <button class="sec" data-shact="fclear" data-l="${L.key}">مسح الفلاتر</button></div>`;
+}
+function pool(L) {
+  const db = ctx.db, inList = new Set(cur[L.key] || []), term = (q[L.key] || '').trim(), f = fl(L.key), on = cur.meta.date || cur.meta.start || iso();
+  const att = f.act ? new Set(db.sessions.filter((x) => x.activityId === f.act).flatMap((x) => x.attendance || [])) : null;
+  const amin = f.amin === '' ? null : +f.amin, amax = f.amax === '' ? null : +f.amax;
+  const out = db.beneficiaries.filter((b) => {
+    if (inList.has(b.id) || (term && !b.name.includes(term)) || (!showAll[L.key] && !eligible(L, b))) return false;
+    if (f.sex && b.sex !== f.sex) return false; if (f.dis === '1' && !b.disability) return false; if (f.dis === '0' && b.disability) return false;
+    if (f.ctr && b.center !== f.ctr) return false; if (att && !att.has(b.id)) return false;
+    if (amin != null || amax != null) { const a = ageAt(b, on); if (a == null || (amin != null && a < amin) || (amax != null && a > amax)) return false; }
+    return true;
+  });
+  if (f.sort === 'age') out.sort((a, b) => (ageAt(a, on) ?? 999) - (ageAt(b, on) ?? 999)); else if (f.sort === 'new') out.reverse(); else out.sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+  return out;
+}
 function results(L) {
-  const db = ctx.db, inList = new Set(cur[L.key] || []), term = (q[L.key] || '').trim();
   if (!(cur.meta.groups || []).filter((k) => L.allowed.includes(k)).length) return '<span class="small">اختر الفئة المشاركة أعلاه أولاً.</span>';
-  const res = db.beneficiaries.filter((b) => !inList.has(b.id) && (!term || b.name.includes(term)) && (showAll[L.key] || eligible(L, b))).slice(0, 40);
-  return res.map((b) => `<label style="cursor:pointer"><button class="sec" style="padding:0 8px" data-shact="add" data-l="${L.key}" data-id="${b.id}">+</button> ${esc(b.name)} <span class="small">${ageAt(b, iso())}${b.disability ? ' ♿' : ''}</span></label>`).join('') || '<span class="small">لا نتائج — أضف مستفيداً جديداً بالزر أدناه.</span>';
+  const all = pool(L), n = lim[L.key] || 60, res = all.slice(0, n), sel = (pick[L.key] ||= new Set()); for (const id of [...sel]) if (!all.some((b) => b.id === id)) sel.delete(id);
+  const bar = `<div class="row" style="align-items:center;margin-bottom:6px"><span class="small">النتيجة: <b>${all.length}</b> مستفيد${all.length > n ? ` — يُعرض أول ${n}` : ''}</span>
+    <button class="sec" data-shact="pickAdd" data-l="${L.key}" ${sel.size ? '' : 'disabled'}>إضافة المحدد (${sel.size})</button>
+    <button class="sec" data-shact="pickAll" data-l="${L.key}" ${all.length ? '' : 'disabled'}>تحديد كل النتائج (${all.length})</button>
+    <button class="gold" data-shact="addAllRes" data-l="${L.key}" ${all.length ? '' : 'disabled'}>إضافة كل النتائج (${all.length})</button>${sel.size ? `<button class="sec" data-shact="pickNone" data-l="${L.key}">إلغاء التحديد</button>` : ''}</div>`;
+  return bar + `<div class="roll">${res.map((b) => `<label style="cursor:pointer"><input type="checkbox" data-pk="${L.key}|${b.id}" ${sel.has(b.id) ? 'checked' : ''}> ${esc(b.name)} <span class="small">${ageAt(b, iso())}${b.disability ? ' ♿' : ''}</span> <button class="sec" style="padding:0 8px" data-shact="add" data-l="${L.key}" data-id="${b.id}">+</button></label>`).join('') || '<span class="small">لا نتائج — غيّر الفلاتر أو أضف مستفيداً جديداً بالزر أدناه.</span>'}</div>${all.length > n ? `<button class="sec" data-shact="more" data-l="${L.key}">عرض المزيد</button>` : ''}`;
 }
 const iso = () => new Date().toISOString().slice(0, 10);
 function quickForm(L) {
@@ -116,7 +146,9 @@ function onInput(e) {
   else if (d.sg) { if (!isChange) return; const s = new Set(cur.meta.groups || []); t.checked ? s.add(d.sg) : s.delete(d.sg); cur.meta.groups = [...s]; relist(); }
   else if (d.sv !== undefined) { if (!isChange) return; const i = +d.sv; while (cur.meetings.length <= i) cur.meetings.push({ n: cur.meetings.length + 1, date: '', present: [] }); cur.meetings[i].date = t.value; if (!t.value) cur.meetings[i].present = []; relist(); }
   else if (d.sp) { const [i, id] = d.sp.split('|'); const a = cur.meetings[+i].present; if (t.checked) { if (!a.includes(id)) a.push(id); } else cur.meetings[+i].present = a.filter((x) => x !== id); refreshCheck(); }
-  else if (d.sq) { q[d.sq] = t.value; const L = KINDS[cur.kind].lists.find((x) => x.key === d.sq), r = $('#res-' + d.sq); if (r) r.innerHTML = results(L); }
+  else if (d.sf) { const [k, fld] = d.sf.split('|'); if (fl(k)[fld] === t.value) return; fl(k)[fld] = t.value; lim[k] = 0; const L = KINDS[cur.kind].lists.find((x) => x.key === k), r = $('#res-' + k); if (r) r.innerHTML = results(L); }
+  else if (d.pk) { if (!isChange) return; const [k, id] = d.pk.split('|'), st = (pick[k] ||= new Set()); t.checked ? st.add(id) : st.delete(id); const L = KINDS[cur.kind].lists.find((x) => x.key === k), r = $('#res-' + k); if (r) r.innerHTML = results(L); }
+  else if (d.sq) { if ((q[d.sq] || '') === t.value) return; q[d.sq] = t.value; const L = KINDS[cur.kind].lists.find((x) => x.key === d.sq), r = $('#res-' + d.sq); if (r) r.innerHTML = results(L); }
   else if (d.shall) { if (!isChange) return; showAll[d.shall] = t.checked; const L = KINDS[cur.kind].lists.find((x) => x.key === d.shall), r = $('#res-' + d.shall); if (r) r.innerHTML = results(L); }
   else if (t.id === 'qa-dt' || t.id === 'qa-dis') { const w = $('#qa-dow'); if (w) w.hidden = !($('#qa-dis').value === '1' && $('#qa-dt').value === 'أخرى'); }
   else if (t.id === 'sh-act') { cur.activityId = t.value || null; refreshCheck(); }
@@ -132,6 +164,12 @@ async function onClick(e) {
   const L = t.dataset.l && KINDS[cur.kind].lists.find((x) => x.key === t.dataset.l);
   if (a === 'draft') { putDraft({ id: dId(), type: 'sheet', projectId: cur.projectId, title: sheetTitle(cur), data: cur }); cur = null; base = ''; ctx.toast('حُفظ كمسودة — تجدها في أعلى هذه الشاشة وفي زر المسودات'); return vSheets(); }
   if (a === 'cancel') { const has = !!getDraft(dId()); if (!(await ctx.ask(has ? 'إغلاق الكشف دون حفظ؟ سيبقى آخر ما حُفظ في المسودة. (لحذف المسودة نفسها استخدم «حذف» من قائمة المسودات)' : 'إغلاق الكشف دون حفظ التعديلات؟'))) return; cur = null; base = ''; return vSheets(); }
+  if (a === 'fclear') { flt[L.key] = F0(); q[L.key] = ''; return relist(); }
+  if (a === 'more') { lim[L.key] = (lim[L.key] || 60) + 60; return ($('#res-' + L.key).innerHTML = results(L)); }
+  if (a === 'pickNone') { pick[L.key] = new Set(); return ($('#res-' + L.key).innerHTML = results(L)); }
+  if (a === 'pickAll') { pick[L.key] = new Set(pool(L).map((b) => b.id)); return ($('#res-' + L.key).innerHTML = results(L)); }
+  if (a === 'pickAdd') { const ids = [...(pick[L.key] || [])]; (cur[L.key] ||= []).push(...ids.filter((id) => !cur[L.key].includes(id))); pick[L.key] = new Set(); ctx.toast(`أُضيف ${ids.length} مشاركًا`); return relist(); }
+  if (a === 'addAllRes') { const ids = pool(L).map((b) => b.id); if (ids.length > 30 && !(await ctx.ask(`إضافة ${ids.length} مستفيدًا دفعة واحدة إلى الكشف؟`))) return; (cur[L.key] ||= []).push(...ids.filter((id) => !cur[L.key].includes(id))); pick[L.key] = new Set(); ctx.toast(`أُضيف ${ids.length} مشاركًا`); return relist(); }
   if (a === 'add') { (cur[L.key] ||= []).push(t.dataset.id); return relist(); }
   if (a === 'rm') { if (L.inline) cur.guests.splice(+t.dataset.id, 1); else { cur[L.key] = cur[L.key].filter((x) => x !== t.dataset.id); cur.meetings.forEach((m) => (m.present = m.present.filter((x) => x !== t.dataset.id))); } return relist(); }
   if (a === 'col') { const m = cur.meetings[+t.dataset.i], ids = [...new Set(cur.roster || [])], all = ids.every((id) => m.present.includes(id)); m.present = all ? [] : [...ids]; return relist(); }

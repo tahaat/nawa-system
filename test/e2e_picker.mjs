@@ -1,0 +1,21 @@
+// منتقي المشاركين بالفلاتر والتحديد الجماعي (خادم على 8765)
+import { chromium } from '/opt/npm-tools/node_modules/playwright/index.mjs';
+const b = await chromium.launch(), pg = await b.newPage({ viewport: { width: 1400, height: 1000 } }); const errs = [];
+pg.on('pageerror', (e) => errs.push(e.message)); const log = (m, ok) => console.log(ok ? 'ok  ' : 'FAIL', m);
+await pg.goto('http://localhost:8765/'); await pg.waitForSelector('#nav'); await pg.click('[data-act=demoGiz]'); await pg.waitForTimeout(900);
+await pg.click('a[data-go=sheets]'); await pg.click('[data-shact=new][data-k=course]');
+await pg.check('[data-sg=c712]'); await pg.check('[data-sg=c46]'); await pg.waitForTimeout(200);
+const cnt = async () => +(await pg.textContent('#res-roster b'));
+const all = await cnt(); log(`كل المطابقين للفئة: ${all}`, all > 20);
+await pg.selectOption('[data-sf="roster|sex"]', 'F'); const f = await cnt(); log(`إناث فقط: ${f}`, f > 0 && f < all);
+await pg.fill('[data-sf="roster|amin"]', '10'); await pg.fill('[data-sf="roster|amax"]', '12'); const a = await cnt(); log(`إناث 10–12: ${a}`, a > 0 && a <= f);
+const okAges = await pg.$$eval('#res-roster .roll label', (ls) => ls.every((l) => { const m = l.textContent.match(/\s(\d+)/); return true; }));
+await pg.click('#res-roster [data-pk] >> nth=0'); await pg.click('#res-roster [data-pk] >> nth=1');
+log('زر «إضافة المحدد» يعرض 2', /\(2\)/.test(await pg.textContent('[data-shact=pickAdd]')));
+await pg.click('[data-shact=pickAdd]'); await pg.waitForTimeout(300);
+const inList = await pg.evaluate(() => 0); const rows = await pg.locator('[data-shact=rm]').count(); log(`أُضيف مشاركان: ${rows}`, rows === 2);
+log('الفلاتر باقية بعد الإضافة', (await pg.inputValue('[data-sf="roster|amin"]')) === '10');
+const left = await cnt(); await pg.click('[data-shact=addAllRes]'); if (await pg.locator('#dlg-ok').count()) await pg.click('#dlg-ok'); await pg.waitForTimeout(300);
+log(`إضافة كل النتائج (${left}) أضافتها`, (await pg.locator('[data-shact=rm]').count()) === 2 + left);
+await pg.click('[data-shact=fclear]'); await pg.waitForTimeout(200); log('مسح الفلاتر', (await pg.inputValue('[data-sf="roster|amin"]')) === '');
+console.log('أخطاء الصفحة:', errs.length ? errs : 'لا شيء'); await b.close();

@@ -1220,3 +1220,17 @@ R3 — توثيق التراث الشفوي (المُحاوَرون) | R3 — Or
 إعاقة | Disability
 بلا إعاقة | No disability
 + إضافة زائر | + Add visitor
+العمر من | Age from
+إلى | To
+سبق حضوره نشاط | Attended activity
+أي نشاط | Any activity
+الترتيب | Sort
+الأحدث إضافة | Newest first
+النتيجة: | Result:
+مستفيد | beneficiary
+تحديد كل النتائج | Select all results
+إضافة المحدد | Add selected
+إضافة كل النتائج | Add all results
+إلغاء التحديد | Clear selection
+عرض المزيد | Show more
+لا نتائج — غيّر الفلاتر أو أضف مستفيداً جديداً بالزر أدناه. | No results — change the filters or add a new beneficiary with the button below.
