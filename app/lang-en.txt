@@ -1217,3 +1217,6 @@ R1 — الدعم النفسي-الاجتماعي (أطفال 4-15) | R1 — Psy
 R1 — التعليم (أطفال 4-15) | R1 — Education (Children 4-15)
 R2 — دعم الأهالي | R2 — Parent support
 R3 — توثيق التراث الشفوي (المُحاوَرون) | R3 — Oral heritage documentation (Interviewees)
+إعاقة | Disability
+بلا إعاقة | No disability
++ إضافة زائر | + Add visitor

@@ -171,3 +171,11 @@ label>.fh{position:absolute;top:100%;inset-inline-start:2px;margin:0;min-height:
 #attmodal .modal-h{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}#attmodal h3{margin:0;color:var(--accent)}
 #panel:has(.dtab){width:min(560px,calc(100vw - 32px))}
 .dtab td:last-child{white-space:nowrap}
+
+/* شارات الأعداد: لون مميّز لكل نوع (ذكور/إناث/إعاقة/بلا إعاقة) بخط غامق وعلامة = */
+:root{--gm:#1b5aa6;--gm-bg:rgba(27,90,166,.12);--gf:#b0206a;--gf-bg:rgba(176,32,106,.12);--gd:#8a5a00;--gd-bg:rgba(230,169,1,.22);--gn:#1f7a47;--gn-bg:rgba(31,122,71,.12)}
+:root[data-theme="dark"]{--gm:#8cbcf5;--gm-bg:rgba(140,188,245,.16);--gf:#ff9ac6;--gf-bg:rgba(255,154,198,.16);--gd:#f2c25b;--gd-bg:rgba(242,194,91,.18);--gn:#78d9a1;--gn-bg:rgba(120,217,161,.14)}
+.gc{display:inline-flex;align-items:center;gap:4px;padding:1px 8px;border-radius:99px;font-size:12.5px;font-weight:700;white-space:nowrap}
+.gc b{font-size:13.5px;font-weight:800}
+.gm{color:var(--gm);background:var(--gm-bg)}.gf{color:var(--gf);background:var(--gf-bg)}.gd{color:var(--gd);background:var(--gd-bg)}.gn{color:var(--gn);background:var(--gn-bg)}
+.gcs{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
