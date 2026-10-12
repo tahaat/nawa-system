@@ -2,6 +2,7 @@
 import { validateEntry } from '../core/validate.js';
 import { outputMonthly } from '../core/aggregate.js';
 import { uid } from '../core/model.js';
+import { pager } from './pager.js';
 import { putDraft, delDraft, draftsCard, newDraftId } from './drafts.js';
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const $ = (s, r = document) => r.querySelector(s);
@@ -22,7 +23,7 @@ export function vOps() {
   st.pid = p.id; const db = ctx.db, acts = p.activities.filter((a) => a.ops), today = new Date().toISOString().slice(0, 10);
   if (!acts.length) { ctx.view().innerHTML = `<div class="card"><h2>الإنجاز التشغيلي</h2><p>لا توجد أنشطة تشغيلية في هذا المشروع. لتعريف نشاط كتشغيلي (تدقيق، صيانة، مشتريات…) علّم خانة «تشغيلي» في جدول الأنشطة بشاشة المشاريع.</p></div>`; return; }
   if (!acts.some((a) => a.id === st.act)) st.act = acts[0].id; st.date ||= today;
-  const mine = db.ops.filter((o) => o.projectId === p.id).sort((a, b) => b.date.localeCompare(a.date));
+  const mine = db.ops.filter((o) => o.projectId === p.id).sort((a, b) => b.date.localeCompare(a.date)), OP = pager('ops-' + p.id, mine.length, vOps);
   const counts = outputMonthly(p, db).filter((o) => o.ind.measure === 'count');
   ctx.view().innerHTML = (st.editId ? '' : draftsCard(p.id, 'op')) + `<div class="card"><div class="row-h"><h2>${st.editId ? 'تعديل سجل إنجاز' : 'تسجيل إنجاز'}</h2>${st.editId ? '' : '<button class="sec" id="o-draft" title="احفظ ما كتبته كمسودة وأكمله لاحقًا">حفظ كمسودة</button>'}</div><p class="small">كل سجل يُحتسب وحدة منفَّذة في خطة العمل، وتُجمع كمياته في مؤشرات «عدد منجز». المرجع (رقم وثيقة/فاتورة/تقرير) إلزامي ليسهل التحقق.</p>
   <div class="row"><label>النشاط *<select id="o-act">${acts.map((a) => `<option value="${a.id}" ${a.id === st.act ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select></label>
@@ -31,7 +32,7 @@ export function vOps() {
   <label>المرجع / دليل التحقق *<input id="o-ref" value="${esc(st.ref)}" style="width:240px" placeholder="رقم فاتورة، تقرير، محضر استلام…"></label>
   <label>ملاحظات<input id="o-note" value="${esc(st.note)}" style="width:220px"></label><button id="o-save">${st.editId ? 'حفظ التعديل' : 'حفظ'}</button>${st.editId ? '<button class="sec" id="o-cancel">إلغاء التعديل</button>' : ''}</div><div id="o-err" class="small" style="color:var(--err);margin-top:6px"></div></div>
   ${counts.length ? `<div class="card"><h2>مؤشرات العدد المنجز</h2><table><tr><th>المؤشر</th><th>المنجز</th><th>المستهدف</th><th>الإنجاز</th></tr>${counts.map((o) => { const done = o.months.reduce((a, m) => a + m.M, 0), tg = o.ind.target?.M; return `<tr><td>${esc(o.ind.name)}</td><td><b>${done}</b></td><td>${tg ?? '—'}</td><td>${tg ? Math.round((done / tg) * 100) + '%' : ''}</td></tr>`; }).join('')}</table></div>` : ''}
-  <div class="card"><h2>سجل الإنجاز (${mine.length})</h2>${mine.length ? `<div class="tw"><table><tr><th>التاريخ</th><th>النشاط</th><th>المركز</th><th>الكمية</th><th>المرجع</th><th>ملاحظات</th><th></th></tr>${mine.map((o) => `<tr><td>${o.date}</td><td>${esc(p.activities.find((a) => a.id === o.activityId)?.name)}</td><td>${esc(db.centers.find((c) => c.id === o.centerId)?.name || '')}</td><td><b>${o.qty}</b></td><td>${esc(o.ref)}</td><td>${esc(o.note || '')}</td><td><button class="sec" data-opedit="${o.id}">تعديل</button> <button class="x" data-opdel="${o.id}">حذف</button></td></tr>`).join('')}</table></div>` : '<p class="small">لا سجلات بعد.</p>'}</div>`;
+  <div class="card"><h2>سجل الإنجاز (${mine.length})</h2>${mine.length ? `${OP.html()}<div class="tw"><table><tr><th>التاريخ</th><th>النشاط</th><th>المركز</th><th>الكمية</th><th>المرجع</th><th>ملاحظات</th><th></th></tr>${OP.slice(mine).map((o) => `<tr><td>${o.date}</td><td>${esc(p.activities.find((a) => a.id === o.activityId)?.name)}</td><td>${esc(db.centers.find((c) => c.id === o.centerId)?.name || '')}</td><td><b>${o.qty}</b></td><td>${esc(o.ref)}</td><td>${esc(o.note || '')}</td><td><button class="sec" data-opedit="${o.id}">تعديل</button> <button class="x" data-opdel="${o.id}">حذف</button></td></tr>`).join('')}</table></div>${OP.html()}` : '<p class="small">لا سجلات بعد.</p>'}</div>`;
   const rd = () => Object.assign(st, { act: $('#o-act').value, center: $('#o-ctr').value, date: $('#o-date').value, qty: +$('#o-qty').value, ref: $('#o-ref').value.trim(), note: $('#o-note').value.trim() });
   st.rd = rd;
   const od = $('#o-draft'); if (od) od.onclick = () => { rd(); if (!dirty()) return ctx.toast('اكتب المرجع أو الملاحظة أو غيّر الكمية أولاً'); opsAuto(true); ctx.toast('حُفظ كمسودة'); vOps(); };

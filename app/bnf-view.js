@@ -4,6 +4,7 @@ import { ageAt, bandOf, iso, uid, AGE_BANDS } from '../core/model.js';
 import { DTYPES, commitSheet } from '../core/sheets.js';
 import { nameState, phoneState, idState, emailState, normPhone, phoneOkStrict, digits, emailOk, ATT_TYPES, ATT_MAX, urlOk, nameNeed, words, toLatin } from '../core/bnf.js';
 import { putFile, getFile, delFile, fileIds } from './store.js';
+import { pager } from './pager.js';
 import { putDraft, delDraft, draftsCard, newDraftId } from './drafts.js';
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const $ = (s, r = document) => r.querySelector(s);
@@ -97,10 +98,10 @@ function paintList() {
     if (f.name === 'short' && words(b.name) >= need) return false;
     if (f.att2 === '1' && !att.get(b.id)) return false; if (f.att2 === '0' && att.get(b.id)) return false;
     return true;
-  }), list = all.slice(0, 400);
-  e.innerHTML = `<p class="small">${all.length === db.beneficiaries.length ? `${all.length} مستفيد` : `النتيجة: <b>${all.length}</b> من ${db.beneficiaries.length} مستفيد`}${all.length > 400 ? ' — يُعرض أول 400، ضيّق الفلاتر' : ''}</p>
-  <div class="tw"><table><tr><th>الاسم</th><th>الجنس</th><th>العمر</th><th>الفئة</th><th>إعاقة</th><th>الجوال</th><th>مرفقات</th><th>جلسات حضور</th><th></th></tr>${list.map((b) => { const age = ageAt(b, today), n = att.get(b.id) || 0, short = words(b.name) < need;
-    return `<tr><td>${esc(b.name)}${short ? ' <span class="badge b-warn">منقوص</span>' : ''}</td><td>${b.sex === 'M' ? 'ذكر' : 'أنثى'}</td><td>${age ?? '؟'}</td><td>${bandOf(age)?.key || '—'}</td><td>${b.disability ? esc(b.disabilityType ? b.disabilityType + (b.disabilityOther ? ': ' + b.disabilityOther : '') : 'نعم') : ''}</td><td dir="ltr">${esc(b.phone || '')}</td><td>${(b.attachments || []).length ? `<button class="sec attb" data-act="bAtts" data-id="${b.id}" title="عرض المرفقات">📎 ${b.attachments.length}</button>` : '<span class="small">—</span>'}</td><td>${n}</td><td><button class="sec" data-act="bEdit" data-id="${b.id}">تعديل</button> <button class="x" data-act="bDel" data-id="${b.id}">حذف</button></td></tr>`; }).join('') || '<tr><td colspan="9" class="small">لا نتائج مطابقة.</td></tr>'}</table></div>`;
+  }), P = pager('bnf', all.length, paintList, JSON.stringify([q, f])), list = P.slice(all);
+  e.innerHTML = `<p class="small">${all.length === db.beneficiaries.length ? `${all.length} مستفيد` : `النتيجة: <b>${all.length}</b> من ${db.beneficiaries.length} مستفيد`}</p>
+  ${P.html()}<div class="tw"><table><tr><th>الاسم</th><th>الجنس</th><th>العمر</th><th>الفئة</th><th>إعاقة</th><th>الجوال</th><th>مرفقات</th><th>جلسات حضور</th><th></th></tr>${list.map((b) => { const age = ageAt(b, today), n = att.get(b.id) || 0, short = words(b.name) < need;
+    return `<tr><td>${esc(b.name)}${short ? ' <span class="badge b-warn">منقوص</span>' : ''}</td><td>${b.sex === 'M' ? 'ذكر' : 'أنثى'}</td><td>${age ?? '؟'}</td><td>${bandOf(age)?.key || '—'}</td><td>${b.disability ? esc(b.disabilityType ? b.disabilityType + (b.disabilityOther ? ': ' + b.disabilityOther : '') : 'نعم') : ''}</td><td dir="ltr">${esc(b.phone || '')}</td><td>${(b.attachments || []).length ? `<button class="sec attb" data-act="bAtts" data-id="${b.id}" title="عرض المرفقات">📎 ${b.attachments.length}</button>` : '<span class="small">—</span>'}</td><td>${n}</td><td><button class="sec" data-act="bEdit" data-id="${b.id}">تعديل</button> <button class="x" data-act="bDel" data-id="${b.id}">حذف</button></td></tr>`; }).join('') || '<tr><td colspan="9" class="small">لا نتائج مطابقة.</td></tr>'}</table></div>${P.html()}`;
 }
 function openAtts(html) {
   $('#attmodal')?.remove(); const m = document.createElement('div'); m.id = 'attmodal'; m.innerHTML = `<div class="modal-box" role="dialog" aria-modal="true">${html}</div>`;

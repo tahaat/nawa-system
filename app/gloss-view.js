@@ -1,4 +1,5 @@
 // شاشة «الترجمة»: قاموس مخزَّن قابل للتعديل + ترجمة الناقص عبر الإنترنت + تصدير/استيراد
+import { pager } from './pager.js';
 import { gl, PROVIDERS, setEntry, delEntry, setOptions, missingList, stats, translateOnline, glossJSON, glossXLSX, importGlossary } from './glossary.js';
 import { builtinPairs, getLang } from './i18n.js';
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -11,7 +12,7 @@ export function vGloss() {
   let rows = [...user, ...[...builtinPairs()].filter(([a]) => !uset.has(a)).map(([ar, en]) => ({ ar, en, src: 'builtin' }))];
   if (st.f !== 'all') rows = rows.filter((r) => r.src === st.f);
   if (q) rows = rows.filter((r) => r.ar.includes(q) || r.en.toLowerCase().includes(q.toLowerCase()));
-  const shown = rows.slice(0, st.n), B = { user: ['b-ok', 'مخصص'], online: ['b-warn', 'إنترنت'], builtin: ['', 'مدمج'] };
+  const GP = pager('gloss', rows.length, vGloss, st.q + '|' + st.f), shown = GP.slice(rows), B = { user: ['b-ok', 'مخصص'], online: ['b-warn', 'إنترنت'], builtin: ['', 'مدمج'] };
   ctx.view().innerHTML = `<div class="card" id="gloss"><h2>الترجمة</h2>
    <p class="small">عند التبديل إلى English يُترجَم كل نص من القاموس المخزّن أولًا (ترجماتك ثم المدمجة)، وما لا يوجد فيه يُجمَّع في «نصوص ناقصة» ويمكن ترجمته عبر الإنترنت وحفظه فيعمل بعدها بلا اتصال. لا يُرسَل أي اسم مستفيد أو مستخدم أو رقم هاتف إلى الإنترنت؛ تُرسَل فقط نصوص الواجهة وأسماء المشاريع والمراكز.</p>
    <div class="row"><span class="badge b-ok">مدمج ${S.builtin}</span><span class="badge b-ok">مخصص ${S.user}</span><span class="badge b-warn">من الإنترنت ${S.online}</span><span class="badge ${S.missing ? 'b-error' : 'b-ok'}">ناقص ${S.missing}</span><span class="badge ${navigator.onLine ? 'b-ok' : 'b-error'}">${navigator.onLine ? 'متصل' : 'غير متصل'}</span></div>
@@ -22,9 +23,9 @@ export function vGloss() {
   ${miss.length ? `<div class="card"><h2>نصوص ناقصة (${miss.length})</h2><p class="small">نصوص ظهرت في واجهة English بلا ترجمة. اكتب ترجمتها أو اتركها لزر الإنترنت.</p><table><tr><th>العربية</th><th>English</th><th></th></tr>${miss.slice(0, 60).map((a) => `<tr><td data-notr>${esc(a)}</td><td><input class="gen" data-ar="${esc(a)}" dir="ltr" placeholder="…"></td><td><button class="sec" data-act="gOne" data-ar="${esc(a)}">ترجم</button></td></tr>`).join('')}</table></div>`
     : `<div class="card"><h2>نصوص ناقصة</h2><p class="small">${getLang() === 'en' ? 'لا نصوص ناقصة في ما عُرض حتى الآن. تنقّل بين الشاشات لتجميع المزيد.' : 'تُجمَّع النصوص الناقصة أثناء استخدام البرنامج بالإنجليزية. بدّل اللغة وتنقّل بين الشاشات ثم عُد هنا.'}</p></div>`}
   <div class="card"><h2>القاموس</h2><div class="row"><label>بحث<input id="gq" value="${esc(st.q)}" placeholder="عربي أو English"></label><label>عرض<select id="gf">${[['all', 'الكل'], ['user', 'مخصص'], ['online', 'من الإنترنت'], ['builtin', 'مدمج']].map(([k, v]) => `<option value="${k}" ${st.f === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label><label>إضافة<input id="gnew" placeholder="العربية"></label><label>&nbsp;<input id="gnewen" dir="ltr" placeholder="English"></label><button data-act="gAdd">إضافة</button></div>
-   <p class="small">${rows.length} نتيجة${rows.length > shown.length ? ' — يُعرض أول ' + shown.length : ''}</p>
+   <p class="small">${rows.length} نتيجة</p>${GP.html()}
    <table><tr><th>العربية</th><th>English</th><th>المصدر</th><th></th></tr>${shown.map((r) => `<tr><td data-notr>${esc(r.ar)}</td><td><input class="gen" data-ar="${esc(r.ar)}" dir="ltr" value="${esc(r.en)}"></td><td><span class="badge ${B[r.src][0]}">${B[r.src][1]}</span></td><td>${r.src === 'builtin' ? '' : `<button class="sec" data-act="gDel" data-ar="${esc(r.ar)}">حذف</button>`}</td></tr>`).join('')}</table>
-   ${rows.length > shown.length ? '<button class="sec" data-act="gMore">عرض المزيد</button>' : ''}</div>`;
+   ${GP.html()}</div>`;
 }
 export function glossActions({ toast, dl }) {
   const XL = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';

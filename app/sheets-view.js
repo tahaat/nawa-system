@@ -1,6 +1,7 @@
 // شاشة «الكشوفات»: نماذج إدخال مقيّدة تطابق كشوفات الحضور الورقية (Word). الأعداد تُحسب من القائمة ولا تُكتب يدوياً.
 import { KINDS, SG, DTYPES, newSheet, validateSheet, derivedCounts, completion, commitSheet, removeSheet, peopleOf, nameOk, phoneOk, heldMeetings } from '../core/sheets.js';
 import { ageAt, uid } from '../core/model.js';
+import { pager } from './pager.js';
 import { putDraft, delDraft, getDraft, draftsCard } from './drafts.js';
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const $ = (s, r = document) => r.querySelector(s);
@@ -29,10 +30,11 @@ export function vSheets() {
   if (cur && cur.projectId !== p.id) cur = null;
   if (cur) return editor();
   const db = ctx.db, list = db.sheets.filter((s) => s.projectId === p.id).sort((a, b) => ((b.meta.date || b.meta.start || '')).localeCompare(a.meta.date || a.meta.start || ''));
+  const SH = pager('sheets-' + p.id, list.length, vSheets);
   ctx.view().innerHTML = draftsCard(p.id, 'sheet') + `<div class="card"><h2>كشف حضور جديد</h2><p class="small">اختر نوع الكشف كما في الكشوف الورقية. كل ما يُكتب هنا يُفحص قبل الحفظ، ولا يُحفظ كشف فيه خطأ.</p>
     <div class="row">${Object.entries(KINDS).map(([k, K]) => `<button data-shact="new" data-k="${k}">${esc(K.name)}</button>`).join('')}</div></div>
-  <div class="card"><h2>الكشوف المسجَّلة (${list.length})</h2>${list.length ? `<div class="tw"><table><tr><th>النوع</th><th>العنوان</th><th>التاريخ</th><th>المركز</th><th>الحضور</th><th>الحالة</th><th></th></tr>${list.map((s) => { const K = KINDS[s.kind], d = derivedCounts(s, db), v = validateSheet(s, db, { others: db.sessions.filter((x) => x.sheetId !== s.id) });
-    return `<tr><td>${esc(K.name)}</td><td>${esc(s.meta.title || (s.meta.activities || [])[0] || s.meta.type || s.meta.body || '')}</td><td>${esc(K.multi ? `${s.meta.start || ''} → ${s.meta.end || ''}` : s.meta.date || '')}${K.multi ? `<br><span class="small">${heldMeetings(s).length} / ${s.meta.meetings || '؟'} لقاء</span>` : ''}</td><td>${esc(db.centers.find((c) => c.id === s.centerId)?.name || '')}</td><td><b>${d.total}</b><div class="gcs">${countChips(d)}</div></td><td>${v.errors.length ? `<span class="badge b-error" title="${esc(v.errors.join(' | '))}">${v.errors.length} خطأ</span>` : v.warnings.length ? `<span class="badge b-warn" title="${esc(v.warnings.join(' | '))}">${v.warnings.length} تنبيه</span>` : '<span class="badge b-ok">✔</span>'}</td><td><button class="sec" data-shact="edit" data-id="${s.id}">فتح</button> <button class="x" data-shact="del" data-id="${s.id}">حذف</button></td></tr>`; }).join('')}</table></div>` : '<p class="small">لا كشوف بعد.</p>'}</div>`;
+  <div class="card"><h2>الكشوف المسجَّلة (${list.length})</h2>${list.length ? `${SH.html()}<div class="tw"><table><tr><th>النوع</th><th>العنوان</th><th>التاريخ</th><th>المركز</th><th>الحضور</th><th>الحالة</th><th></th></tr>${SH.slice(list).map((s) => { const K = KINDS[s.kind], d = derivedCounts(s, db), v = validateSheet(s, db, { others: db.sessions.filter((x) => x.sheetId !== s.id) });
+    return `<tr><td>${esc(K.name)}</td><td>${esc(s.meta.title || (s.meta.activities || [])[0] || s.meta.type || s.meta.body || '')}</td><td>${esc(K.multi ? `${s.meta.start || ''} → ${s.meta.end || ''}` : s.meta.date || '')}${K.multi ? `<br><span class="small">${heldMeetings(s).length} / ${s.meta.meetings || '؟'} لقاء</span>` : ''}</td><td>${esc(db.centers.find((c) => c.id === s.centerId)?.name || '')}</td><td><b>${d.total}</b><div class="gcs">${countChips(d)}</div></td><td>${v.errors.length ? `<span class="badge b-error" title="${esc(v.errors.join(' | '))}">${v.errors.length} خطأ</span>` : v.warnings.length ? `<span class="badge b-warn" title="${esc(v.warnings.join(' | '))}">${v.warnings.length} تنبيه</span>` : '<span class="badge b-ok">✔</span>'}</td><td><button class="sec" data-shact="edit" data-id="${s.id}">فتح</button> <button class="x" data-shact="del" data-id="${s.id}">حذف</button></td></tr>`; }).join('')}</table></div>${SH.html()}` : '<p class="small">لا كشوف بعد.</p>'}</div>`;
 }
 
 // ---------- المحرر ----------
@@ -71,7 +73,7 @@ function listCard(L) {
   const meets = K.multi ? cur.meetings.map((m, i) => ({ ...m, i })).filter((m) => m.date) : [];
   const head = `<tr><th>#</th><th>الاسم</th><th>الجنس</th>${L.age ? '<th>العمر</th>' : ''}<th>إعاقة</th>${meets.map((m) => `<th title="${esc(m.date)}">${m.i + 1}<br><button class="sec" style="padding:0 5px;font-size:13px" data-shact="col" data-i="${m.i}">كل</button></th>`).join('')}${meets.length ? '<th>%</th>' : ''}<th></th></tr>`;
   const comp = K.multi ? new Map(completion(cur, db).map((c) => [c.id, c])) : null;
-  const rows = ppl.map((x, i) => { const age = x.guest ? x.age : x.bnf ? ageAt(x.bnf, cur.meta.date || cur.meta.start || new Date().toISOString().slice(0, 10)) : '';
+  const PP = pager('ppl-' + L.key, ppl.length, relist), start = PP.start, rows = PP.slice(ppl).map((x, k) => { const i = start + k; const age = x.guest ? x.age : x.bnf ? ageAt(x.bnf, cur.meta.date || cur.meta.start || new Date().toISOString().slice(0, 10)) : '';
     return `<tr><td>${i + 1}</td><td>${esc(x.missing ? '(محذوف)' : x.name)}</td><td>${x.sex === 'M' ? 'ذكر' : x.sex === 'F' ? 'أنثى' : '؟'}</td>${L.age ? `<td>${age ?? '؟'}</td>` : ''}<td>${x.disability ? esc(x.dtype ? x.dtype + (x.dtypeOther ? ': ' + x.dtypeOther : '') : 'نعم — النوع؟') : ''}</td>${meets.map((m) => `<td><input type="checkbox" data-sp="${m.i}|${x.id}" ${cur.meetings[m.i].present.includes(x.id) ? 'checked' : ''}></td>`).join('')}${meets.length ? `<td>${comp?.get(x.id) ? `<span class="badge b-${comp.get(x.id).ok === false ? 'warn' : 'ok'}">${comp.get(x.id).pct}%</span>` : ''}</td>` : ''}<td><button class="x" data-shact="rm" data-l="${L.key}" data-id="${x.guest ? x.id.slice(1) : x.id}">إزالة</button></td></tr>`; }).join('');
   const qa = quick[L.key];
   return `<div class="card"><h2>${esc(L.label)} (${ppl.length})</h2>
@@ -79,7 +81,7 @@ function listCard(L) {
       <label class="chk"><input type="checkbox" data-shall="${L.key}" ${showAll[L.key] ? 'checked' : ''}> إظهار غير المطابقين للفئة</label></div>
       ${filterBar(L)}<div id="res-${L.key}" style="margin:8px 0">${results(L)}</div>`}
     <div class="row" style="margin:6px 0"><button class="sec" data-shact="quick" data-l="${L.key}">${qa ? 'إغلاق النموذج' : L.inline ? '+ إضافة زائر' : '+ مستفيد جديد (غير موجود في السجل)'}</button></div>${qa ? quickForm(L) : ''}
-    ${ppl.length ? `<div class="tw"><table>${head}${rows}</table></div>` : '<p class="small">لا مشاركين بعد.</p>'}</div>`;
+    ${ppl.length ? `${PP.html()}<div class="tw"><table>${head}${rows}</table></div>${PP.html()}` : '<p class="small">لا مشاركين بعد.</p>'}</div>`;
 }
 const F0 = () => ({ sex: '', amin: '', amax: '', dis: '', ctr: '', act: '', sort: 'name' });
 const fl = (k) => (flt[k] ||= F0());
@@ -109,7 +111,7 @@ function pool(L) {
 }
 function results(L) {
   if (!(cur.meta.groups || []).filter((k) => L.allowed.includes(k)).length) return '<span class="small">اختر الفئة المشاركة أعلاه أولاً.</span>';
-  const all = pool(L), PS = 50, pages = Math.max(1, Math.ceil(all.length / PS)), pg = Math.min(lim[L.key] || 0, pages - 1), res = all.slice(pg * PS, pg * PS + PS), sel = (pick[L.key] ||= new Set()); for (const id of [...sel]) if (!all.some((b) => b.id === id)) sel.delete(id);
+  const all = pool(L), P = pager('pick-' + L.key, all.length, () => { const r = $('#res-' + L.key); if (r) r.innerHTML = results(L); }, JSON.stringify([fl(L.key), q[L.key] || '', !!showAll[L.key], cur.meta.groups])), res = P.slice(all), sel = (pick[L.key] ||= new Set()); for (const id of [...sel]) if (!all.some((b) => b.id === id)) sel.delete(id);
   const on = cur.meta.date || cur.meta.start || iso(), cn = (id) => ctx.db.centers.find((c) => c.id === id)?.name || '', cnt = {}; for (const x of ctx.db.sessions) for (const id of x.attendance || []) cnt[id] = (cnt[id] || 0) + 1;
   const bar = `<div class="row" style="align-items:center;margin-bottom:6px"><span class="small">النتيجة: <b>${all.length}</b> مستفيد — محدد: <b>${sel.size}</b></span>
     <button class="sec" data-shact="pickAdd" data-l="${L.key}" ${sel.size ? '' : 'disabled'}>إضافة المحدد (${sel.size})</button>
@@ -118,8 +120,8 @@ function results(L) {
   const allOn = res.length && res.every((b) => sel.has(b.id));
   const rows = res.map((b) => `<tr class="${sel.has(b.id) ? 'ptr-on' : ''}"><td><input type="checkbox" data-pk="${L.key}|${b.id}" ${sel.has(b.id) ? 'checked' : ''}></td><td>${esc(b.name)}</td><td>${b.sex === 'M' ? '<span class="gc gm"><b>ذكر</b></span>' : '<span class="gc gf"><b>أنثى</b></span>'}</td><td>${ageAt(b, on) ?? ''}</td><td>${b.disability ? '<span class="gc gd"><span>إعاقة</span></span>' : ''}</td><td>${esc(cn(b.center))}</td><td>${cnt[b.id] ? cnt[b.id] + ' جلسات' : '—'}</td><td><button class="sec" data-shact="add" data-l="${L.key}" data-id="${b.id}">+</button></td></tr>`).join('');
   const table = res.length ? `<div class="tw ptab"><table><tr><th><input type="checkbox" data-pkpage="${L.key}" ${allOn ? 'checked' : ''} title="تحديد الصفحة"></th><th>الاسم</th><th>الجنس</th><th>العمر</th><th>إعاقة</th><th>المركز</th><th>حضر سابقًا</th><th></th></tr>${rows}</table></div>` : '<span class="small">لا نتائج — غيّر الفلاتر أو أضف مستفيداً جديداً بالزر أدناه.</span>';
-  const nav = all.length > PS ? `<div class="row" style="align-items:center;margin-top:8px"><span class="small">صفحة ${pg + 1} من ${pages}</span><button class="sec" data-shact="pgPrev" data-l="${L.key}" ${pg ? '' : 'disabled'}>السابق</button><button class="sec" data-shact="pgNext" data-l="${L.key}" ${pg < pages - 1 ? '' : 'disabled'}>التالي</button></div>` : '';
-  return bar + table + nav;
+  const allP = res.length && res.every((b) => sel.has(b.id)), banner = allP && sel.size < all.length ? `<div class="pgban">حُدّدت ${res.length} في هذه الصفحة — <button class="sec" data-shact="pickAll" data-l="${L.key}">تحديد كل الـ${all.length}</button></div>` : '';
+  return bar + banner + P.html() + table + P.html();
 }
 const iso = () => new Date().toISOString().slice(0, 10);
 function quickForm(L) {
@@ -152,7 +154,7 @@ function onInput(e) {
   else if (d.sv !== undefined) { if (!isChange) return; const i = +d.sv; while (cur.meetings.length <= i) cur.meetings.push({ n: cur.meetings.length + 1, date: '', present: [] }); cur.meetings[i].date = t.value; if (!t.value) cur.meetings[i].present = []; relist(); }
   else if (d.sp) { const [i, id] = d.sp.split('|'); const a = cur.meetings[+i].present; if (t.checked) { if (!a.includes(id)) a.push(id); } else cur.meetings[+i].present = a.filter((x) => x !== id); refreshCheck(); }
   else if (d.sf) { const [k, fld] = d.sf.split('|'); if (fl(k)[fld] === t.value) return; fl(k)[fld] = t.value; lim[k] = 0; const L = KINDS[cur.kind].lists.find((x) => x.key === k), r = $('#res-' + k); if (r) r.innerHTML = results(L); }
-  else if (d.pkpage) { if (!isChange) return; const k = d.pkpage, st = (pick[k] ||= new Set()), L = KINDS[cur.kind].lists.find((x) => x.key === k); const pgn = Math.min(lim[k] || 0, Math.max(0, Math.ceil(pool(L).length / 50) - 1)); for (const b of pool(L).slice(pgn * 50, pgn * 50 + 50)) t.checked ? st.add(b.id) : st.delete(b.id); const r = $('#res-' + k); if (r) r.innerHTML = results(L); }
+  else if (d.pkpage) { if (!isChange) return; const k = d.pkpage, st = (pick[k] ||= new Set()), L = KINDS[cur.kind].lists.find((x) => x.key === k); const PG = pager('pick-' + k, pool(L).length, null, JSON.stringify([fl(k), q[k] || '', !!showAll[k], cur.meta.groups])); for (const b of PG.slice(pool(L))) t.checked ? st.add(b.id) : st.delete(b.id); const r = $('#res-' + k); if (r) r.innerHTML = results(L); }
   else if (d.pk) { if (!isChange) return; const [k, id] = d.pk.split('|'), st = (pick[k] ||= new Set()); t.checked ? st.add(id) : st.delete(id); const L = KINDS[cur.kind].lists.find((x) => x.key === k), r = $('#res-' + k); if (r) r.innerHTML = results(L); }
   else if (d.sq) { if ((q[d.sq] || '') === t.value) return; q[d.sq] = t.value; const L = KINDS[cur.kind].lists.find((x) => x.key === d.sq), r = $('#res-' + d.sq); if (r) r.innerHTML = results(L); }
   else if (d.shall) { if (!isChange) return; showAll[d.shall] = t.checked; const L = KINDS[cur.kind].lists.find((x) => x.key === d.shall), r = $('#res-' + d.shall); if (r) r.innerHTML = results(L); }
@@ -171,7 +173,6 @@ async function onClick(e) {
   if (a === 'draft') { putDraft({ id: dId(), type: 'sheet', projectId: cur.projectId, title: sheetTitle(cur), data: cur }); cur = null; base = ''; ctx.toast('حُفظ كمسودة — تجدها في أعلى هذه الشاشة وفي زر المسودات'); return vSheets(); }
   if (a === 'cancel') { const has = !!getDraft(dId()); if (!(await ctx.ask(has ? 'إغلاق الكشف دون حفظ؟ سيبقى آخر ما حُفظ في المسودة. (لحذف المسودة نفسها استخدم «حذف» من قائمة المسودات)' : 'إغلاق الكشف دون حفظ التعديلات؟'))) return; cur = null; base = ''; return vSheets(); }
   if (a === 'fclear') { flt[L.key] = F0(); q[L.key] = ''; return relist(); }
-  if (a === 'pgNext' || a === 'pgPrev') { lim[L.key] = Math.max(0, (lim[L.key] || 0) + (a === 'pgNext' ? 1 : -1)); return ($('#res-' + L.key).innerHTML = results(L)); }
   if (a === 'pickNone') { pick[L.key] = new Set(); return ($('#res-' + L.key).innerHTML = results(L)); }
   if (a === 'pickAll') { pick[L.key] = new Set(pool(L).map((b) => b.id)); return ($('#res-' + L.key).innerHTML = results(L)); }
   if (a === 'pickAdd') { const ids = [...(pick[L.key] || [])]; (cur[L.key] ||= []).push(...ids.filter((id) => !cur[L.key].includes(id))); pick[L.key] = new Set(); ctx.toast(`أُضيف ${ids.length} مشاركًا`); return relist(); }

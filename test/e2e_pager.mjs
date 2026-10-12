@@ -1,0 +1,23 @@
+// شريط ترقيم الصفحات في الجداول (خادم على 8765)
+import { chromium } from '/opt/npm-tools/node_modules/playwright/index.mjs';
+const b = await chromium.launch(), pg = await b.newPage({ viewport: { width: 1400, height: 1000 } }); const errs = [];
+pg.on('pageerror', (e) => errs.push(e.message)); const log = (m, ok) => console.log(ok ? 'ok  ' : 'FAIL', m);
+await pg.goto('http://localhost:8765/'); await pg.waitForSelector('#nav'); await pg.click('[data-act=demoGiz]'); await pg.waitForTimeout(900);
+await pg.click('a[data-go=sheets]'); await pg.click('[data-shact=new][data-k=course]');
+await pg.check('[data-sg=c712]'); await pg.check('[data-sg=c46]'); await pg.waitForTimeout(200);
+const rows = () => pg.$$eval('#res-roster .ptab tr[class]', (r) => r.length), txt = () => pg.textContent('#res-roster .pgt');
+log('الصفحة الأولى 25 صفًا', (await rows()) === 25);
+log('نص «إظهار 1 إلى 25»', /1 إلى 25 من \d+/.test(await txt()));
+await pg.click('#res-roster .pgn [data-pg$="|next"]'); log('التالي: 26 إلى', /26 إلى/.test(await txt()));
+await pg.click('#res-roster .pgn [data-pg$="|first"]'); log('الأولى: 1 إلى', /^إظهار 1 إلى/.test(await txt()));
+await pg.selectOption('#res-roster .pgs', '10'); log('عدد الصفوف 10', (await rows()) === 10);
+await pg.click('#res-roster .pgn [data-pg$="|last"]'); const t = await txt(); log('الأخيرة: ' + t, !/إظهار 1 إلى/.test(t));
+await pg.selectOption('#res-roster .pgs', '25');
+await pg.check('#res-roster [data-pkpage]'); await pg.waitForTimeout(100);
+log('شريط «تحديد كل الـ»', !!(await pg.$('#res-roster .pgban')));
+await pg.click('#res-roster .pgn [data-pg$="|next"]'); log('التحديد باقٍ بين الصفحات', /محدد: <b>25|محدد: 25/.test(await pg.innerHTML('#res-roster .row')) || (await pg.textContent('#res-roster')).includes('محدد: 25'));
+await pg.fill('[data-sf="roster|amin"]', '10'); await pg.waitForTimeout(100); log('تغيّر الفلتر يعيد للصفحة الأولى', /^إظهار 1 إلى/.test(await txt()));
+await pg.click('a[data-go=bnf]'); await pg.waitForTimeout(300); log('جدول المستفيدين فيه شريط', !!(await pg.$('#bnres .pgbar')));
+await pg.click('#bnres .pgn [data-pg$="|next"]'); log('تنقل المستفيدين', /26 إلى/.test(await pg.textContent('#bnres .pgt')));
+await pg.click('#lang-btn, [data-act=lang]').catch(() => {});
+console.log(errs.length ? 'أخطاء الصفحة: ' + errs.join(' | ') : 'أخطاء الصفحة: لا شيء'); await b.close();
