@@ -19,7 +19,7 @@ log('اسم المركز بالإنجليزية في جدول الجلسات', t
 log('عناوين ذ/إ ترجمت إلى M/F', /\bM\b/.test(await pg.textContent('#view table th:nth-child(6)')) || /M/.test(t));
 await pg.click('a[data-go=sheets]'); await pg.waitForTimeout(500); t = await pg.textContent('#view');
 log('عنوان الكشف بالإنجليزية (حقل titleEn)', t.includes('Healing Stories — Group A'));
-log('عدد الكشف: M/F بدل ذ/إ ولا عربي في «اللقاءات»', /\(M\d+\/F\d+\)/.test(t) && /meetings/.test(t) && !/لقاء/.test(t));
+log('عدد الكشف: M/F بدل ذ/إ ولا عربي في «اللقاءات»', /M = \d+/.test(t) && /F = \d+/.test(t) && /meetings/.test(t) && !/لقاء/.test(t));
 await pg.click('a[data-go=bnf]'); await pg.waitForTimeout(500); t = await pg.textContent('#view');
 log('عدّاد المستفيدين والمرفقات مترجم', /\d+ beneficiaries/.test(t) && !/مستفيد\b/.test(t.replace(/المستفيدون/g, '')));
 console.log('أخطاء الصفحة:', errs.length ? errs : 'لا شيء'); await b.close();
