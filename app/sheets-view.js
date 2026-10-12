@@ -109,12 +109,17 @@ function pool(L) {
 }
 function results(L) {
   if (!(cur.meta.groups || []).filter((k) => L.allowed.includes(k)).length) return '<span class="small">اختر الفئة المشاركة أعلاه أولاً.</span>';
-  const all = pool(L), n = lim[L.key] || 60, res = all.slice(0, n), sel = (pick[L.key] ||= new Set()); for (const id of [...sel]) if (!all.some((b) => b.id === id)) sel.delete(id);
-  const bar = `<div class="row" style="align-items:center;margin-bottom:6px"><span class="small">النتيجة: <b>${all.length}</b> مستفيد${all.length > n ? ` — يُعرض أول ${n}` : ''}</span>
+  const all = pool(L), PS = 50, pages = Math.max(1, Math.ceil(all.length / PS)), pg = Math.min(lim[L.key] || 0, pages - 1), res = all.slice(pg * PS, pg * PS + PS), sel = (pick[L.key] ||= new Set()); for (const id of [...sel]) if (!all.some((b) => b.id === id)) sel.delete(id);
+  const on = cur.meta.date || cur.meta.start || iso(), cn = (id) => ctx.db.centers.find((c) => c.id === id)?.name || '', cnt = {}; for (const x of ctx.db.sessions) for (const id of x.attendance || []) cnt[id] = (cnt[id] || 0) + 1;
+  const bar = `<div class="row" style="align-items:center;margin-bottom:6px"><span class="small">النتيجة: <b>${all.length}</b> مستفيد — محدد: <b>${sel.size}</b></span>
     <button class="sec" data-shact="pickAdd" data-l="${L.key}" ${sel.size ? '' : 'disabled'}>إضافة المحدد (${sel.size})</button>
     <button class="sec" data-shact="pickAll" data-l="${L.key}" ${all.length ? '' : 'disabled'}>تحديد كل النتائج (${all.length})</button>
     <button class="gold" data-shact="addAllRes" data-l="${L.key}" ${all.length ? '' : 'disabled'}>إضافة كل النتائج (${all.length})</button>${sel.size ? `<button class="sec" data-shact="pickNone" data-l="${L.key}">إلغاء التحديد</button>` : ''}</div>`;
-  return bar + `<div class="roll">${res.map((b) => `<label style="cursor:pointer"><input type="checkbox" data-pk="${L.key}|${b.id}" ${sel.has(b.id) ? 'checked' : ''}> ${esc(b.name)} <span class="small">${ageAt(b, iso())}${b.disability ? ' ♿' : ''}</span> <button class="sec" style="padding:0 8px" data-shact="add" data-l="${L.key}" data-id="${b.id}">+</button></label>`).join('') || '<span class="small">لا نتائج — غيّر الفلاتر أو أضف مستفيداً جديداً بالزر أدناه.</span>'}</div>${all.length > n ? `<button class="sec" data-shact="more" data-l="${L.key}">عرض المزيد</button>` : ''}`;
+  const allOn = res.length && res.every((b) => sel.has(b.id));
+  const rows = res.map((b) => `<tr class="${sel.has(b.id) ? 'ptr-on' : ''}"><td><input type="checkbox" data-pk="${L.key}|${b.id}" ${sel.has(b.id) ? 'checked' : ''}></td><td>${esc(b.name)}</td><td>${b.sex === 'M' ? '<span class="gc gm"><b>ذكر</b></span>' : '<span class="gc gf"><b>أنثى</b></span>'}</td><td>${ageAt(b, on) ?? ''}</td><td>${b.disability ? '<span class="gc gd"><span>إعاقة</span></span>' : ''}</td><td>${esc(cn(b.center))}</td><td>${cnt[b.id] ? cnt[b.id] + ' جلسات' : '—'}</td><td><button class="sec" data-shact="add" data-l="${L.key}" data-id="${b.id}">+</button></td></tr>`).join('');
+  const table = res.length ? `<div class="tw ptab"><table><tr><th><input type="checkbox" data-pkpage="${L.key}" ${allOn ? 'checked' : ''} title="تحديد الصفحة"></th><th>الاسم</th><th>الجنس</th><th>العمر</th><th>إعاقة</th><th>المركز</th><th>حضر سابقًا</th><th></th></tr>${rows}</table></div>` : '<span class="small">لا نتائج — غيّر الفلاتر أو أضف مستفيداً جديداً بالزر أدناه.</span>';
+  const nav = all.length > PS ? `<div class="row" style="align-items:center;margin-top:8px"><span class="small">صفحة ${pg + 1} من ${pages}</span><button class="sec" data-shact="pgPrev" data-l="${L.key}" ${pg ? '' : 'disabled'}>السابق</button><button class="sec" data-shact="pgNext" data-l="${L.key}" ${pg < pages - 1 ? '' : 'disabled'}>التالي</button></div>` : '';
+  return bar + table + nav;
 }
 const iso = () => new Date().toISOString().slice(0, 10);
 function quickForm(L) {
@@ -147,6 +152,7 @@ function onInput(e) {
   else if (d.sv !== undefined) { if (!isChange) return; const i = +d.sv; while (cur.meetings.length <= i) cur.meetings.push({ n: cur.meetings.length + 1, date: '', present: [] }); cur.meetings[i].date = t.value; if (!t.value) cur.meetings[i].present = []; relist(); }
   else if (d.sp) { const [i, id] = d.sp.split('|'); const a = cur.meetings[+i].present; if (t.checked) { if (!a.includes(id)) a.push(id); } else cur.meetings[+i].present = a.filter((x) => x !== id); refreshCheck(); }
   else if (d.sf) { const [k, fld] = d.sf.split('|'); if (fl(k)[fld] === t.value) return; fl(k)[fld] = t.value; lim[k] = 0; const L = KINDS[cur.kind].lists.find((x) => x.key === k), r = $('#res-' + k); if (r) r.innerHTML = results(L); }
+  else if (d.pkpage) { if (!isChange) return; const k = d.pkpage, st = (pick[k] ||= new Set()), L = KINDS[cur.kind].lists.find((x) => x.key === k); const pgn = Math.min(lim[k] || 0, Math.max(0, Math.ceil(pool(L).length / 50) - 1)); for (const b of pool(L).slice(pgn * 50, pgn * 50 + 50)) t.checked ? st.add(b.id) : st.delete(b.id); const r = $('#res-' + k); if (r) r.innerHTML = results(L); }
   else if (d.pk) { if (!isChange) return; const [k, id] = d.pk.split('|'), st = (pick[k] ||= new Set()); t.checked ? st.add(id) : st.delete(id); const L = KINDS[cur.kind].lists.find((x) => x.key === k), r = $('#res-' + k); if (r) r.innerHTML = results(L); }
   else if (d.sq) { if ((q[d.sq] || '') === t.value) return; q[d.sq] = t.value; const L = KINDS[cur.kind].lists.find((x) => x.key === d.sq), r = $('#res-' + d.sq); if (r) r.innerHTML = results(L); }
   else if (d.shall) { if (!isChange) return; showAll[d.shall] = t.checked; const L = KINDS[cur.kind].lists.find((x) => x.key === d.shall), r = $('#res-' + d.shall); if (r) r.innerHTML = results(L); }
@@ -165,7 +171,7 @@ async function onClick(e) {
   if (a === 'draft') { putDraft({ id: dId(), type: 'sheet', projectId: cur.projectId, title: sheetTitle(cur), data: cur }); cur = null; base = ''; ctx.toast('حُفظ كمسودة — تجدها في أعلى هذه الشاشة وفي زر المسودات'); return vSheets(); }
   if (a === 'cancel') { const has = !!getDraft(dId()); if (!(await ctx.ask(has ? 'إغلاق الكشف دون حفظ؟ سيبقى آخر ما حُفظ في المسودة. (لحذف المسودة نفسها استخدم «حذف» من قائمة المسودات)' : 'إغلاق الكشف دون حفظ التعديلات؟'))) return; cur = null; base = ''; return vSheets(); }
   if (a === 'fclear') { flt[L.key] = F0(); q[L.key] = ''; return relist(); }
-  if (a === 'more') { lim[L.key] = (lim[L.key] || 60) + 60; return ($('#res-' + L.key).innerHTML = results(L)); }
+  if (a === 'pgNext' || a === 'pgPrev') { lim[L.key] = Math.max(0, (lim[L.key] || 0) + (a === 'pgNext' ? 1 : -1)); return ($('#res-' + L.key).innerHTML = results(L)); }
   if (a === 'pickNone') { pick[L.key] = new Set(); return ($('#res-' + L.key).innerHTML = results(L)); }
   if (a === 'pickAll') { pick[L.key] = new Set(pool(L).map((b) => b.id)); return ($('#res-' + L.key).innerHTML = results(L)); }
   if (a === 'pickAdd') { const ids = [...(pick[L.key] || [])]; (cur[L.key] ||= []).push(...ids.filter((id) => !cur[L.key].includes(id))); pick[L.key] = new Set(); ctx.toast(`أُضيف ${ids.length} مشاركًا`); return relist(); }

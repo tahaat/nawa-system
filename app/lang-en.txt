@@ -1234,3 +1234,8 @@ R3 — توثيق التراث الشفوي (المُحاوَرون) | R3 — Or
 إلغاء التحديد | Clear selection
 عرض المزيد | Show more
 لا نتائج — غيّر الفلاتر أو أضف مستفيداً جديداً بالزر أدناه. | No results — change the filters or add a new beneficiary with the button below.
+حضر سابقًا | Attended before
+تحديد الصفحة | Select page
+جلسات | sessions
+السابق | Previous
+التالي | Next

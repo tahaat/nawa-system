@@ -179,3 +179,6 @@ label>.fh{position:absolute;top:100%;inset-inline-start:2px;margin:0;min-height:
 .gc b{font-size:13.5px;font-weight:800}
 .gm{color:var(--gm);background:var(--gm-bg)}.gf{color:var(--gf);background:var(--gf-bg)}.gd{color:var(--gd);background:var(--gd-bg)}.gn{color:var(--gn);background:var(--gn-bg)}
 .gcs{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
+
+/* جدول اختيار المشاركين */
+.ptab{max-height:420px;overflow:auto}.ptab th{position:sticky;top:0;background:var(--card);z-index:1}.ptab td,.ptab th{padding:6px 10px;white-space:nowrap}.ptab td:nth-child(2){white-space:normal;min-width:180px}.ptab button{padding:1px 10px}.ptr-on{background:var(--tint)}

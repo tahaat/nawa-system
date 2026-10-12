@@ -9,7 +9,7 @@ const cnt = async () => +(await pg.textContent('#res-roster b'));
 const all = await cnt(); log(`كل المطابقين للفئة: ${all}`, all > 20);
 await pg.selectOption('[data-sf="roster|sex"]', 'F'); const f = await cnt(); log(`إناث فقط: ${f}`, f > 0 && f < all);
 await pg.fill('[data-sf="roster|amin"]', '10'); await pg.fill('[data-sf="roster|amax"]', '12'); const a = await cnt(); log(`إناث 10–12: ${a}`, a > 0 && a <= f);
-const okAges = await pg.$$eval('#res-roster .roll label', (ls) => ls.every((l) => { const m = l.textContent.match(/\s(\d+)/); return true; }));
+const okAges = await pg.$$eval('#res-roster .ptab tr', (ls) => ls.every((l) => { const m = l.textContent.match(/\s(\d+)/); return true; }));
 await pg.click('#res-roster [data-pk] >> nth=0'); await pg.click('#res-roster [data-pk] >> nth=1');
 log('زر «إضافة المحدد» يعرض 2', /\(2\)/.test(await pg.textContent('[data-shact=pickAdd]')));
 await pg.click('[data-shact=pickAdd]'); await pg.waitForTimeout(300);
