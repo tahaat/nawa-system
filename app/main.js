@@ -21,6 +21,7 @@ import { setPrintCfg } from './sheet-pdf.js';
 import { ROLE_AR, initUsers, vUsers, wireUsers, usersActions, showLogin, loginCall, wipeLocal } from './users-view.js';
 import { DTYPES } from '../core/sheets.js';
 import { backfillEnrollments } from '../core/enroll.js';
+import { initTeam, teamCard, teamActions, loadTeam } from './team-view.js';
 import { kvGet } from './store.js';
 import { initOffline, offlineCard, offlineActions } from './offline.js';
 import { vBnf, initBnf, bnfActions, bnfAuto, restoreBnf } from './bnf-view.js';
@@ -367,7 +368,7 @@ async function vCloud() {
   const f = isFolder();
   const tabs = `<div class="tabs"><button data-act="setMode" data-m="folder" class="${f ? 'on' : ''}">مجلد OneDrive (موصى به)</button><button data-act="setMode" data-m="server" class="${!f ? 'on' : ''}">خادم مزامنة</button></div>`;
   if (f) {
-    const perm = await folderPerm(false); let chs = []; if (perm === 'granted') { try { chs = await dirFromHandle(sync.handle).channels(); } catch {} }
+    await loadTeam(); const perm = await folderPerm(false); let chs = []; if (perm === 'granted') { try { chs = await dirFromHandle(sync.handle).channels(); } catch {} }
     view().innerHTML = `${tabs}<div class="card"><h2>المزامنة عبر مجلد OneDrive</h2>
     ${!folderSupported() ? '<p><span class="badge b-error">غير مدعوم</span> افتح النظام في Microsoft Edge أو Google Chrome على الحاسوب.</p>' : ''}
     <p class="small">يتولى برنامج OneDrive نقل الملفات بين الأجهزة، والنظام يدمجها دون تعارض ويعمل دون إنترنت. اختر المجلد المتزامن مرة واحدة على كل جهاز.</p>
@@ -380,7 +381,7 @@ async function vCloud() {
     <ol class="small"><li>أنشئ مجلدًا باسم <code>NawaSync</code> وداخله مجلدات: <code>core</code> و<code>pii</code> و<code>c-&lt;رمز المركز&gt;</code> لكل مركز (الرمز يظهر أعلاه بعد أول مزامنة، أو اتركه ينشئها النظام على جهازك ثم شاركها).</li>
     <li><b>core</b>: شاركه (تحرير) مع كل من يستخدم النظام. <b>pii</b> (الهواتف ونوع الإعاقة): مع المكتب الرئيسي وMEAL فقط. <b>c-المركز</b>: مع منسق ذلك المركز ومع المكتب الرئيسي فقط.</li>
     <li>على جهاز المنسق: أضف المجلدات المشاركة إلى OneDrive («إضافة اختصار إلى ملفاتي»)، ثم اختر مجلد <code>NawaSync</code> الذي يحويها.</li>
-    <li>الصلاحيات تُفرض بمشاركة OneDrive نفسها: الجهاز لا يستلم إلا المجلدات المشاركة معه.</li></ol></div>`;
+    <li>الصلاحيات تُفرض بمشاركة OneDrive نفسها: الجهاز لا يستلم إلا المجلدات المشاركة معه.</li></ol></div>${teamCard()}`;
     return;
   }
   view().innerHTML = `${tabs}<div class="card"><h2>الاتصال بخادم مزامنة</h2><p class="small">خيار متقدّم يتطلب تشغيل خادم (انظر README).</p>
@@ -485,7 +486,7 @@ const actions = {
 };
 
 $('.logo').src = logoUrl; { const l = document.createElement('link'); l.rel = 'icon'; l.href = logoUrl; document.head.append(l); }
-initPlan({ project, save, rerender, view, empty }); initSheets({ db, project, save, view, empty, ask, toast, myCenters, route: () => route }); initOps({ db, project, save, view, empty, ask, toast, myCenters }); initBuilder({ project, save, rerender }); initGloss({ view, ask }); initFix({ db, ui, go, toast, openSession, openOp, route: () => route }); Object.assign(actions, fixActions); initSettings({ view, db, ask, askText }); initUsers({ db, sync, save, view, toast, ask, ROUTES, capi, me }); wireUsers(); Object.assign(actions, usersActions(), authActions); initBnf({ view, db, ask, ui }); Object.assign(actions, offlineActions, bnfActions({ toast, ask, save, rerender, dl }), glossActions({ toast, dl }), settingsActions({ toast, dl, go, save, rerender, ui, ask })); loadConfig(await kvGet('config'), DTYPES); setPrintCfg(await kvGet('printcfg')); await load(); { const bf = () => { if (backfillEnrollments(db)) save(); }; bf(); let bt; window.addEventListener('nawa:dbsave', () => { clearTimeout(bt); bt = setTimeout(bf, 1500); }); } await loadGlossary(); await loadDrafts(); try { if (localStorage.getItem('nawa.nonav')) document.body.classList.add('nonav'); } catch { /* خاص */ } initTheme(); applyDoc(); await startAuth(); nav(); go('dash'); initHints(view); initCopy({ toast }); initOffline(); initPlaceholders(); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
+initPlan({ project, save, rerender, view, empty }); initSheets({ db, project, save, view, empty, ask, toast, myCenters, route: () => route }); initOps({ db, project, save, view, empty, ask, toast, myCenters }); initBuilder({ project, save, rerender }); initGloss({ view, ask }); initFix({ db, ui, go, toast, openSession, openOp, route: () => route }); Object.assign(actions, fixActions); initSettings({ view, db, ask, askText }); initUsers({ db, sync, save, view, toast, ask, ROUTES, capi, me }); wireUsers(); Object.assign(actions, usersActions(), authActions, teamActions()); initTeam({ db, toast, dl, rerender }); initBnf({ view, db, ask, ui }); Object.assign(actions, offlineActions, bnfActions({ toast, ask, save, rerender, dl }), glossActions({ toast, dl }), settingsActions({ toast, dl, go, save, rerender, ui, ask })); loadConfig(await kvGet('config'), DTYPES); setPrintCfg(await kvGet('printcfg')); await load(); { const bf = () => { if (backfillEnrollments(db)) save(); }; bf(); let bt; window.addEventListener('nawa:dbsave', () => { clearTimeout(bt); bt = setTimeout(bf, 1500); }); } await loadGlossary(); await loadDrafts(); try { if (localStorage.getItem('nawa.nonav')) document.body.classList.add('nonav'); } catch { /* خاص */ } initTheme(); applyDoc(); await startAuth(); nav(); go('dash'); initHints(view); initCopy({ toast }); initOffline(); initPlaceholders(); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
 setInterval(() => { if (sync.cfg.auto) doSync(); else setSyncBadge(); }, 60000);
 window.addEventListener('online', () => sync.cfg.auto && doSync());
 window.addEventListener('nawa:drafts', () => nav());

@@ -1,0 +1,14 @@
+import { chromium } from '/opt/npm-tools/node_modules/playwright/index.mjs';
+const b = await chromium.launch(), pg = await (await b.newContext({ viewport: { width: 1400, height: 900 } })).newPage(); const errs = [];
+pg.on('pageerror', (e) => errs.push(e.message)); const log = (m, ok) => console.log(ok ? 'ok  ' : 'FAIL', m);
+await pg.goto('http://localhost:8765/'); await pg.waitForSelector('#nav'); await pg.click('[data-act=newProject]'); await pg.waitForTimeout(300);
+await pg.evaluate(() => window.__nawa.db.centers.push({ id: 'c_z', name: 'مركز زيتونة' })); await pg.click('a[data-go=cloud]'); await pg.waitForTimeout(500);
+const body = () => pg.locator('main').innerText();
+log('جدول المركز ↔ المجلد', /مركز زيتونة/.test(await body()) && (await pg.locator('code', { hasText: 'c-c_z' }).count()) > 0);
+await pg.fill('#tmn', 'سناء أحمد'); await pg.fill('#tme', 'bad'); await pg.selectOption('#tmr', 'facilitator'); await pg.click('[data-act=tmAdd]'); await pg.waitForTimeout(200);
+log('يرفض بريدًا خاطئًا', (await pg.locator('tr', { hasText: 'سناء' }).count()) === 0);
+await pg.fill('#tme', 'sana@example.org'); await pg.click('[data-act=tmAdd]'); await pg.waitForTimeout(200);
+log('يرفض منشطًا بلا مركز', (await pg.locator('tr', { hasText: 'سناء' }).count()) === 0);
+await pg.selectOption('#tmc', 'c_z'); await pg.click('[data-act=tmAdd]'); await pg.waitForTimeout(300);
+const row = pg.locator('tr', { hasText: 'سناء' }); log('أُضيف مع المجلدات (core عرض، المركز تحرير)', /core/.test(await row.innerText()) && /c-c_z/.test(await row.innerText()) && !/pii/.test(await row.innerText()));
+log('بلا أخطاء صفحة', errs.length === 0); if (errs.length) console.log('أخطاء الصفحة: [', errs, ']'); await b.close();
