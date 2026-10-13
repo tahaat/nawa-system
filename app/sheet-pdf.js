@@ -7,7 +7,18 @@ const FILE = { course: '1e5fc21a', edu: '2c872279', parents: '00ce7a59', activit
 const NP = (s) => String(s || '').replace(/[\s‌‎‏ :：.…_ً-ٟ]+/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي'); // يُبقي الأقواس
 const N = (s) => NP(s).replace(/[()]/g, '');
 const dmy = (d) => (d ? d.split('-').reverse().join('/') : '');
-const MARK = '✓';
+// ---------- إعدادات الطباعة (عامة + لكل نوع كشف) ----------
+export const PRINT_DEF = {
+  font: '', fontScale: 100, tableScale: 100, orient: 'auto', mL: null, mR: null, minRows: 0, rowH: 0, logoScale: 100, stampText: 'مستند مراقب',
+  align: { basic: 'right', name: 'right', cols: 'center', v: 'middle' },
+  marks: { present: '✓', absent: 'غـ', sexM: '/', sexF: '/', select: '✓' },
+  show: { logo: true, header: true, footer: true, sign: true, stamp: true, project: true, title: true, idx: true },
+};
+let PCFG = {}, C = PRINT_DEF, MARK = '✓';
+export const setPrintCfg = (o) => { PCFG = o && typeof o === 'object' ? o : {}; };
+export const printStore = () => PCFG;
+const mergeC = (...a) => { const r = JSON.parse(JSON.stringify(PRINT_DEF)); for (const x of a) for (const k in (x || {})) { if (x[k] && typeof x[k] === 'object' && !Array.isArray(x[k])) Object.assign(r[k] ||= {}, x[k]); else if (x[k] !== undefined && x[k] !== null) r[k] = x[k]; } return r; };
+export const cfgOf = (kind, draft) => mergeC(PCFG._, PCFG[kind], draft);
 
 // ---------- أدوات DOM ----------
 const tds = (root) => [...root.querySelectorAll('td')];
@@ -19,7 +30,7 @@ function setText(td, text) {
 }
 // نص بعد النص الأصلي داخل نفس الخلية (مثل «عدد الساعات التدريبية: 12»)
 function appendText(td, text) { const p = td.querySelector('p'), sp = [...p.querySelectorAll('span')].pop() || p; sp.textContent = sp.textContent.replace(/[\s:]*$/, '') + ': ' + text; }
-function alignCell(td, h) { td.style.verticalAlign = 'middle'; td.querySelectorAll('p').forEach((p) => { p.style.textAlign = h; }); }
+function alignCell(td) { td.style.verticalAlign = C.align.v; td.querySelectorAll('p').forEach((p) => { p.style.textAlign = C.align.basic; }); }
 // أول خلية عنوانها يطابق label؛ تعود بالخلية
 function labelCell(root, label, from = 0) { const L = N(label); return tds(root).slice(from).find((td) => { const t = N(txt(td)); return t === L || (t.startsWith(L) && t.length - L.length <= 6); }); }
 function after(root, label, value, o = {}) {
@@ -83,7 +94,7 @@ function fillRoster(table, people, sh, joint) {
   const model = table.querySelector('tr.mr'); if (!model) return;
   const lab = leafLabels(table), roles = {}; const cols = [...model.children].map((td) => +td.dataset.c); for (const c of cols) roles[c] = colRole(lab[c] || '');
   if (joint) { const ch = joint.child; for (const c of cols) { if (c >= 5) roles[c] = ({ 5: 'name', 6: 'sex', 7: 'age', 8: 'dis', 9: 'sig' })[c]; else roles[c] = ({ 0: 'idx', 1: 'name', 2: 'sex', 3: 'phone', 4: 'sig' })[c]; } }
-  const held = heldMeetings(sh), nTpl = +model.dataset.n || 10, total = joint ? Math.max(joint.parents.length, joint.kids.length) : (people || []).length;
+  const held = heldMeetings(sh), nTpl = +model.dataset.n || 10, total = Math.max(C.minRows || 0, joint ? Math.max(joint.parents.length, joint.kids.length) : (people || []).length);
   const rowsData = joint ? Array.from({ length: Math.max(joint.parents.length, joint.kids.length) }, (_, i) => ({ P: joint.parents[i], K: joint.kids[i] })) : (people || []);
   const tb = document.implementation.createHTMLDocument('').body, out = [];
   // الرأس داخل thead ليتكرر في كل صفحة
@@ -93,24 +104,24 @@ function fillRoster(table, people, sh, joint) {
     for (const td of tr.children) {
       const c = +td.dataset.c, role = roles[c] || ''; let v = '';
       const pp = joint ? (c >= 5 ? d?.K : d?.P) : d;
-      if (role === 'idx') v = String(i + 1);
+      if (role === 'idx' && C.show.idx) v = String(i + 1);
       if (pp) {
         if (role === 'name') v = pp.missing ? '(محذوف)' : pp.name;
         else if (role === 'sex') v = pp.sex === 'M' ? 'ذكر' : pp.sex === 'F' ? 'أنثى' : '';
-        else if (role === 'sexM') v = pp.sex === 'M' ? '/' : '';
-        else if (role === 'sexF') v = pp.sex === 'F' ? '/' : '';
+        else if (role === 'sexM') v = pp.sex === 'M' ? C.marks.sexM : '';
+        else if (role === 'sexF') v = pp.sex === 'F' ? C.marks.sexF : '';
         else if (role === 'age') v = pp.age ?? '';
         else if (role === 'dis') v = pp.disability ? (pp.dtype || '') + (pp.dtypeOther ? ': ' + pp.dtypeOther : '') : '';
         else if (role === 'phone') v = pp.phone || '';
-        else if (role.startsWith('mt:')) { const m = held[+role.slice(3) - 1]; v = m ? (m.present.includes(pp.id) ? '✓' : 'غـ') : ''; }
+        else if (role.startsWith('mt:')) { const m = held[+role.slice(3) - 1]; v = m ? (m.present.includes(pp.id) ? C.marks.present : C.marks.absent) : ''; }
       }
       setText(td, String(v)); if (role === 'idx') td.querySelector('p').style.whiteSpace = 'nowrap';
-      td.querySelector('p').style.textAlign = role === 'name' ? 'right' : 'center'; td.style.verticalAlign = 'middle';
+      td.querySelector('p').style.textAlign = role === 'name' ? C.align.name : C.align.cols; td.style.verticalAlign = C.align.v; if (C.rowH) td.style.height = C.rowH + 'px';
     }
     out.push(tr);
   }
   const thead = table.ownerDocument.createElement('thead'); heads.forEach((h) => thead.appendChild(h)); const tbody = table.ownerDocument.createElement('tbody'); out.forEach((r) => tbody.appendChild(r));
-  model.remove(); table.appendChild(thead); table.appendChild(tbody);
+  table.classList.add('rost'); model.remove(); table.appendChild(thead); table.appendChild(tbody);
 }
 
 // ---------- الأعداد ----------
@@ -137,21 +148,32 @@ function fillDis(root, c) {
   }
 }
 
-// الهيدر كما في Word: الجدول يسارًا والشعار يمينًا بمحاذاة أعلاه، و«مستند مراقب» تحت الجدول من اليسار
+// الهيدر كما في Word: الجدول والشعار بجانبه (يمينه) بمحاذاة أعلاه على يسار الورقة، و«مستند مراقب» تحت الجدول
 function fixHeader(H) {
-  const tbl = H.querySelector('table'), img = H.querySelector('img.anch'); if (!tbl) return;
-  const x = parseFloat((img?.getAttribute('style') || '').match(/--x:([\d.\-]+)px/)?.[1] || 0), y = parseFloat((img?.getAttribute('style') || '').match(/--y:([\d.\-]+)px/)?.[1] || 0), w = parseFloat(img?.style.width || 98), h = parseFloat(img?.style.height || 98);
-  const ind = parseFloat((tbl.getAttribute('style') || '').match(/margin-inline-start:([\d.\-]+)px/)?.[1] || 0);
-  const wrap = H.ownerDocument.createElement('div'); wrap.style.cssText = `position:relative;min-height:${Math.round(y + h + 28)}px`;
-  tbl.before(wrap); wrap.append(tbl); if (x < 300) { tbl.style.position = 'relative'; tbl.style.left = -(w + 12) + 'px'; }
-  const stamp = H.ownerDocument.createElement('p'); stamp.textContent = 'مستند مراقب'; stamp.style.cssText = `direction:rtl;text-align:left;margin:8px 0 0 ${ind}px;font:700 10.5pt Tahoma,'Simplified Arabic',sans-serif;color:#7f7f7f`; wrap.append(stamp);
-  if (img) { img.removeAttribute('class'); img.style.cssText = `position:absolute;right:${x < 300 ? 0 : x}px;top:${y}px;width:${w}px;height:${h}px`; wrap.append(img); }
-  // نزيل الفقرات الأخرى في الهيدر (الفارغة وفقرة الشعار القديمة)
-  [...H.children].forEach((c) => { if (c !== wrap) c.remove(); });
+  const tbl = H.querySelector('table'), img = H.querySelector('img.anch'); if (!tbl) return; const d = H.ownerDocument;
+  const w = parseFloat(img?.style.width || 98) * C.logoScale / 100, h = parseFloat(img?.style.height || 98) * C.logoScale / 100;
+  const wrap = d.createElement('div'); wrap.style.cssText = 'display:flex;direction:ltr;align-items:flex-start;justify-content:flex-start;gap:14px';
+  const left = d.createElement('div'); tbl.style.margin = '0'; tbl.style.position = 'static'; left.append(tbl);
+  if (C.show.stamp && C.stampText) { const st = d.createElement('p'); st.textContent = C.stampText; st.style.cssText = "direction:rtl;text-align:left;margin:8px 0 0 0;font:700 10.5pt Tahoma,'Simplified Arabic',sans-serif;color:#7f7f7f"; left.append(st); }
+  wrap.append(left);
+  if (img && C.show.logo) { img.removeAttribute('class'); img.style.cssText = `width:${w}px;height:${h}px;flex:none`; wrap.append(img); }
+  H.innerHTML = ''; H.append(wrap);
 }
+// التواقيع: المنشط/ة على اليمين والمنسق/ة على اليسار
+function fixFooter(F) {
+  const d = F.ownerDocument, p = [...F.querySelectorAll('p')].find((x) => /المنسق/.test(x.textContent)); if (!p) return;
+  if (!C.show.sign) { F.innerHTML = ''; return; }
+  const full = p.textContent.replace(/\s+/g, ' ').trim(), i = full.indexOf('توقيع المنسق'), a = i > 0 ? full.slice(0, i).trim() : full, b = i > 0 ? full.slice(i).trim() : '';
+  const sty = p.querySelector('span')?.getAttribute('style') || '', row = d.createElement('div'); row.style.cssText = 'display:flex;justify-content:space-between;direction:rtl;width:100%';
+  for (const t of [a, b]) { const sp = d.createElement('span'); sp.setAttribute('style', sty); sp.textContent = t; row.append(sp); }
+  F.innerHTML = ''; F.append(row);
+}
+// تكبير/تصغير الخطوط المضمّنة (pt)
+function scaleFonts(root, k) { if (k === 100) return; root.querySelectorAll('[style*="font-size"]').forEach((e) => { e.style.fontSize = e.style.fontSize.replace(/([\d.]+)pt/, (_, n) => (+n * k / 100).toFixed(1) + 'pt'); }); }
 
 // ---------- التعبئة الكاملة ----------
 export function buildSheetDoc(sh, db, o = {}) {
+  C = cfgOf(sh.kind, o.cfg); MARK = C.marks.select;
   const K = KINDS[sh.kind], T = TPL.kinds[FILE[sh.kind]], m = sh.meta || {}, proj = db.projects.find((p) => p.id === sh.projectId), center = db.centers.find((c) => c.id === sh.centerId)?.name || '';
   const logo = TPL.logos[0], fix = (h) => h.replace(/src="\{\{LOGO:\d+\}\}"/g, `src="${logo}"`);
   const dom = new DOMParser().parseFromString(`<div id="h">${fix(T.header)}</div><div id="b">${fix(T.body)}</div><div id="f">${fix(T.footer)}</div>`, 'text/html'), B = dom.getElementById('b');
@@ -159,10 +181,12 @@ export function buildSheetDoc(sh, db, o = {}) {
   // اسم المشروع
   const pn = [...B.querySelectorAll('p')].find((p) => N(p.textContent).startsWith('اسمالمشروع')); if (pn) { const sp = [...pn.querySelectorAll('span')].find((s) => s.textContent.trim()); if (sp) { [...pn.querySelectorAll('span')].forEach((s) => s !== sp && s.remove()); sp.textContent = 'اسم المشروع: ' + (proj?.name || ''); pn.style.margin = '0'; pn.style.maxWidth = 'none'; pn.style.width = 'auto'; pn.style.paddingInline = '0'; } }
   const lines = (a) => (a || []).map((x, i) => `${i + 1}. ${x}`).join('\n');
-  const setLines = (label, arr) => { const l = labelCell(B, label), n = l?.nextElementSibling; if (n && arr?.length) { const p = n.querySelector('p'), st = p.getAttribute('style') || ''; const sp = p.querySelector('span'); const sty = sp?.getAttribute('style') || ''; n.innerHTML = arr.map((x, i) => `<p style="${st};text-align:right"><span style="${sty}">${i + 1}. ${x.replace(/</g, '&lt;')}</span></p>`).join(''); n.style.verticalAlign = 'middle'; } };
-  // سطرا اسم المشروع وعنوان الكشف: أسود بلا تظليل وبينهما تباعد
-  { let k = 0; for (const el of [...B.children]) { if (el.tagName === 'TABLE') break; if (el.tagName !== 'P') continue; el.querySelectorAll('span').forEach((x) => { x.style.background = 'none'; x.style.color = '#000'; }); el.style.marginBottom = '10px'; el.style.marginTop = k ? '4px' : '0'; k++; } }
-  fixHeader(dom.getElementById('h'));
+  const setLines = (label, arr) => { const l = labelCell(B, label), n = l?.nextElementSibling; if (n && arr?.length) { const p = n.querySelector('p'), st = p.getAttribute('style') || ''; const sp = p.querySelector('span'); const sty = sp?.getAttribute('style') || ''; n.innerHTML = arr.map((x, i) => `<p style="${st};text-align:${C.align.basic}"><span style="${sty}">${i + 1}. ${x.replace(/</g, '&lt;')}</span></p>`).join(''); n.style.verticalAlign = 'middle'; } };
+  // سطرا اسم المشروع وعنوان الكشف: أسود بلا تظليل وبينهما تباعد، وبلا نقاط في آخر العنوان
+  { let k = 0; for (const el of [...B.children]) { if (el.tagName === 'TABLE') break; if (el.tagName !== 'P') continue; el.querySelectorAll('span').forEach((x) => { x.style.background = 'none'; x.style.color = '#000'; });
+      const sps = [...el.querySelectorAll('span')].reverse(); for (const x of sps) { const t = x.textContent; if (!t.trim()) continue; x.textContent = t.replace(/[.…\s]+$/, ''); if (x.textContent.trim()) break; }
+      el.style.marginBottom = '10px'; el.style.marginTop = k ? '4px' : '0'; if ((k === 0 && !C.show.project) || (k === 1 && !C.show.title)) el.remove(); k++; } }
+  fixHeader(dom.getElementById('h')); fixFooter(dom.getElementById('f'));
   const kind = sh.kind;
   if (kind === 'course') {
     after(B, 'عنوان الدورة', m.title); after(B, 'تاريخ بدء الدورة', dmy(m.start)); after(B, 'تاريخ انتهاء الدورة', dmy(m.end)); after(B, 'اسم المنشط/ة- المدرب/ة', m.facilitator);
@@ -200,21 +224,29 @@ export function buildSheetDoc(sh, db, o = {}) {
     fillCounts(B, K.multi ? (() => { const d = derivedCounts(sh, db); return { total: d.total, M: d.M, F: d.F, MWD: d.MWD, FWD: d.FWD }; })() : counts); fillDis(B, K.multi ? (() => { const att = new Set(heldMeetings(sh).flatMap((x) => x.present)); return countsOf(people.filter((p) => p.guest || att.has(p.id))); })() : counts);
     const rt = tbls[tbls.length - 1]; fillRoster(rt, people, sh);
   }
-  return { dom, T, doc: dom };
+  [dom.getElementById('h'), B, dom.getElementById('f')].forEach((r) => scaleFonts(r, C.fontScale));
+  return { dom, T, doc: dom, C };
 }
 
-const CSS = (p) => `@page{size:${p.w}px ${p.h}px;margin:0}*{box-sizing:border-box}
-html,body{margin:0;padding:0}body{font-family:'Simplified Arabic','Traditional Arabic','Noto Naskh Arabic',serif;font-size:11pt;direction:rtl;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+const CSS = (p, c) => `@page{size:${p.w}px ${p.h}px;margin:0}*{box-sizing:border-box}
+html,body{margin:0;padding:0}body{font-family:${c.font ? `'${c.font}',` : ''}'Simplified Arabic','Traditional Arabic','Noto Naskh Arabic',serif;font-size:11pt;direction:rtl;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+${c.font ? `body *{font-family:'${c.font}','Simplified Arabic',serif!important}` : ''}
 p{margin:0}.dt{border-collapse:collapse;table-layout:fixed}.dt td{overflow:hidden;overflow-wrap:anywhere}.dt tr{break-inside:avoid}
-.anch{position:absolute;left:var(--x);top:var(--y)}p:has(.anch){position:relative}
-.pgw{width:100%;border-collapse:collapse;min-height:${p.h}px}.pgw>thead>tr>td,.pgw>tbody>tr>td,.pgw>tfoot>tr>td{padding:0;vertical-align:top}
-.hd{padding:${p.header}px ${p.right}px 0 ${p.left}px}.bd{padding:0 ${p.right}px 0 ${p.left}px}.ft{padding:0 ${p.right}px ${p.footer}px ${p.left}px}.tab{display:inline-block;width:42px}
-tfoot td{vertical-align:bottom!important}.pgw>tbody>tr>td{height:100%}`;
+.rost{zoom:${c.tableScale / 100}}
+.pgw{width:100%;border-collapse:collapse}.pgw>thead>tr>td,.pgw>tbody>tr>td,.pgw>tfoot>tr>td{padding:0;vertical-align:top}
+.hd{padding:${p.header}px ${p.right}px 0 ${p.left}px}.bd{padding:6px ${p.right}px 0 ${p.left}px}.ft{padding:0 ${p.right}px ${p.footer}px ${p.left}px}.tab{display:inline-block;width:42px}
+.fx{position:fixed;left:0;right:0;background:#fff;z-index:2}.fxh{top:0}.fxf{bottom:0}
+@media screen{html{background:#d9d9d9}body{width:${p.w}px;min-height:${p.h}px;margin:14px auto;background:#fff;box-shadow:0 0 8px #0005}.fx{position:static}.hs,.fs{display:none}body{display:flex;flex-direction:column}.fxh{order:1}.pgw{order:2}.fxf{order:3;margin-top:auto}}`;
 
-export function sheetHTML(sh, db, title) {
-  const { dom, T } = buildSheetDoc(sh, db), p = T.page, g = (id) => dom.getElementById(id).innerHTML;
-  return `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>${(title || '').replace(/</g, '&lt;')}</title><style>${CSS(p)}</style></head><body>
-<table class="pgw"><thead><tr><td><div class="hd">${g('h')}</div></td></tr></thead><tbody><tr><td><div class="bd">${g('b')}</div></td></tr></tbody><tfoot><tr><td><div class="ft">${g('f')}</div></td></tr></tfoot></table></body></html>`;
+export function sheetHTML(sh, db, title, o = {}) {
+  const { dom, T, C: cc } = buildSheetDoc(sh, db, o), p = { ...T.page }, g = (id) => dom.getElementById(id).innerHTML;
+  if (cc.orient === 'landscape' && p.w < p.h) [p.w, p.h] = [p.h, p.w]; else if (cc.orient === 'portrait' && p.w > p.h) [p.w, p.h] = [p.h, p.w];
+  if (cc.mL != null) p.left = Math.round(cc.mL * 3.7795); if (cc.mR != null) p.right = Math.round(cc.mR * 3.7795);
+  const hdr = cc.show.header ? g('h') : '', ftr = cc.show.footer ? g('f') : '';
+  return `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>${(title || '').replace(/</g, '&lt;')}</title><style>${CSS(p, cc)}</style></head><body>
+<div class="fx fxh"><div class="hd">${hdr}</div></div><div class="fx fxf"><div class="ft">${ftr}</div></div>
+<table class="pgw"><thead><tr><td><div class="hs"></div></td></tr></thead><tbody><tr><td><div class="bd">${g('b')}</div></td></tr></tbody><tfoot><tr><td><div class="fs"></div></td></tr></tfoot></table>
+<script>(function(){var h=document.querySelector('.fxh'),f=document.querySelector('.fxf'),a=document.querySelector('.hs'),b=document.querySelector('.fs');function s(){a.style.height=h.offsetHeight+'px';b.style.height=f.offsetHeight+'px'}s();addEventListener('load',s);if(document.fonts&&document.fonts.ready)document.fonts.ready.then(s)})()</script></body></html>`;
 }
 export const sheetFileName = (sh, db) => { const K = KINDS[sh.kind], m = sh.meta || {}; const t = m.title || (m.activities || [])[0] || m.type || K.name; return `كشف حضور - ${K.name} - ${t} - ${m.date || m.start || ''}`.replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim(); };
 

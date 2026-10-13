@@ -5,18 +5,44 @@ import { GROUPS, SEX, SESSION_MODES, AGE_BANDS, CATS, uid } from '../core/model.
 import { DTYPES } from '../core/sheets.js';
 import { ROUNDS, SCALES, SCALE_NAMES } from '../core/forms.js';
 import { kvSet } from './store.js';
+import { PRINT_DEF, cfgOf, printStore, sheetHTML, printSheet } from './sheet-pdf.js';
+import { KINDS } from '../core/sheets.js';
 import { gl, mergePairs } from './glossary.js';
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const $ = (s, r = document) => r.querySelector(s);
-let ctx; const st = { tab: 'lists', list: null };
+let ctx; const st = { tab: 'lists', list: null, pk: '_' };
 export const initSettings = (c) => { ctx = c; };
 export const saveConfig = () => { applyConfig(DTYPES); return kvSet('config', configJSON()); };
 const XL = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-const TABS = [['lists', 'القوائم'], ['vars', 'المتغيرات'], ['consts', 'الثوابت'], ['projects', 'المشاريع'], ['bundle', 'حزمة الإعدادات']];
+const TABS = [['lists', 'القوائم'], ['vars', 'المتغيرات'], ['consts', 'الثوابت'], ['projects', 'المشاريع'], ['print', 'طباعة الكشوفات'], ['bundle', 'حزمة الإعدادات']];
 
 export function vSettings() {
-  const body = { lists: tLists, vars: tVars, consts: tConsts, projects: tProjects, bundle: tBundle }[st.tab]();
+  const body = { lists: tLists, vars: tVars, consts: tConsts, projects: tProjects, print: tPrint, bundle: tBundle }[st.tab]();
   ctx.view().innerHTML = `<div class="card row" id="settings">${TABS.map(([k, t]) => `<button class="${st.tab === k ? '' : 'sec'}" data-act="sTab" data-k="${k}">${t}</button>`).join('')}</div>${body}`;
+}
+// ---- إعدادات طباعة كشوف الحضور (PDF): عامة + استثناءات لكل نوع كشف ----
+const sheetFor = (k) => (ctx.db.sheets || []).find((x) => k === '_' || x.kind === k) || (ctx.db.sheets || [])[0];
+const previewHTML = () => { const sh = sheetFor(st.pk); if (!sh) return ''; try { return sheetHTML(sh, ctx.db, 'معاينة', { kind: st.pk }); } catch (e) { return `<p style="font:14px sans-serif;padding:20px">تعذّرت المعاينة: ${esc(e.message)}</p>`; } };
+function tPrint() {
+  const k = st.pk, c = cfgOf(k === '_' ? undefined : k), ov = (printStore()[k] || {}), sel = (path, opts, v) => `<select data-pc="${path}">${opts.map(([a, b]) => `<option value="${a}" ${String(v) === String(a) ? 'selected' : ''}>${b}</option>`).join('')}</select>`;
+  const al = [['right', 'يمين'], ['center', 'وسط'], ['left', 'يسار']], chk = (path, t, v) => `<label class="row" style="gap:.35rem"><input type="checkbox" data-pc="${path}" ${v ? 'checked' : ''}> ${t}</label>`;
+  const n = (path, t, v, min, max, ph = '') => `<label>${t}<input type="number" data-pc="${path}" value="${v ?? ''}" min="${min}" max="${max}" placeholder="${ph}" style="width:90px"></label>`;
+  const tx = (path, t, v, w = 60) => `<label>${t}<input data-pc="${path}" value="${esc(v)}" style="width:${w}px;text-align:center"></label>`;
+  const sh = sheetFor(k);
+  return `<div class="card"><h2>إعدادات طباعة الكشوف (PDF)</h2><p class="small">تُطبَّق على ملف الـ PDF الذي يُصدَّر من كل كشف. «الإعدادات العامة» تسري على كل الأنواع، ولكل نوع كشف استثناءاته الخاصة التي تتقدّم على العامة (مثلًا: كشف الدورات أفقي وبرموز مختلفة عن كشف النشاط).</p>
+  <div class="row"><label>الإعداد لـ<select id="pckind"><option value="_" ${k === '_' ? 'selected' : ''}>الإعدادات العامة (كل الكشوف)</option>${Object.entries(KINDS).map(([id, K]) => `<option value="${id}" ${k === id ? 'selected' : ''}>${esc(K.name)}${printStore()[id] ? ' ●' : ''}</option>`).join('')}</select></label>
+  ${k !== '_' ? '<button class="sec" data-act="pcReset">إلغاء استثناءات هذا النوع</button>' : '<button class="sec" data-act="pcResetAll">استعادة الافتراضي للكل</button>'}<button data-act="pcPrint" ${sh ? '' : 'disabled'}>طباعة المعاينة / PDF</button></div>
+  ${k !== '_' ? `<p class="small">${Object.keys(ov).length ? 'لهذا النوع استثناءات خاصة (●) فوق الإعدادات العامة.' : 'هذا النوع يتبع الإعدادات العامة حاليًا؛ أي تعديل هنا يصير استثناءً خاصًا به.'}</p>` : ''}</div>
+  <div class="card"><h3>الصفحة والخط</h3><div class="row">
+  <label>اتجاه الصفحة${sel('orient', [['auto', 'حسب القالب الأصلي'], ['portrait', 'عمودي'], ['landscape', 'أفقي']], c.orient)}</label>
+  <label>الخط${sel('font', [['', 'حسب القالب'], ['Simplified Arabic', 'Simplified Arabic'], ['Traditional Arabic', 'Traditional Arabic'], ['Tahoma', 'Tahoma'], ['Arial', 'Arial'], ['Times New Roman', 'Times New Roman'], ['Calibri', 'Calibri'], ['Sakkal Majalla', 'Sakkal Majalla']], c.font)}</label>
+  ${n('fontScale', 'حجم الخطوط %', c.fontScale, 60, 160)}${n('tableScale', 'اتساع جدول المشاركين %', c.tableScale, 50, 100)}${n('mR', 'هامش أيمن (مم)', c.mR, 0, 60, 'القالب')}${n('mL', 'هامش أيسر (مم)', c.mL, 0, 60, 'القالب')}
+  ${n('minRows', 'أقل عدد صفوف بالجدول', c.minRows, 0, 60)}${n('rowH', 'ارتفاع الصف (px)', c.rowH || '', 0, 80, 'تلقائي')}</div></div>
+  <div class="card"><h3>المحاذاة</h3><div class="row"><label>بيانات الكشف الأساسية${sel('align.basic', al, c.align.basic)}</label><label>أسماء المشاركين${sel('align.name', al, c.align.name)}</label><label>بقية أعمدة الجدول${sel('align.cols', al, c.align.cols)}</label><label>المحاذاة العمودية${sel('align.v', [['top', 'أعلى'], ['middle', 'منتصف'], ['bottom', 'أسفل']], c.align.v)}</label></div></div>
+  <div class="card"><h3>الرموز المستعملة</h3><div class="row">${tx('marks.present', 'حضور اللقاء', c.marks.present)}${tx('marks.absent', 'غياب اللقاء', c.marks.absent)}${tx('marks.sexM', 'خانة ذكر', c.marks.sexM)}${tx('marks.sexF', 'خانة أنثى', c.marks.sexF)}${tx('marks.select', 'علامة الاختيار', c.marks.select)}</div><p class="small">يمكن كتابة أي رمز أو حرف (✓ ✔ × / غـ …). الفارغ يترك الخانة بلا علامة.</p></div>
+  <div class="card"><h3>العناصر الظاهرة</h3><div class="row" style="gap:1.2rem">${chk('show.header', 'الهيدر', c.show.header)}${chk('show.logo', 'الشعار', c.show.logo)}${chk('show.stamp', 'عبارة الهيدر السفلية', c.show.stamp)}${chk('show.footer', 'الفوتر', c.show.footer)}${chk('show.sign', 'سطر التواقيع', c.show.sign)}${chk('show.project', 'سطر اسم المشروع', c.show.project)}${chk('show.title', 'سطر عنوان الكشف', c.show.title)}${chk('show.idx', 'ترقيم الصفوف', c.show.idx)}</div>
+  <div class="row"><label>نص العبارة تحت الهيدر<input data-pc="stampText" value="${esc(c.stampText)}" style="width:170px"></label>${n('logoScale', 'حجم الشعار %', c.logoScale, 40, 200)}</div></div>
+  <div class="card"><h3>المعاينة${sh ? ` — ${esc(KINDS[sh.kind]?.name || '')}` : ''}</h3>${sh ? `<p class="small">المعاينة على كشف حقيقي من البرنامج. الهيدر والفوتر في الطباعة يتكرران أعلى وأسفل كل صفحة.</p><div style="zoom:.62;overflow:auto"><iframe id="pcprev" style="width:${1180}px;height:1300px;border:1px solid var(--bd,#999);background:#fff" srcdoc="${esc(previewHTML())}"></iframe></div>` : '<p class="small">لا توجد كشوف للمعاينة؛ أنشئ كشفًا (أو الكشف التجريبي) ثم عُد هنا.</p>'}</div>`;
 }
 function tLists() {
   const O = origLabels(), ls = cfg.lists, cur = listById(st.list) || ls[0]; st.list = cur?.id || null;
@@ -74,8 +100,18 @@ export function settingsActions({ toast, dl, go, save, rerender, ui, ask }) {
     else if (d.sl) { const l = listById(st.list); l[d.sl] = d.sl === 'name' ? slug(t.value) || l.name : t.value; persist(); vSettings(); }
     else if (d.si) { const [k, f] = d.si.split('.'); listById(st.list).items[+k][f] = t.value.trim(); persist(); }
     else if (t.id === 'slist') { st.list = t.value; vSettings(); }
+    else if (t.id === 'pckind') { st.pk = t.value; vSettings(); }
+    else if (d.pc) {
+      const store = printStore(), k = st.pk, o = (store[k] ||= {}), ks = d.pc.split('.'); let v = t.type === 'checkbox' ? t.checked : t.type === 'number' ? (t.value === '' ? undefined : Number(t.value)) : t.value;
+      if (d.pc === 'mR' && v === undefined) { delete o.mR; } let tg = o; ks.slice(0, -1).forEach((x) => (tg = tg[x] ||= {})); if (v === undefined) delete tg[ks.at(-1)]; else tg[ks.at(-1)] = v;
+      if (ks.length === 1 && ks[0] === 'rowH' && v === undefined) delete o.rowH;
+      if (!Object.keys(o).length) delete store[k]; kvSet('printcfg', store); const f = $('#pcprev'); if (f) f.srcdoc = previewHTML(); toast('حُفظ');
+    }
   });
   return {
+    pcReset() { delete printStore()[st.pk]; kvSet('printcfg', printStore()); vSettings(); toast('أُلغيت استثناءات هذا النوع'); },
+    async pcResetAll() { if (!(await ask('استعادة إعدادات الطباعة الافتراضية لكل الأنواع؟'))) return; const s = printStore(); Object.keys(s).forEach((x) => delete s[x]); kvSet('printcfg', s); vSettings(); },
+    pcPrint() { const sh = sheetFor(st.pk); if (sh) printSheet(sh, ctx.db); },
     sTab(t) { st.tab = t.dataset.k; vSettings(); },
     sDtSave() { cfg.dtypes = $('#sdt').value.split('\n').map((x) => x.trim()).filter(Boolean); persist(); vSettings(); toast('حُفظت قائمة الإعاقة'); },
     sDtReset() { cfg.dtypes = null; persist(); vSettings(); },

@@ -17,6 +17,7 @@ import { vGloss, initGloss, glossActions } from './gloss-view.js';
 import { loadGlossary } from './glossary.js';
 import { vSettings, initSettings, settingsActions } from './settings-view.js';
 import { loadConfig } from '../core/settings.js';
+import { setPrintCfg } from './sheet-pdf.js';
 import { DTYPES } from '../core/sheets.js';
 import { kvGet } from './store.js';
 import { initOffline, offlineCard, offlineActions } from './offline.js';
@@ -478,7 +479,7 @@ const actions = {
 };
 
 $('.logo').src = logoUrl; { const l = document.createElement('link'); l.rel = 'icon'; l.href = logoUrl; document.head.append(l); }
-initPlan({ project, save, rerender, view, empty }); initSheets({ db, project, save, view, empty, ask, toast, myCenters, route: () => route }); initOps({ db, project, save, view, empty, ask, toast, myCenters }); initBuilder({ project, save, rerender }); initGloss({ view, ask }); initFix({ db, ui, go, toast, openSession, openOp, route: () => route }); Object.assign(actions, fixActions); initSettings({ view, db, ask, askText }); initBnf({ view, db, ask, ui }); Object.assign(actions, offlineActions, bnfActions({ toast, ask, save, rerender, dl }), glossActions({ toast, dl }), settingsActions({ toast, dl, go, save, rerender, ui, ask })); loadConfig(await kvGet('config'), DTYPES); await load(); await loadGlossary(); await loadDrafts(); try { if (localStorage.getItem('nawa.nonav')) document.body.classList.add('nonav'); } catch { /* خاص */ } initTheme(); applyDoc(); nav(); go('dash'); initHints(view); initCopy({ toast }); initOffline(); initPlaceholders(); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
+initPlan({ project, save, rerender, view, empty }); initSheets({ db, project, save, view, empty, ask, toast, myCenters, route: () => route }); initOps({ db, project, save, view, empty, ask, toast, myCenters }); initBuilder({ project, save, rerender }); initGloss({ view, ask }); initFix({ db, ui, go, toast, openSession, openOp, route: () => route }); Object.assign(actions, fixActions); initSettings({ view, db, ask, askText }); initBnf({ view, db, ask, ui }); Object.assign(actions, offlineActions, bnfActions({ toast, ask, save, rerender, dl }), glossActions({ toast, dl }), settingsActions({ toast, dl, go, save, rerender, ui, ask })); loadConfig(await kvGet('config'), DTYPES); setPrintCfg(await kvGet('printcfg')); await load(); await loadGlossary(); await loadDrafts(); try { if (localStorage.getItem('nawa.nonav')) document.body.classList.add('nonav'); } catch { /* خاص */ } initTheme(); applyDoc(); nav(); go('dash'); initHints(view); initCopy({ toast }); initOffline(); initPlaceholders(); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
 setInterval(() => { if (sync.cfg.auto) doSync(); else setSyncBadge(); }, 60000);
 window.addEventListener('online', () => sync.cfg.auto && doSync());
 window.addEventListener('nawa:drafts', () => nav());
