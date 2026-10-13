@@ -21,6 +21,8 @@ import { setPrintCfg } from './sheet-pdf.js';
 import { ROLE_AR, initUsers, vUsers, wireUsers, usersActions, showLogin, loginCall, wipeLocal } from './users-view.js';
 import { DTYPES } from '../core/sheets.js';
 import { backfillEnrollments } from '../core/enroll.js';
+import { assignFolders, folderOf } from '../core/share.js';
+import { setFolderMap } from '../core/sync-folder.js';
 import { initTeam, teamCard, teamActions, loadTeam } from './team-view.js';
 import { kvGet } from './store.js';
 import { initOffline, offlineCard, offlineActions } from './offline.js';
@@ -334,7 +336,9 @@ const folderEngine = () => { if (!sync.handle) return null; if (!fsync || fsyncF
 const isFolder = () => sync.cfg.mode === 'folder';
 let fstate = '';   // granted | prompt | none
 async function folderPerm(ask) { if (!sync.handle) return (fstate = 'none'); try { let p = await sync.handle.queryPermission({ mode: 'readwrite' }); if (p !== 'granted' && ask) p = await sync.handle.requestPermission({ mode: 'readwrite' }); return (fstate = p); } catch { return (fstate = 'none'); } }
+const prepFolders = () => { if (assignFolders(db.centers)) save(); setFolderMap(db.centers); };
 async function doSyncFolder(opts, ask) {
+  prepFolders();
   if (syncing || !sync.handle) return; if ((await folderPerm(ask)) !== 'granted') { syncMsg = 'يلزم تفعيل صلاحية المجلد (اضغط «مزامنة الآن»)'; setSyncBadge(); return; }
   syncing = true; setSyncBadge('⟳ مزامنة…');
   try { const r = await folderEngine().sync(opts); if (!project()) ui.projectId = db.projects[0]?.id || null; save(); syncMsg = `تمت المزامنة: كُتب ${r.wrote} ملف وطُبّق ${r.applied} سجل${r.deleted ? ` وحُذف ${r.deleted}` : ''} (${new Date().toLocaleTimeString('ar')})${r.errors.length ? ' — ⚠ ' + r.errors.join(' | ') : ''}`; if ((r.applied || r.deleted) && ['dash', 'sessions', 'bnf', 'check'].includes(route) && !document.activeElement?.closest('#view input,#view select')) rerender(); }
@@ -368,14 +372,14 @@ async function vCloud() {
   const f = isFolder();
   const tabs = `<div class="tabs"><button data-act="setMode" data-m="folder" class="${f ? 'on' : ''}">مجلد OneDrive (موصى به)</button><button data-act="setMode" data-m="server" class="${!f ? 'on' : ''}">خادم مزامنة</button></div>`;
   if (f) {
-    await loadTeam(); const perm = await folderPerm(false); let chs = []; if (perm === 'granted') { try { chs = await dirFromHandle(sync.handle).channels(); } catch {} }
+    prepFolders(); await loadTeam(); const perm = await folderPerm(false); let chs = []; if (perm === 'granted') { try { chs = await dirFromHandle(sync.handle).channels(); } catch {} }
     view().innerHTML = `${tabs}<div class="card"><h2>المزامنة عبر مجلد OneDrive</h2>
     ${!folderSupported() ? '<p><span class="badge b-error">غير مدعوم</span> افتح النظام في Microsoft Edge أو Google Chrome على الحاسوب.</p>' : ''}
     <p class="small">يتولى برنامج OneDrive نقل الملفات بين الأجهزة، والنظام يدمجها دون تعارض ويعمل دون إنترنت. اختر المجلد المتزامن مرة واحدة على كل جهاز.</p>
     <div class="row"><button data-act="pickFolder" ${folderSupported() ? '' : 'disabled'}>اختيار مجلد المزامنة</button><button class="gold" data-act="cloudSync" ${sync.handle ? '' : 'disabled'}>مزامنة الآن</button><button class="sec" data-act="mkCenterDirs" ${sync.handle ? '' : 'disabled'} title="ينشئ مجلد c-<رمز المركز> لكل مركز غير موجود مجلده في مجلد المزامنة">إنشاء مجلدات المراكز</button>
     <label style="flex-direction:row;align-items:center"><input type="checkbox" id="ca" data-act="autoTog" ${sync.cfg.auto ? 'checked' : ''}> مزامنة تلقائية</label></div>
     <p>${sync.handle ? `المجلد: <b>${esc(sync.handle.name)}</b> — الصلاحية: ${perm === 'granted' ? '<span class="badge b-ok">مفعّلة</span>' : '<span class="badge b-warn">تحتاج تفعيلًا (اضغط مزامنة الآن)</span>'}` : '<span class="badge b-warn">لم يُختَر مجلد</span>'}</p>
-    <p>القنوات المتزامنة إلى هذا الجهاز: ${chs.length ? chs.map((c) => `<span class="badge b-info">${esc(c === 'core' ? 'core (البيانات الأساسية)' : c === 'pii' ? 'pii (حقول حساسة)' : c.startsWith('c-') ? 'مركز: ' + (db.centers.find((x) => x.id === c.slice(2))?.name || c.slice(2)) : c)}</span>`).join(' ') : '—'}</p>
+    <p>القنوات المتزامنة إلى هذا الجهاز: ${chs.length ? chs.map((c) => `<span class="badge b-info">${esc(c === 'core' ? 'core (البيانات الأساسية)' : c === 'pii' ? 'pii (حقول حساسة)' : c.startsWith('c-') ? 'مركز: ' + (db.centers.find((x) => (x.folder || x.id) === c.slice(2))?.name || c.slice(2)) : c)}</span>`).join(' ') : '—'}</p>
     <p id="cmsg">${esc(syncMsg)}</p><p class="small">آخر مزامنة: ${sync.fmeta.lastSync ? new Date(sync.fmeta.lastSync).toLocaleString('ar') : '—'} · تغييرات معلّقة: ${folderEngine()?.pending() ?? 0} · معرّف الجهاز: ${esc(sync.fmeta.deviceId)}</p></div>
     <div class="card"><h2>إعداد المجلدات والصلاحيات (مرة واحدة، من حساب OneDrive للمؤسسة)</h2>
     <ol class="small"><li>أنشئ مجلدًا باسم <code>NawaSync</code> وداخله مجلدات: <code>core</code> و<code>pii</code> و<code>c-&lt;رمز المركز&gt;</code> لكل مركز (الرمز يظهر أعلاه بعد أول مزامنة، أو اتركه ينشئها النظام على جهازك ثم شاركها).</li>
@@ -408,8 +412,9 @@ const actions = {
     catch (e) { syncMsg = 'فشل الاتصال: ' + e.message; } vCloud(); setSyncBadge();
   },
   async mkCenterDirs() {
+    prepFolders();
     if (!sync.handle || (await folderPerm(true)) !== 'granted') return toast('فعّل صلاحية المجلد أولًا');
-    const d = dirFromHandle(sync.handle), have = new Set(await d.channels()), want = ['core', 'pii', ...db.centers.map((c) => 'c-' + c.id)].filter((c) => !have.has(c));
+    const d = dirFromHandle(sync.handle), have = new Set(await d.channels()), want = ['core', 'pii', ...db.centers.map(folderOf)].filter((c) => !have.has(c));
     for (const c of want) await d.ensure(c);
     toast(want.length ? `أُنشئ ${want.length} مجلد: ${want.join('، ')}` : 'كل المجلدات موجودة'); vCloud();
   },

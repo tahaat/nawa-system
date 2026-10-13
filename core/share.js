@@ -15,7 +15,14 @@ export function roleFrom(txt) {
   for (const [k, re] of ROLE_WORDS) if (re.test(t)) return k;
   return '';
 }
-export const folderOf = (c) => 'c-' + c.id;
+// اسم مجلد المركز مقروء: c-<اسم المركز>؛ يُثبَّت في c.folder فلا يتغير لو تغيّر الاسم لاحقًا (المراكز القديمة بلا folder تبقى على رمزها)
+export const folderOf = (c) => 'c-' + (c.folder || c.id);
+const slug = (n) => String(n || '').replace(/[\\/:*?"<>|#%~&{}]+/g, ' ').trim().replace(/\s+/g, '-').slice(0, 60);
+export function assignFolders(centers) {
+  const used = new Set(centers.filter((c) => c.folder).map((c) => c.folder)); let ch = 0;
+  for (const c of centers) if (!c.folder) { let b = slug(c.name) || c.id, f = b, i = 2; while (used.has(f)) f = b + '-' + i++; c.folder = f; used.add(f); ch++; }
+  return ch;
+}
 // تعيد [{folder, label, access, note?}] لشخص واحد
 export function sharePlan(p, centers) {
   const r = SHARE_RULES[p.role]; if (!r) return [];

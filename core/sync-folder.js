@@ -6,9 +6,12 @@ import { COLLS } from './sync.js';
 
 export const PII_FIELDS = ['phone', 'disabilityType', 'disabilityOther', 'nationalId', 'email', 'emergencyName', 'emergencyPhone', 'attachments'];
 const rkey = (coll, id) => `${coll}|${id}`;
+let FOLDERS = {}; // رمز المركز -> اسم مجلده
+export const setFolderMap = (centers) => { FOLDERS = Object.fromEntries((centers || []).map((c) => [c.id, c.folder || c.id])); };
+const cf = (id) => `c-${FOLDERS[id] || id}`;
 export function chanOf(coll, rec) {
-  if (coll === 'sessions' || coll === 'sheets' || coll === 'ops') return rec?.centerId ? `c-${rec.centerId}` : 'core';
-  if (coll === 'surveyResponses') return rec?.answers?.center ? `c-${rec.answers.center}` : 'core';
+  if (coll === 'sessions' || coll === 'sheets' || coll === 'ops') return rec?.centerId ? cf(rec.centerId) : 'core';
+  if (coll === 'surveyResponses') return rec?.answers?.center ? cf(rec.answers.center) : 'core';
   return 'core';
 }
 // يقسم السجل إلى أجزاء حسب القناة
