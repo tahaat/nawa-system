@@ -1,0 +1,20 @@
+// الانتماء للمشاريع: تسجيل مستفيد في مشروعين، إنهاء، فلتر المشروع، قائمة الكشف تقتصر على المنتمين
+import { chromium } from '/opt/npm-tools/node_modules/playwright/index.mjs';
+const b = await chromium.launch(), pg = await (await b.newContext({ viewport: { width: 1400, height: 900 } })).newPage(); const errs = [];
+pg.on('pageerror', (e) => errs.push(e.message)); const log = (m, ok) => console.log(ok ? 'ok  ' : 'FAIL', m);
+await pg.goto('http://localhost:8765/'); await pg.waitForSelector('#nav'); await pg.click('[data-act=newProject]'); await pg.waitForTimeout(300);
+await pg.evaluate(() => { const d = window.__nawa.db, p = d.projects[0]; d.projects.push({ ...JSON.parse(JSON.stringify(p)), id: 'p_two', name: 'مشروع ثانٍ' }); d.beneficiaries.push({ id: 'bx', name: 'سلمى خالد يوسف عطية', sex: 'F', age: 9 }); window.__nawa.save?.(); });
+await pg.click('a[data-go=bnf]'); await pg.waitForTimeout(400);
+log('عمود المشاريع موجود', (await pg.locator('th', { hasText: 'المشاريع' }).count()) > 0);
+const open = async () => { await pg.click('[data-act=bEnr][data-id=bx]'); await pg.waitForTimeout(200); };
+await open(); await pg.click('[data-act=bEnrSet][data-p=p_two][data-do=add]'); await pg.waitForTimeout(200);
+await pg.click('[data-act=bEnrSet][data-do=add]'); await pg.waitForTimeout(200);
+let en = await pg.evaluate(() => window.__nawa.db.enrollments.filter((e) => e.beneficiaryId === 'bx').map((e) => e.projectId + ':' + e.status));
+log('مسجَّل في مشروعين معًا', en.length === 2 && en.every((x) => x.endsWith(':active')));
+await pg.click('[data-act=bEnrSet][data-p=p_two][data-do=end]'); await pg.waitForTimeout(200);
+en = await pg.evaluate(() => window.__nawa.db.enrollments.filter((e) => e.beneficiaryId === 'bx').map((e) => e.projectId + ':' + e.status));
+log('الإنهاء يُبقي السجل', en.length === 2 && en.includes('p_two:ended'));
+await pg.click('[data-act=bAttsClose]'); await pg.selectOption('#bf-proj', 'p_two'); await pg.waitForTimeout(200);
+log('فلتر المشروع يستبعد المنتهي', (await pg.locator('#bnres [data-act=bEnr]').count()) === 0);
+await pg.selectOption('#bf-proj', ''); await pg.waitForTimeout(100);
+log('بلا أخطاء صفحة', errs.length === 0); if (errs.length) console.log('أخطاء الصفحة: [', errs, ']'); await b.close();

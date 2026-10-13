@@ -1,4 +1,5 @@
 // شاشة «الكشوفات»: نماذج إدخال مقيّدة تطابق كشوفات الحضور الورقية (Word). الأعداد تُحسب من القائمة ولا تُكتب يدوياً.
+import { enrolledIn, ensureEnrollment } from '../core/enroll.js';
 import { KINDS, SG, DTYPES, newSheet, validateSheet, derivedCounts, completion, commitSheet, removeSheet, peopleOf, nameOk, phoneOk, heldMeetings } from '../core/sheets.js';
 import { ageAt, uid } from '../core/model.js';
 import { pager } from './pager.js';
@@ -6,7 +7,7 @@ import { printSheet } from './sheet-pdf.js';
 import { putDraft, delDraft, getDraft, draftsCard } from './drafts.js';
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const $ = (s, r = document) => r.querySelector(s);
-let ctx, cur = null, base = '', bound = false; const q = {}, showAll = {}, quick = {}, flt = {}, pick = {}, lim = {};
+let ctx, cur = null, base = '', bound = false; const q = {}, showAll = {}, othProj = {}, quick = {}, flt = {}, pick = {}, lim = {};
 
 export function initSheets(c) { ctx = c; if (bound) return; bound = true; document.addEventListener('input', onInput); document.addEventListener('change', onInput); document.addEventListener('click', onClick); }
 // شارات ملونة وغامقة بعلامة = لتمييز الذكور/الإناث/ذوي الإعاقة/بدون إعاقة بسهولة
@@ -79,7 +80,8 @@ function listCard(L) {
   const qa = quick[L.key];
   return `<div class="card"><h2>${esc(L.label)} (${ppl.length})</h2>
     ${L.inline ? '' : `<div class="row"><label>بحث في سجل المستفيدين<input data-sq="${L.key}" value="${esc(q[L.key] || '')}" placeholder="اكتب جزءاً من الاسم" style="width:260px"></label>
-      <label class="chk"><input type="checkbox" data-shall="${L.key}" ${showAll[L.key] ? 'checked' : ''}> إظهار غير المطابقين للفئة</label></div>
+      <label class="chk"><input type="checkbox" data-shall="${L.key}" ${showAll[L.key] ? 'checked' : ''}> إظهار غير المطابقين للفئة</label>
+      <label class="chk"><input type="checkbox" data-shoth="${L.key}" ${othProj[L.key] ? 'checked' : ''}> من مشاريع أخرى (يُسجَّل في هذا المشروع عند الحفظ)</label></div>
       ${filterBar(L)}<div id="res-${L.key}" style="margin:8px 0">${results(L)}</div>`}
     <div class="row" style="margin:6px 0"><button class="sec" data-shact="quick" data-l="${L.key}">${qa ? 'إغلاق النموذج' : L.inline ? '+ إضافة زائر' : '+ مستفيد جديد (غير موجود في السجل)'}</button></div>${qa ? quickForm(L) : ''}
     ${ppl.length ? `${PP.html()}<div class="tw"><table>${head}${rows}</table></div>${PP.html()}` : '<p class="small">لا مشاركين بعد.</p>'}</div>`;
@@ -98,10 +100,12 @@ function filterBar(L) {
 }
 function pool(L) {
   const db = ctx.db, inList = new Set(cur[L.key] || []), term = (q[L.key] || '').trim(), f = fl(L.key), on = cur.meta.date || cur.meta.start || iso();
+  const mine = enrolledIn(db, cur.projectId), anyEnr = new Set(db.enrollments.filter((e) => e.status !== 'ended').map((e) => e.beneficiaryId)), inProj = (id) => mine.has(id) || !anyEnr.has(id);
   const att = f.act ? new Set(db.sessions.filter((x) => x.activityId === f.act).flatMap((x) => x.attendance || [])) : null;
   const amin = f.amin === '' ? null : +f.amin, amax = f.amax === '' ? null : +f.amax;
   const out = db.beneficiaries.filter((b) => {
     if (inList.has(b.id) || (term && !b.name.includes(term)) || (!showAll[L.key] && !eligible(L, b))) return false;
+    if (!othProj[L.key] && cur.projectId && !inProj(b.id)) return false;
     if (f.sex && b.sex !== f.sex) return false; if (f.dis === '1' && !b.disability) return false; if (f.dis === '0' && b.disability) return false;
     if (f.ctr && b.center !== f.ctr) return false; if (att && !att.has(b.id)) return false;
     if (amin != null || amax != null) { const a = ageAt(b, on); if (a == null || (amin != null && a < amin) || (amax != null && a > amax)) return false; }
@@ -112,7 +116,7 @@ function pool(L) {
 }
 function results(L) {
   if (!(cur.meta.groups || []).filter((k) => L.allowed.includes(k)).length) return '<span class="small">اختر الفئة المشاركة أعلاه أولاً.</span>';
-  const all = pool(L), P = pager('pick-' + L.key, all.length, () => { const r = $('#res-' + L.key); if (r) r.innerHTML = results(L); }, JSON.stringify([fl(L.key), q[L.key] || '', !!showAll[L.key], cur.meta.groups])), res = P.slice(all), sel = (pick[L.key] ||= new Set()); for (const id of [...sel]) if (!all.some((b) => b.id === id)) sel.delete(id);
+  const all = pool(L), P = pager('pick-' + L.key, all.length, () => { const r = $('#res-' + L.key); if (r) r.innerHTML = results(L); }, JSON.stringify([fl(L.key), q[L.key] || '', !!showAll[L.key], !!othProj[L.key], cur.meta.groups])), res = P.slice(all), sel = (pick[L.key] ||= new Set()); for (const id of [...sel]) if (!all.some((b) => b.id === id)) sel.delete(id);
   const on = cur.meta.date || cur.meta.start || iso(), cn = (id) => ctx.db.centers.find((c) => c.id === id)?.name || '', cnt = {}; for (const x of ctx.db.sessions) for (const id of x.attendance || []) cnt[id] = (cnt[id] || 0) + 1;
   const bar = `<div class="row" style="align-items:center;margin-bottom:6px"><span class="small">النتيجة: <b>${all.length}</b> مستفيد — محدد: <b>${sel.size}</b></span>
     <button class="sec" data-shact="pickAdd" data-l="${L.key}" ${sel.size ? '' : 'disabled'}>إضافة المحدد (${sel.size})</button>
@@ -155,9 +159,10 @@ function onInput(e) {
   else if (d.sv !== undefined) { if (!isChange) return; const i = +d.sv; while (cur.meetings.length <= i) cur.meetings.push({ n: cur.meetings.length + 1, date: '', present: [] }); cur.meetings[i].date = t.value; if (!t.value) cur.meetings[i].present = []; relist(); }
   else if (d.sp) { const [i, id] = d.sp.split('|'); const a = cur.meetings[+i].present; if (t.checked) { if (!a.includes(id)) a.push(id); } else cur.meetings[+i].present = a.filter((x) => x !== id); refreshCheck(); }
   else if (d.sf) { const [k, fld] = d.sf.split('|'); if (fl(k)[fld] === t.value) return; fl(k)[fld] = t.value; lim[k] = 0; const L = KINDS[cur.kind].lists.find((x) => x.key === k), r = $('#res-' + k); if (r) r.innerHTML = results(L); }
-  else if (d.pkpage) { if (!isChange) return; const k = d.pkpage, st = (pick[k] ||= new Set()), L = KINDS[cur.kind].lists.find((x) => x.key === k); const PG = pager('pick-' + k, pool(L).length, null, JSON.stringify([fl(k), q[k] || '', !!showAll[k], cur.meta.groups])); for (const b of PG.slice(pool(L))) t.checked ? st.add(b.id) : st.delete(b.id); const r = $('#res-' + k); if (r) r.innerHTML = results(L); }
+  else if (d.pkpage) { if (!isChange) return; const k = d.pkpage, st = (pick[k] ||= new Set()), L = KINDS[cur.kind].lists.find((x) => x.key === k); const PG = pager('pick-' + k, pool(L).length, null, JSON.stringify([fl(k), q[k] || '', !!showAll[k], !!othProj[k], cur.meta.groups])); for (const b of PG.slice(pool(L))) t.checked ? st.add(b.id) : st.delete(b.id); const r = $('#res-' + k); if (r) r.innerHTML = results(L); }
   else if (d.pk) { if (!isChange) return; const [k, id] = d.pk.split('|'), st = (pick[k] ||= new Set()); t.checked ? st.add(id) : st.delete(id); const L = KINDS[cur.kind].lists.find((x) => x.key === k), r = $('#res-' + k); if (r) r.innerHTML = results(L); }
   else if (d.sq) { if ((q[d.sq] || '') === t.value) return; q[d.sq] = t.value; const L = KINDS[cur.kind].lists.find((x) => x.key === d.sq), r = $('#res-' + d.sq); if (r) r.innerHTML = results(L); }
+  else if (d.shoth) { if (!isChange) return; othProj[d.shoth] = t.checked; const L = KINDS[cur.kind].lists.find((x) => x.key === d.shoth), r = $('#res-' + d.shoth); if (r) r.innerHTML = results(L); }
   else if (d.shall) { if (!isChange) return; showAll[d.shall] = t.checked; const L = KINDS[cur.kind].lists.find((x) => x.key === d.shall), r = $('#res-' + d.shall); if (r) r.innerHTML = results(L); }
   else if (t.id === 'qa-dt' || t.id === 'qa-dis') { const w = $('#qa-dow'); if (w) w.hidden = !($('#qa-dis').value === '1' && $('#qa-dt').value === 'أخرى'); }
   else if (t.id === 'sh-act') { cur.activityId = t.value || null; refreshCheck(); }
@@ -194,7 +199,7 @@ async function quickSave(L) {
   if (er.length) { $('#qa-err').textContent = er.join(' — '); return; }
   if (L.inline) { cur.guests.push({ name, sex, age, disability: dis, dtype: dis ? dt : '', ...(dis && dt === 'أخرى' ? { dtypeOther: dto } : {}) }); quick[L.key] = true; return relist(); }
   const dup = db.beneficiaries.find((x) => x.name.trim() === name && x.sex === sex); if (dup && !(await ctx.ask('يوجد مستفيد بنفس الاسم والجنس في السجل. هل هو شخص آخر؟ (تأكيد = إضافة كشخص جديد، إلغاء = استخدم الموجود)'))) { (cur[L.key] ||= []).includes(dup.id) || cur[L.key].push(dup.id); return relist(); }
-  const b = { id: uid('b'), name, sex, age, disability: dis, disabilityType: dis ? dt : '', ...(dis && dt === 'أخرى' ? { disabilityOther: dto } : {}), phone: ph, center: cur.centerId }; db.beneficiaries.push(b); (cur[L.key] ||= []).push(b.id); ctx.save(); return relist();
+  const b = { id: uid('b'), name, sex, age, disability: dis, disabilityType: dis ? dt : '', ...(dis && dt === 'أخرى' ? { disabilityOther: dto } : {}), phone: ph, center: cur.centerId }; db.beneficiaries.push(b); ensureEnrollment(db, b.id, cur.projectId, cur.centerId); (cur[L.key] ||= []).push(b.id); ctx.save(); return relist();
 }
 
 async function save() {

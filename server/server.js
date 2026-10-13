@@ -35,9 +35,9 @@ export const DEFAULT_POLICY = {
   admin: { read: ALL, write: ALL, hidden: {}, routes: '*', manageUsers: true },
   meal: { read: ALL, write: ALL, hidden: {}, routes: '*' },
   entry: { read: ALL, write: { sessions: 'all', sheets: 'all', ops: 'all', beneficiaries: 'all', centers: 'all', surveyResponses: 'all', enrollments: 'all' }, hidden: {}, routes: ['dash', 'sheets', 'sessions', 'ops', 'bnf', 'centers', 'check', 'surveys', 'export', 'cloud'] },
-  projects: { read: { projects: 'proj', centers: 'all', beneficiaries: 'all', sessions: 'proj', sheets: 'proj', ops: 'proj', surveyResponses: 'proj', enrollments: 'proj' }, write: { projects: 'proj', sessions: 'proj', sheets: 'proj', ops: 'proj' }, hidden: { beneficiaries: ['phone', 'disabilityType'] }, routes: ['dash', 'sheets', 'sessions', 'ops', 'bnf', 'projects', 'plan', 'check', 'surveys', 'export', 'cloud'] },
-  facilitator: { read: { projects: 'proj', centers: 'all', beneficiaries: 'all', sessions: 'proj', sheets: 'proj', surveyResponses: 'proj', enrollments: 'proj' }, write: { sessions: 'proj', sheets: 'proj', surveyResponses: 'proj', beneficiaries: 'create' }, hidden: { beneficiaries: ['phone', 'disabilityType'] }, routes: ['sheets', 'sessions', 'surveys', 'cloud'] },
-  coordinator: { read: { projects: 'all', centers: 'all', beneficiaries: 'all', sessions: 'own', sheets: 'own', ops: 'own', surveyResponses: 'own', enrollments: 'all' }, write: { sessions: 'own', sheets: 'own', ops: 'own', beneficiaries: 'all', surveyResponses: 'own' }, hidden: { beneficiaries: ['phone', 'disabilityType'] }, routes: ['dash', 'sheets', 'sessions', 'ops', 'bnf', 'check', 'surveys', 'cloud'] },
+  projects: { read: { projects: 'proj', centers: 'all', beneficiaries: 'enr', sessions: 'proj', sheets: 'proj', ops: 'proj', surveyResponses: 'proj', enrollments: 'proj' }, write: { projects: 'proj', sessions: 'proj', sheets: 'proj', ops: 'proj', enrollments: 'proj' }, hidden: { beneficiaries: ['phone', 'disabilityType'] }, routes: ['dash', 'sheets', 'sessions', 'ops', 'bnf', 'projects', 'plan', 'check', 'surveys', 'export', 'cloud'] },
+  facilitator: { read: { projects: 'proj', centers: 'all', beneficiaries: 'enr', sessions: 'proj', sheets: 'proj', surveyResponses: 'proj', enrollments: 'proj' }, write: { sessions: 'proj', sheets: 'proj', surveyResponses: 'proj', beneficiaries: 'create', enrollments: 'proj' }, hidden: { beneficiaries: ['phone', 'disabilityType'] }, routes: ['sheets', 'sessions', 'surveys', 'cloud'] },
+  coordinator: { read: { projects: 'all', centers: 'all', beneficiaries: 'all', sessions: 'own', sheets: 'own', ops: 'own', surveyResponses: 'own', enrollments: 'all' }, write: { sessions: 'own', sheets: 'own', ops: 'own', beneficiaries: 'all', surveyResponses: 'own', enrollments: 'all' }, hidden: { beneficiaries: ['phone', 'disabilityType'] }, routes: ['dash', 'sheets', 'sessions', 'ops', 'bnf', 'check', 'surveys', 'cloud'] },
 };
 export function getPolicy(db) { const r = db.prepare("SELECT v FROM policy WHERE k='roles'").get(); return r ? { ...DEFAULT_POLICY, ...JSON.parse(r.v), admin: DEFAULT_POLICY.admin } : DEFAULT_POLICY; }
 export function setPolicy(db, p) { db.prepare("INSERT OR REPLACE INTO policy VALUES('roles',?)").run(JSON.stringify(p)); }
@@ -89,10 +89,26 @@ export function createApp(db, { staticFile = null, maxBody = 20e6 } = {}) {
     } catch (e) { db.exec('ROLLBACK'); throw e; }
     return { results, rejected, forbidden, seq: curSeq() };
   }
+  // معرّفات المستفيدين المنتمين (انتماء نشط) إلى مشاريع المستخدم المكلَّف بها
+  function enrolledIds(user) {
+    const ps = userProjects(user); if (!ps.length) return new Set();
+    const rows = db.prepare(`SELECT data FROM records WHERE coll='enrollments' AND deleted=0 AND project IN (${ps.map(() => '?').join(',')})`).all(...ps), out = new Set();
+    for (const r of rows) { try { const d = JSON.parse(r.data); if (d.status !== 'ended' && d.beneficiaryId) out.add(d.beneficiaryId); } catch { /* */ } }
+    return out;
+  }
   function pull(user, since, limit = 1000) {
     const pol = getPolicy(db)[user.role] || { read: {} };
     const rows = db.prepare('SELECT coll,id,data,ts,deleted,seq,center,project FROM records WHERE seq>? ORDER BY seq LIMIT ?').all(since, limit);
-    const vis = rows.filter((r) => inScope(pol.read?.[r.coll], r.center, r.project, user));
+    const enr = pol.read?.beneficiaries === 'enr' ? enrolledIds(user) : null;
+    const vis = rows.filter((r) => (r.coll === 'beneficiaries' && enr ? enr.has(r.id) : inScope(pol.read?.[r.coll], r.center, r.project, user)));
+    const have = new Set(vis.filter((r) => r.coll === 'beneficiaries').map((r) => r.id));
+    if (enr) { // انتماء جديد ظاهر ⇒ يلزم سجل المستفيد نفسه حتى لو كان أقدم من since
+      for (const r of vis) {
+        if (r.coll !== 'enrollments' || r.deleted) continue; let d; try { d = JSON.parse(r.data); } catch { continue; }
+        if (!d.beneficiaryId || have.has(d.beneficiaryId) || d.status === 'ended' || !enr.has(d.beneficiaryId)) continue;
+        const b = getRec.get('beneficiaries', d.beneficiaryId); if (b && !b.deleted) { vis.push(b); have.add(b.id); }
+      }
+    }
     return { records: vis.map((r) => ({ coll: r.coll, id: r.id, data: r.deleted ? null : stripHidden(r.coll, JSON.parse(r.data), pol), ts: r.ts, seq: r.seq })), seq: curSeq(), next: rows.length ? rows[rows.length - 1].seq : since, more: rows.length === limit };
   }
 

@@ -5,6 +5,7 @@ import { DTYPES, commitSheet } from '../core/sheets.js';
 import { nameState, phoneState, idState, emailState, normPhone, phoneOkStrict, digits, emailOk, ATT_TYPES, ATT_MAX, urlOk, nameNeed, words, toLatin } from '../core/bnf.js';
 import { putFile, getFile, delFile, fileIds } from './store.js';
 import { pager } from './pager.js';
+import { ensureEnrollment, endEnrollment, reactivate, findEnrollment } from '../core/enroll.js';
 import { putDraft, delDraft, draftsCard, newDraftId } from './drafts.js';
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const $ = (s, r = document) => r.querySelector(s);
@@ -43,6 +44,7 @@ function formHtml(b) {
     <label>الإعاقة<select id="bdis"><option value="0">لا</option><option value="1" ${dis ? 'selected' : ''}>نعم</option></select></label>
     <label id="bdtw" ${dis ? '' : 'hidden'}>نوع الإعاقة<select id="bdt"><option value="">— اختر النوع —</option>${DTYPES.map((d) => `<option ${v.disabilityType === d ? 'selected' : ''}>${esc(d)}</option>`).join('')}${v.disabilityType && !DTYPES.includes(v.disabilityType) ? `<option selected>${esc(v.disabilityType)}</option>` : ''}</select></label>
     <label id="bdow" ${dis && v.disabilityType === 'أخرى' ? '' : 'hidden'}>حدّد نوع الإعاقة (أخرى) *<input id="bdo" placeholder="اكتب نوع الإعاقة" value="${esc(v.disabilityOther || '')}" style="width:200px"></label>
+    ${b ? '' : `<label>المشروع<select id="bproj"><option value="">— بلا مشروع —</option>${ctx.db.projects.map((p) => `<option value="${esc(p.id)}" ${p.id === ctx.ui?.projectId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>`}
     <label>رقم الجوال<input id="bp" data-chk="phone" inputmode="numeric" dir="ltr" placeholder="0591234567" value="${esc(v.phone || '')}" style="width:150px"><span class="fh"></span></label></div>
     <p class="small" id="bhint">الاسم يُعدّ مكتملًا عند ${nw} مقاطع فأكثر (يتوهج الحقل بالأحمر ثم بالأخضر)، والجوال 10 أرقام يبدأ بـ 059 أو 056.</p>
     <details ${b && (v.nationalId || v.email || v.emergencyPhone || (v.attachments || []).length) ? 'open' : ''}><summary>معلومات إضافية ومرفقات (اختيارية)</summary><div class="row">
@@ -76,6 +78,7 @@ export function vBnf() {
     <label>الإعاقة<select id="bf-dis" data-bf="dis"><option value="">الكل</option><option value="1">ذوو إعاقة</option><option value="0">بلا إعاقة</option>${DTYPES.map((d) => `<option value="t:${esc(d)}">نوع: ${esc(d)}</option>`).join('')}</select></label>
     <label>المرفقات<select id="bf-att" data-bf="att"><option value="">الكل</option><option value="1">لديه مرفقات</option><option value="0">بلا مرفقات</option></select></label>
     <label>الاسم<select id="bf-name" data-bf="name"><option value="">الكل</option><option value="short">منقوص المقاطع</option></select></label>
+    <label>المشروع<select id="bf-proj" data-bf="proj"><option value="">الكل</option><option value="-">بلا مشروع</option>${ctx.db.projects.map((p) => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')}</select></label>
     <label>الحضور<select id="bf-att2" data-bf="att2"><option value="">الكل</option><option value="1">له حضور</option><option value="0">بلا حضور</option></select></label>
     <button class="sec" data-act="bfReset">مسح الفلاتر</button></div><div id="bnres"></div></div>`;
   paintList();
@@ -88,6 +91,7 @@ export function vBnf() {
 function paintList() {
   const e = $('#bnres'); if (!e) return; const db = ctx.db, q = st.q.trim(), f = st.f, need = nameNeed(), today = iso(new Date());
   const att = new Map(); for (const x of db.sessions) if (x.mode === 'roll') for (const id of x.attendance || []) att.set(id, (att.get(id) || 0) + 1);
+  const enr = new Map(), pn = new Map(db.projects.map((p) => [p.id, p.name])); for (const e of db.enrollments) (enr.get(e.beneficiaryId) || enr.set(e.beneficiaryId, []).get(e.beneficiaryId)).push(e);
   const all = db.beneficiaries.filter((b) => {
     if (q && !(b.name.includes(q) || (b.phone || '').includes(q) || (b.nationalId || '').includes(q))) return false;
     const age = ageAt(b, today);
@@ -96,12 +100,19 @@ function paintList() {
     if (f.dis === '1' && !b.disability) return false; if (f.dis === '0' && b.disability) return false; if (f.dis?.startsWith('t:') && !(b.disability && b.disabilityType === f.dis.slice(2))) return false;
     if (f.att === '1' && !(b.attachments || []).length) return false; if (f.att === '0' && (b.attachments || []).length) return false;
     if (f.name === 'short' && words(b.name) >= need) return false;
+    if (f.proj) { const ps = (enr.get(b.id) || []).filter((e) => e.status !== 'ended'); if (f.proj === '-' ? ps.length : !ps.some((e) => e.projectId === f.proj)) return false; }
     if (f.att2 === '1' && !att.get(b.id)) return false; if (f.att2 === '0' && att.get(b.id)) return false;
     return true;
   }), P = pager('bnf', all.length, paintList, JSON.stringify([q, f])), list = P.slice(all);
   e.innerHTML = `<p class="small">${all.length === db.beneficiaries.length ? `${all.length} مستفيد` : `النتيجة: <b>${all.length}</b> من ${db.beneficiaries.length} مستفيد`}</p>
-  ${P.html()}<div class="tw"><table><tr><th>الاسم</th><th>الجنس</th><th>العمر</th><th>الفئة</th><th>إعاقة</th><th>الجوال</th><th>مرفقات</th><th>جلسات حضور</th><th></th></tr>${list.map((b) => { const age = ageAt(b, today), n = att.get(b.id) || 0, short = words(b.name) < need;
-    return `<tr><td>${esc(b.name)}${short ? ' <span class="badge b-warn">منقوص</span>' : ''}</td><td>${b.sex === 'M' ? 'ذكر' : 'أنثى'}</td><td>${age ?? '؟'}</td><td>${bandOf(age)?.key || '—'}</td><td>${b.disability ? esc(b.disabilityType ? b.disabilityType + (b.disabilityOther ? ': ' + b.disabilityOther : '') : 'نعم') : ''}</td><td dir="ltr">${esc(b.phone || '')}</td><td>${(b.attachments || []).length ? `<button class="sec attb" data-act="bAtts" data-id="${b.id}" title="عرض المرفقات">📎 ${b.attachments.length}</button>` : '<span class="small">—</span>'}</td><td>${n}</td><td><button class="sec" data-act="bEdit" data-id="${b.id}">تعديل</button> <button class="x" data-act="bDel" data-id="${b.id}">حذف</button></td></tr>`; }).join('') || '<tr><td colspan="9" class="small">لا نتائج مطابقة.</td></tr>'}</table></div>${P.html()}`;
+  ${P.html()}<div class="tw"><table><tr><th>الاسم</th><th>الجنس</th><th>العمر</th><th>الفئة</th><th>إعاقة</th><th>الجوال</th><th>المشاريع</th><th>مرفقات</th><th>جلسات حضور</th><th></th></tr>${list.map((b) => { const age = ageAt(b, today), n = att.get(b.id) || 0, short = words(b.name) < need;
+    return `<tr><td>${esc(b.name)}${short ? ' <span class="badge b-warn">منقوص</span>' : ''}</td><td>${b.sex === 'M' ? 'ذكر' : 'أنثى'}</td><td>${age ?? '؟'}</td><td>${bandOf(age)?.key || '—'}</td><td>${b.disability ? esc(b.disabilityType ? b.disabilityType + (b.disabilityOther ? ': ' + b.disabilityOther : '') : 'نعم') : ''}</td><td dir="ltr">${esc(b.phone || '')}</td><td>${(enr.get(b.id) || []).map((e) => `<span class="badge ${e.status === 'ended' ? '' : 'b-ok'}" title="${e.status === 'ended' ? 'انتهى' : 'نشط'}" ${e.status === 'ended' ? 'style="text-decoration:line-through;opacity:.7"' : ''}>${esc(pn.get(e.projectId) || e.projectId)}</span>`).join(' ') || '<span class="small">—</span>'} <button class="sec attb" data-act="bEnr" data-id="${b.id}" title="إدارة المشاريع">⚙</button></td><td>${(b.attachments || []).length ? `<button class="sec attb" data-act="bAtts" data-id="${b.id}" title="عرض المرفقات">📎 ${b.attachments.length}</button>` : '<span class="small">—</span>'}</td><td>${n}</td><td><button class="sec" data-act="bEdit" data-id="${b.id}">تعديل</button> <button class="x" data-act="bDel" data-id="${b.id}">حذف</button></td></tr>`; }).join('') || '<tr><td colspan="9" class="small">لا نتائج مطابقة.</td></tr>'}</table></div>${P.html()}`;
+}
+function enrModal(id) {
+  const b = ctx.db.beneficiaries.find((x) => x.id === id); if (!b) return;
+  const rows = ctx.db.projects.map((p) => { const e = findEnrollment(ctx.db, id, p.id), on = e && e.status !== 'ended';
+    return `<tr><td>${esc(p.name)}</td><td>${on ? '<span class="badge b-ok">نشط</span>' : e ? `<span class="badge">انتهى ${esc(e.end || '')}</span>` : '<span class="small">غير مسجَّل</span>'}</td><td>${on ? `<button class="sec" data-act="bEnrSet" data-id="${id}" data-p="${esc(p.id)}" data-do="end">إنهاء الانتماء</button>` : `<button data-act="bEnrSet" data-id="${id}" data-p="${esc(p.id)}" data-do="${e ? 'on' : 'add'}">${e ? 'إعادة تفعيل' : 'تسجيل في المشروع'}</button>`}</td></tr>`; }).join('');
+  openAtts(`<div class="modal-h"><h3>مشاريع: ${esc(b.name)}</h3><button class="sec" data-act="bAttsClose">إغلاق</button></div><p class="small">يمكن للمستفيد أن يكون في أكثر من مشروع بنفس الوقت. إنهاء الانتماء يُبقي سجل حضوره السابق ولا يحذف شيئًا.</p><div class="tw"><table><tr><th>المشروع</th><th>الحالة</th><th></th></tr>${rows || '<tr><td colspan="3">لا مشاريع</td></tr>'}</table></div>`);
 }
 function openAtts(html) {
   $('#attmodal')?.remove(); const m = document.createElement('div'); m.id = 'attmodal'; m.innerHTML = `<div class="modal-box" role="dialog" aria-modal="true">${html}</div>`;
@@ -140,6 +151,11 @@ export function bnfActions({ toast, ask, save, rerender, dl }) {
         return `<tr><td>${esc(a.title || a.name || a.url)}</td><td>${esc(TYPE[a.type] || a.type)}</td><td>${a.kind === 'link' ? 'رابط' : 'ملف'}</td><td>${miss ? '<span class="badge b-warn">غير موجود على هذا الجهاز</span>' : `<button data-act="bAttOpen" data-bid="${b.id}" data-id="${a.id}">فتح</button>`}</td></tr>`; }).join('');
       openAtts(`<div class="modal-h"><h3>مرفقات: ${esc(b.name)}</h3><button class="sec" data-act="bAttsClose">إغلاق</button></div><div class="tw"><table><tr><th>العنوان</th><th>النوع</th><th>الصيغة</th><th></th></tr>${rows}</table></div>`);
     },
+    bEnr(t) { enrModal(t.dataset.id); },
+    bEnrSet(t) {
+      const { id, p, do: a } = t.dataset; if (a === 'end') endEnrollment(ctx.db, id, p); else if (a === 'on') reactivate(ctx.db, id, p); else ensureEnrollment(ctx.db, id, p);
+      save(); enrModal(id); paintList();
+    },
     bAttsClose() { $('#attmodal')?.remove(); },
     bfReset() { st.f = {}; st.q = ''; vBnf(); },
     bCancel() { st.edit = null; st.keep = []; st.pend = []; vBnf(); },
@@ -160,7 +176,7 @@ export function bnfActions({ toast, ask, save, rerender, dl }) {
       for (const a of st.pend) if (a.kind === 'file') await putFile(a.id, a.blob);
       for (const id of st.gone) await delFile(id);
       const att = [...st.keep, ...st.pend].map(({ blob, ...m }) => m), now = new Date().toISOString();
-      if (b0) Object.assign(b0, r, { attachments: att, updatedAt: now }); else ctx.db.beneficiaries.push({ id: uid('b'), ...r, attachments: att, createdAt: now });
+      if (b0) Object.assign(b0, r, { attachments: att, updatedAt: now }); else { const nb = { id: uid('b'), ...r, attachments: att, createdAt: now }; ctx.db.beneficiaries.push(nb); const pj = $('#bproj')?.value; if (pj) ensureEnrollment(ctx.db, nb.id, pj); }
       if (!att.length) { const x = b0 || ctx.db.beneficiaries.at(-1); delete x.attachments; }
       if (st.draftId) delDraft(st.draftId); st.draftId = null; st.edit = null; st.keep = []; st.pend = []; st.gone = []; save(); toast(b0 ? 'حُفظ التعديل' : 'أُضيف المستفيد'); vBnf();
     },
