@@ -12,6 +12,7 @@ export const PRINT_DEF = {
   font: '', fontScale: 100, tableScale: 100, orient: 'auto', mL: null, mR: null, minRows: 0, rowH: 0, logoScale: 100, stampText: 'مستند مراقب',
   align: { basic: 'right', name: 'right', cols: 'center', v: 'middle' },
   marks: { present: '✓', absent: 'غـ', sexM: '/', sexF: '/', select: '✓' },
+  cols: {}, extra: [],
   show: { logo: true, header: true, footer: true, sign: true, stamp: true, project: true, title: true, idx: true },
 };
 let PCFG = {}, C = PRINT_DEF, MARK = '✓';
@@ -94,7 +95,7 @@ function fillRoster(table, people, sh, joint) {
   const model = table.querySelector('tr.mr'); if (!model) return;
   const lab = leafLabels(table), roles = {}; const cols = [...model.children].map((td) => +td.dataset.c); for (const c of cols) roles[c] = colRole(lab[c] || '');
   if (joint) { const ch = joint.child; for (const c of cols) { if (c >= 5) roles[c] = ({ 5: 'name', 6: 'sex', 7: 'age', 8: 'dis', 9: 'sig' })[c]; else roles[c] = ({ 0: 'idx', 1: 'name', 2: 'sex', 3: 'phone', 4: 'sig' })[c]; } }
-  const held = heldMeetings(sh), nTpl = +model.dataset.n || 10, total = Math.max(C.minRows || 0, joint ? Math.max(joint.parents.length, joint.kids.length) : (people || []).length);
+  const CC = C.cols || {}, held = heldMeetings(sh), nTpl = +model.dataset.n || 10, total = Math.max(C.minRows || 0, joint ? Math.max(joint.parents.length, joint.kids.length) : (people || []).length);
   const rowsData = joint ? Array.from({ length: Math.max(joint.parents.length, joint.kids.length) }, (_, i) => ({ P: joint.parents[i], K: joint.kids[i] })) : (people || []);
   const tb = document.implementation.createHTMLDocument('').body, out = [];
   // الرأس داخل thead ليتكرر في كل صفحة
@@ -115,13 +116,45 @@ function fillRoster(table, people, sh, joint) {
         else if (role === 'phone') v = pp.phone || '';
         else if (role.startsWith('mt:')) { const m = held[+role.slice(3) - 1]; v = m ? (m.present.includes(pp.id) ? C.marks.present : C.marks.absent) : ''; }
       }
+      const oc = CC[c] || {}; if ((v === '' || v == null) && oc.fill) v = oc.fill;
       setText(td, String(v)); if (role === 'idx') td.querySelector('p').style.whiteSpace = 'nowrap';
       td.querySelector('p').style.textAlign = role === 'name' ? C.align.name : C.align.cols; td.style.verticalAlign = C.align.v; if (C.rowH) td.style.height = C.rowH + 'px';
+      { const q = td.querySelector('p'); if (oc.h) q.style.textAlign = oc.h; if (oc.v) td.style.verticalAlign = oc.v; if (oc.dir === 'ltr') q.style.direction = 'ltr'; if (oc.dir === 'vert') { td.style.writingMode = 'vertical-rl'; td.style.textOrientation = 'mixed'; } if (oc.pad !== undefined && oc.pad !== '') td.style.padding = oc.pad + 'px'; }
     }
     out.push(tr);
   }
   const thead = table.ownerDocument.createElement('thead'); heads.forEach((h) => thead.appendChild(h)); const tbody = table.ownerDocument.createElement('tbody'); out.forEach((r) => tbody.appendChild(r));
-  table.classList.add('rost'); model.remove(); table.appendChild(thead); table.appendChild(tbody);
+  table.classList.add('rost'); model.remove(); table.appendChild(thead); table.appendChild(tbody); applyCols(table, CC, C.extra || []);
+}
+
+// تحكم بأعمدة الجدول: حذف/إخفاء، عناوين، عروض، اتجاه النص، وأعمدة إضافية فارغة أو بنص ثابت
+function applyCols(table, CC, extra) {
+  const d = table.ownerDocument, colg = table.querySelector('colgroup'), cols = colg ? [...colg.children] : [], orig = cols.map((c) => parseFloat(c.style.width) || 40), total = orig.reduce((a, b) => a + b, 0);
+  const hid = new Set(Object.entries(CC).filter(([, v]) => v.hide).map(([k]) => +k)), rows = [...table.querySelectorAll('tr')], hrows = [...table.querySelectorAll('thead tr')];
+  if (!hid.size && !extra.length && !Object.values(CC).some((v) => v.w || v.title || v.dir)) return;
+  for (const tr of hrows) for (const td of tr.children) { const c = +td.dataset.c, o = CC[c]; if (!o || (td.colSpan || 1) > 1) continue; if (o.title) setText(td, o.title); if (o.dir === 'vert') { td.style.writingMode = 'vertical-rl'; td.style.textOrientation = 'mixed'; } }
+  for (const tr of rows) for (const td of [...tr.children]) { const c = +td.dataset.c, n = td.colSpan || 1; let k = 0; for (let i = c; i < c + n; i++) if (hid.has(i)) k++; if (k === n) td.remove(); else if (k) td.colSpan = n - k; }
+  const keep = orig.map((_, i) => i).filter((i) => !hid.has(i));
+  const exS = extra.filter((e) => e.pos === 'start'), exE = extra.filter((e) => e.pos !== 'start');
+  const items = [...exS.map((e) => ({ e, w: +e.w || 60, fx: true })), ...keep.map((i) => ({ i, w: CC[i]?.w ? +CC[i].w : orig[i], fx: !!CC[i]?.w })), ...exE.map((e) => ({ e, w: +e.w || 60, fx: true }))];
+  const fixed = items.filter((x) => x.fx).reduce((a, x) => a + x.w, 0), free = items.filter((x) => !x.fx).reduce((a, x) => a + x.w, 0), f = free > 0 ? Math.max(0.3, (total - fixed) / free) : 1;
+  items.forEach((x) => { x.w = x.fx ? x.w : x.w * f; });
+  const firstH = hrows[0]?.querySelector('td'), body = [...table.querySelectorAll('tbody tr')], proto = body[0]?.querySelector('td');
+  const mkCell = (src, text, e, head) => { const td = src.cloneNode(true); td.removeAttribute('data-c'); td.colSpan = 1; td.rowSpan = head ? hrows.length || 1 : 1; td.style.width = ''; td.style.writingMode = ''; setText(td, text); const p = td.querySelector('p'); if (p && !head) p.style.textAlign = e.h || 'center'; return td; };
+  const put = (list, atStart) => list.forEach((e) => {
+    if (firstH && hrows[0]) { const t = mkCell(firstH, e.title || '', e, true); atStart ? hrows[0].prepend(t) : hrows[0].append(t); }
+    if (proto) body.forEach((tr) => { const t = mkCell(proto, e.fill || '', e, false); atStart ? tr.prepend(t) : tr.append(t); });
+  });
+  put([...exS].reverse(), true); put(exE, false);
+  if (colg) { colg.innerHTML = ''; items.forEach((x) => { const col = d.createElement('col'); col.style.width = x.w.toFixed(1) + 'px'; colg.append(col); }); }
+  rows.forEach((tr) => [...tr.children].forEach((td) => { td.style.width = ''; }));
+}
+// قائمة أعمدة جدول المشاركين في قالب نوع كشف (لشاشة الإعدادات)
+export function rosterColumns(kind) {
+  const T = TPL.kinds[FILE[kind]]; if (!T) return []; const dom = new DOMParser().parseFromString(`<div>${T.body}</div>`, 'text/html'), tb = [...dom.querySelectorAll('table.dt')].filter((t) => t.querySelector('tr.mr')).pop(); if (!tb) return [];
+  const rr = [...tb.querySelectorAll('tr')].filter((r) => !r.classList.contains('mr')), model = tb.querySelector('tr.mr'), out = [];
+  for (const m of model.children) { const c = +m.dataset.c; let leaf = '', grp = ''; for (const r of rr) for (const td of r.children) { const a = +td.dataset.c, n = td.colSpan || 1, t = td.textContent.replace(/\s+/g, ' ').trim(); if (c >= a && c < a + n && t) { if (n === 1) leaf = t; else grp ||= t; } } out.push({ c, label: (grp && leaf ? grp + ' — ' : '') + (leaf || grp || '#' + c) }); }
+  return out;
 }
 
 // ---------- الأعداد ----------

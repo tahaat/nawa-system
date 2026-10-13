@@ -15,4 +15,11 @@ await pg.selectOption('[data-pc="orient"]', 'portrait'); await pg.waitForTimeout
 await pg.selectOption('#pckind', 'activity'); await pg.waitForTimeout(300); const v = await pg.inputValue('[data-pc="marks.absent"]'); log('نوع آخر لا يتأثر باستثناءات الدورات', v === 'غـ');
 await pg.reload(); await pg.waitForSelector('#nav'); await pg.click('a[data-go=settings]'); await pg.click('[data-act=sTab][data-k=print]'); await pg.selectOption('#pckind', 'course'); await pg.waitForTimeout(300);
 log('الحفظ يبقى بعد إعادة التحميل', (await pg.inputValue('[data-pc="marks.absent"]')) === 'غ');
+// أعمدة الجدول
+await pg.selectOption('#pckind', 'activity'); await pg.waitForTimeout(300);
+const rows0 = await pg.locator('.pctab tr').count(); log('جدول الأعمدة معروض', rows0 > 5);
+await pg.check('[data-pc="cols.2.hide"]'); await pg.waitForTimeout(400); h = await prev(); log('حذف عمود العمر من الطباعة', await pg.evaluate((x) => !new DOMParser().parseFromString(x, 'text/html').querySelector('table.rost')?.textContent.includes('العمر'), h));
+await pg.click('[data-act=pcAddCol]'); await pg.waitForTimeout(400); h = await prev(); log('إدراج عمود إضافي', h.includes('عمود جديد'));
+await pg.fill('[data-px="0.fill"]', 'ملاحظة'); await pg.dispatchEvent('[data-px="0.fill"]', 'change'); await pg.waitForTimeout(400); h = await prev(); log('نص ثابت في العمود الإضافي', h.includes('ملاحظة'));
+await pg.click('[data-act=pcAl][data-key="1"][data-h="left"][data-v="top"]'); await pg.waitForTimeout(400); h = await prev(); log('محاذاة 9 اتجاهات للعمود', /text-align:\s*left/.test(h));
 console.log('أخطاء الصفحة:', errs.length ? errs : 'لا شيء'); await b.close();

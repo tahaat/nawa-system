@@ -5,7 +5,7 @@ import { GROUPS, SEX, SESSION_MODES, AGE_BANDS, CATS, uid } from '../core/model.
 import { DTYPES } from '../core/sheets.js';
 import { ROUNDS, SCALES, SCALE_NAMES } from '../core/forms.js';
 import { kvSet } from './store.js';
-import { PRINT_DEF, cfgOf, printStore, sheetHTML, printSheet } from './sheet-pdf.js';
+import { PRINT_DEF, cfgOf, printStore, sheetHTML, printSheet, rosterColumns } from './sheet-pdf.js';
 import { KINDS } from '../core/sheets.js';
 import { gl, mergePairs } from './glossary.js';
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -42,7 +42,20 @@ function tPrint() {
   <div class="card"><h3>الرموز المستعملة</h3><div class="row">${tx('marks.present', 'حضور اللقاء', c.marks.present)}${tx('marks.absent', 'غياب اللقاء', c.marks.absent)}${tx('marks.sexM', 'خانة ذكر', c.marks.sexM)}${tx('marks.sexF', 'خانة أنثى', c.marks.sexF)}${tx('marks.select', 'علامة الاختيار', c.marks.select)}</div><p class="small">يمكن كتابة أي رمز أو حرف (✓ ✔ × / غـ …). الفارغ يترك الخانة بلا علامة.</p></div>
   <div class="card"><h3>العناصر الظاهرة</h3><div class="row" style="gap:1.2rem">${chk('show.header', 'الهيدر', c.show.header)}${chk('show.logo', 'الشعار', c.show.logo)}${chk('show.stamp', 'عبارة الهيدر السفلية', c.show.stamp)}${chk('show.footer', 'الفوتر', c.show.footer)}${chk('show.sign', 'سطر التواقيع', c.show.sign)}${chk('show.project', 'سطر اسم المشروع', c.show.project)}${chk('show.title', 'سطر عنوان الكشف', c.show.title)}${chk('show.idx', 'ترقيم الصفوف', c.show.idx)}</div>
   <div class="row"><label>نص العبارة تحت الهيدر<input data-pc="stampText" value="${esc(c.stampText)}" style="width:170px"></label>${n('logoScale', 'حجم الشعار %', c.logoScale, 40, 200)}</div></div>
+  ${colsCard(k, c)}
   <div class="card"><h3>المعاينة${sh ? ` — ${esc(KINDS[sh.kind]?.name || '')}` : ''}</h3>${sh ? `<p class="small">المعاينة على كشف حقيقي من البرنامج. الهيدر والفوتر في الطباعة يتكرران أعلى وأسفل كل صفحة.</p><div style="zoom:.62;overflow:auto"><iframe id="pcprev" style="width:${1180}px;height:1300px;border:1px solid var(--bd,#999);background:#fff" srcdoc="${esc(previewHTML())}"></iframe></div>` : '<p class="small">لا توجد كشوف للمعاينة؛ أنشئ كشفًا (أو الكشف التجريبي) ثم عُد هنا.</p>'}</div>`;
+}
+// أدوات جدول المشاركين على طريقة «أدوات الجدول» في Word: محاذاة 9 اتجاهات، هوامش الخلايا، اتجاه النص، حجم الخلية، إدراج/حذف أعمدة
+function colsCard(k, c) {
+  if (k === '_') return '<div class="card"><h3>أعمدة جدول المشاركين</h3><p class="small">اختر نوع كشف من القائمة بالأعلى لضبط أعمدة جدوله (الأعمدة تختلف من كشف لآخر).</p></div>';
+  const cols = rosterColumns(k), CC = c.cols || {}, ex = c.extra || [];
+  const grid = (key, h, v) => `<span class="pcgrid">${['top', 'middle', 'bottom'].map((vv) => ['right', 'center', 'left'].map((hh) => `<button type="button" class="pcg ${h === hh && v === vv ? 'on' : ''}" data-act="pcAl" data-key="${key}" data-h="${hh}" data-v="${vv}" title="${{ top: 'أعلى', middle: 'وسط', bottom: 'أسفل' }[vv]} — ${{ right: 'يمين', center: 'وسط', left: 'يسار' }[hh]}"></button>`).join('')).join('')}</span>`;
+  const dirSel = (path, v, attr = 'data-pc') => `<select ${attr}="${path}"><option value="" ${!v ? 'selected' : ''}>عادي</option><option value="ltr" ${v === 'ltr' ? 'selected' : ''}>يسار↔يمين</option><option value="vert" ${v === 'vert' ? 'selected' : ''}>عمودي</option></select>`;
+  return `<div class="card"><h3>أعمدة جدول المشاركين — ${esc(KINDS[k]?.name || '')}</h3><p class="small">مثل أدوات الجدول في Word: لكل عمود محاذاة (شبكة 9 اتجاهات)، عرض، هامش داخلي للخلايا، اتجاه النص، عنوان بديل، ونص ثابت يُكتب في كل صفوفه. «حذف» يخفي العمود من الطباعة فقط ولا يمس البيانات. الفارغ = حسب الإعدادات العامة أعلاه.</p>
+  <div style="overflow:auto"><table class="pctab"><tr><th>العمود</th><th>حذف</th><th>عنوان بديل</th><th>المحاذاة</th><th>عرض px</th><th>هامش داخلي px</th><th>اتجاه النص</th><th>نص ثابت</th></tr>
+  ${cols.map(({ c: i, label }) => { const o = CC[i] || {}, p = `cols.${i}`; return `<tr><td>${esc(label)}</td><td><input type="checkbox" data-pc="${p}.hide" ${o.hide ? 'checked' : ''}></td><td><input data-pc="${p}.title" value="${esc(o.title || "")}" placeholder="كما في القالب" style="width:110px"></td><td>${grid(i, o.h || c.align.cols, o.v || c.align.v)}</td><td><input type="number" data-pc="${p}.w" value="${o.w ?? ""}" placeholder="تلقائي" min="10" max="500" style="width:62px"></td><td><input type="number" data-pc="${p}.pad" value="${o.pad ?? ""}" placeholder="تلقائي" min="0" max="30" style="width:55px"></td><td>${dirSel(p + '.dir', o.dir)}</td><td><input data-pc="${p}.fill" value="${esc(o.fill || '')}" style="width:90px"></td></tr>`; }).join('')}
+  ${ex.map((e, i) => `<tr class="pcx"><td>عمود إضافي ${i + 1}</td><td><button type="button" class="x" data-act="pcDelCol" data-i="${i}" title="حذف العمود الإضافي">✕</button></td><td><input data-px="${i}.title" value="${esc(e.title || '')}" style="width:110px"></td><td>${grid('x' + i, e.h || 'center', 'middle')}</td><td><input type="number" data-px="${i}.w" value="${e.w ?? 60}" min="10" max="500" style="width:62px"></td><td><select data-px="${i}.pos"><option value="end" ${e.pos !== 'start' ? 'selected' : ''}>في نهاية الجدول (يسار)</option><option value="start" ${e.pos === 'start' ? 'selected' : ''}>في بداية الجدول (يمين)</option></select></td><td></td><td><input data-px="${i}.fill" value="${esc(e.fill || '')}" style="width:90px"></td></tr>`).join('')}</table></div>
+  <div class="row" style="margin-top:.5rem"><button data-act="pcAddCol">+ إدراج عمود إضافي</button><span class="small">لإضافة صفوف فارغة (أو إخفائها) استعمل «أقل عدد صفوف بالجدول» و«ارتفاع الصف» في الأعلى.</span></div></div>`;
 }
 function tLists() {
   const O = origLabels(), ls = cfg.lists, cur = listById(st.list) || ls[0]; st.list = cur?.id || null;
@@ -101,6 +114,9 @@ export function settingsActions({ toast, dl, go, save, rerender, ui, ask }) {
     else if (d.si) { const [k, f] = d.si.split('.'); listById(st.list).items[+k][f] = t.value.trim(); persist(); }
     else if (t.id === 'slist') { st.list = t.value; vSettings(); }
     else if (t.id === 'pckind') { st.pk = t.value; vSettings(); }
+    else if (d.px) {
+      const store = printStore(), o = (store[st.pk] ||= {}); o.extra ||= JSON.parse(JSON.stringify(cfgOf(st.pk).extra || [])); const [i, f] = d.px.split('.'); o.extra[+i][f] = t.type === 'number' ? Number(t.value) : t.value; kvSet('printcfg', store); const fr = $('#pcprev'); if (fr) fr.srcdoc = previewHTML();
+    }
     else if (d.pc) {
       const store = printStore(), k = st.pk, o = (store[k] ||= {}), ks = d.pc.split('.'); let v = t.type === 'checkbox' ? t.checked : t.type === 'number' ? (t.value === '' ? undefined : Number(t.value)) : t.value;
       if (d.pc === 'mR' && v === undefined) { delete o.mR; } let tg = o; ks.slice(0, -1).forEach((x) => (tg = tg[x] ||= {})); if (v === undefined) delete tg[ks.at(-1)]; else tg[ks.at(-1)] = v;
@@ -109,6 +125,11 @@ export function settingsActions({ toast, dl, go, save, rerender, ui, ask }) {
     }
   });
   return {
+    pcAl(t) { const key = t.dataset.key, store = printStore(), o = (store[st.pk] ||= {}); const y = window.scrollY;
+      if (key[0] === 'x') { o.extra ||= JSON.parse(JSON.stringify(cfgOf(st.pk).extra || [])); o.extra[+key.slice(1)].h = t.dataset.h; } else { (o.cols ||= {}); (o.cols[key] ||= {}).h = t.dataset.h; o.cols[key].v = t.dataset.v; }
+      kvSet('printcfg', store); vSettings(); window.scrollTo(0, y); },
+    pcAddCol() { const store = printStore(), o = (store[st.pk] ||= {}); o.extra ||= JSON.parse(JSON.stringify(cfgOf(st.pk).extra || [])); o.extra.push({ title: 'عمود جديد', pos: 'end', w: 70, fill: '', h: 'center' }); kvSet('printcfg', store); const y = window.scrollY; vSettings(); window.scrollTo(0, y); },
+    pcDelCol(t) { const store = printStore(), o = (store[st.pk] ||= {}); o.extra ||= JSON.parse(JSON.stringify(cfgOf(st.pk).extra || [])); o.extra.splice(+t.dataset.i, 1); kvSet('printcfg', store); const y = window.scrollY; vSettings(); window.scrollTo(0, y); },
     pcReset() { delete printStore()[st.pk]; kvSet('printcfg', printStore()); vSettings(); toast('أُلغيت استثناءات هذا النوع'); },
     async pcResetAll() { if (!(await ask('استعادة إعدادات الطباعة الافتراضية لكل الأنواع؟'))) return; const s = printStore(); Object.keys(s).forEach((x) => delete s[x]); kvSet('printcfg', s); vSettings(); },
     pcPrint() { const sh = sheetFor(st.pk); if (sh) printSheet(sh, ctx.db); },
