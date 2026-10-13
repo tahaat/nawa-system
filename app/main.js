@@ -371,7 +371,7 @@ async function vCloud() {
     view().innerHTML = `${tabs}<div class="card"><h2>المزامنة عبر مجلد OneDrive</h2>
     ${!folderSupported() ? '<p><span class="badge b-error">غير مدعوم</span> افتح النظام في Microsoft Edge أو Google Chrome على الحاسوب.</p>' : ''}
     <p class="small">يتولى برنامج OneDrive نقل الملفات بين الأجهزة، والنظام يدمجها دون تعارض ويعمل دون إنترنت. اختر المجلد المتزامن مرة واحدة على كل جهاز.</p>
-    <div class="row"><button data-act="pickFolder" ${folderSupported() ? '' : 'disabled'}>اختيار مجلد المزامنة</button><button class="gold" data-act="cloudSync" ${sync.handle ? '' : 'disabled'}>مزامنة الآن</button>
+    <div class="row"><button data-act="pickFolder" ${folderSupported() ? '' : 'disabled'}>اختيار مجلد المزامنة</button><button class="gold" data-act="cloudSync" ${sync.handle ? '' : 'disabled'}>مزامنة الآن</button><button class="sec" data-act="mkCenterDirs" ${sync.handle ? '' : 'disabled'} title="ينشئ مجلد c-<رمز المركز> لكل مركز غير موجود مجلده في مجلد المزامنة">إنشاء مجلدات المراكز</button>
     <label style="flex-direction:row;align-items:center"><input type="checkbox" id="ca" data-act="autoTog" ${sync.cfg.auto ? 'checked' : ''}> مزامنة تلقائية</label></div>
     <p>${sync.handle ? `المجلد: <b>${esc(sync.handle.name)}</b> — الصلاحية: ${perm === 'granted' ? '<span class="badge b-ok">مفعّلة</span>' : '<span class="badge b-warn">تحتاج تفعيلًا (اضغط مزامنة الآن)</span>'}` : '<span class="badge b-warn">لم يُختَر مجلد</span>'}</p>
     <p>القنوات المتزامنة إلى هذا الجهاز: ${chs.length ? chs.map((c) => `<span class="badge b-info">${esc(c === 'core' ? 'core (البيانات الأساسية)' : c === 'pii' ? 'pii (حقول حساسة)' : c.startsWith('c-') ? 'مركز: ' + (db.centers.find((x) => x.id === c.slice(2))?.name || c.slice(2)) : c)}</span>`).join(' ') : '—'}</p>
@@ -405,6 +405,12 @@ const actions = {
     sync.cfg.url = $('#cu').value.trim(); sync.cfg.token = $('#ct').value.trim(); sync.cfg.auto = $('#ca').checked; save();
     try { const me = await engine().me(); sync.cfg.me = me; syncMsg = `متصل كـ «${me.name}» (${me.role})`; const first = sync.meta.cursor == null && (me.seq > 0) && db.projects.length; if (first) { const rep = await ask('الخادم يحوي بيانات وهذا الجهاز يحوي بيانات أيضًا.\nموافق = استبدال بيانات هذا الجهاز بنسخة الخادم\nإلغاء = دمج الاثنين'); await doSync({ firstMode: rep ? 'replace' : 'merge' }); } else await doSync(); }
     catch (e) { syncMsg = 'فشل الاتصال: ' + e.message; } vCloud(); setSyncBadge();
+  },
+  async mkCenterDirs() {
+    if (!sync.handle || (await folderPerm(true)) !== 'granted') return toast('فعّل صلاحية المجلد أولًا');
+    const d = dirFromHandle(sync.handle), have = new Set(await d.channels()), want = ['core', 'pii', ...db.centers.map((c) => 'c-' + c.id)].filter((c) => !have.has(c));
+    for (const c of want) await d.ensure(c);
+    toast(want.length ? `أُنشئ ${want.length} مجلد: ${want.join('، ')}` : 'كل المجلدات موجودة'); vCloud();
   },
   async cloudSync() { if (isFolder()) await doSyncFolder({}, true); else await doSync(); vCloud(); },
   setMode(t) { sync.cfg.mode = t.dataset.m; save(); nav(); setSyncBadge(); vCloud(); },
