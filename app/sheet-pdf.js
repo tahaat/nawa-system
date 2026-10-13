@@ -127,26 +127,43 @@ function fillRoster(table, people, sh, joint) {
   table.classList.add('rost'); model.remove(); table.appendChild(thead); table.appendChild(tbody); applyCols(table, CC, C.extra || []);
 }
 
-// تحكم بأعمدة الجدول: حذف/إخفاء، عناوين، عروض، اتجاه النص، وأعمدة إضافية فارغة أو بنص ثابت
+// تحكم بأعمدة الجدول: حذف/إخفاء، عناوين، عروض، اتجاه النص، أعمدة إضافية في أي موضع، دمج أعمدة متجاورة، وتقسيم عمود إلى أجزاء
 function applyCols(table, CC, extra) {
   const d = table.ownerDocument, colg = table.querySelector('colgroup'), cols = colg ? [...colg.children] : [], orig = cols.map((c) => parseFloat(c.style.width) || 40), total = orig.reduce((a, b) => a + b, 0);
-  const hid = new Set(Object.entries(CC).filter(([, v]) => v.hide).map(([k]) => +k)), rows = [...table.querySelectorAll('tr')], hrows = [...table.querySelectorAll('thead tr')];
-  if (!hid.size && !extra.length && !Object.values(CC).some((v) => v.w || v.title || v.dir)) return;
+  const hid = new Set(Object.entries(CC).filter(([, v]) => v.hide).map(([k]) => +k)), rows = [...table.querySelectorAll('tr')], hrows = [...table.querySelectorAll('thead tr')], hset = new Set(hrows), body = [...table.querySelectorAll('tbody tr')];
+  if (!hid.size && !extra.length && !Object.values(CC).some((v) => v.w || v.title || v.dir || +v.split > 1 || +v.merge > 1)) return;
   for (const tr of hrows) for (const td of tr.children) { const c = +td.dataset.c, o = CC[c]; if (!o || (td.colSpan || 1) > 1) continue; if (o.title) setText(td, o.title); if (o.dir === 'vert') { td.style.writingMode = 'vertical-rl'; td.style.textOrientation = 'mixed'; } }
-  for (const tr of rows) for (const td of [...tr.children]) { const c = +td.dataset.c, n = td.colSpan || 1; let k = 0; for (let i = c; i < c + n; i++) if (hid.has(i)) k++; if (k === n) td.remove(); else if (k) td.colSpan = n - k; }
-  const keep = orig.map((_, i) => i).filter((i) => !hid.has(i));
-  const exS = extra.filter((e) => e.pos === 'start'), exE = extra.filter((e) => e.pos !== 'start');
-  const items = [...exS.map((e) => ({ e, w: +e.w || 60, fx: true })), ...keep.map((i) => ({ i, w: CC[i]?.w ? +CC[i].w : orig[i], fx: !!CC[i]?.w })), ...exE.map((e) => ({ e, w: +e.w || 60, fx: true }))];
-  const fixed = items.filter((x) => x.fx).reduce((a, x) => a + x.w, 0), free = items.filter((x) => !x.fx).reduce((a, x) => a + x.w, 0), f = free > 0 ? Math.max(0.3, (total - fixed) / free) : 1;
-  items.forEach((x) => { x.w = x.fx ? x.w : x.w * f; });
-  const firstH = hrows[0]?.querySelector('td'), body = [...table.querySelectorAll('tbody tr')], proto = body[0]?.querySelector('td');
-  const mkCell = (src, text, e, head) => { const td = src.cloneNode(true); td.removeAttribute('data-c'); td.colSpan = 1; td.rowSpan = head ? hrows.length || 1 : 1; td.style.width = ''; td.style.writingMode = ''; setText(td, text); const p = td.querySelector('p'); if (p && !head) p.style.textAlign = e.h || 'center'; return td; };
-  const put = (list, atStart) => list.forEach((e) => {
-    if (firstH && hrows[0]) { const t = mkCell(firstH, e.title || '', e, true); atStart ? hrows[0].prepend(t) : hrows[0].append(t); }
-    if (proto) body.forEach((tr) => { const t = mkCell(proto, e.fill || '', e, false); atStart ? tr.prepend(t) : tr.append(t); });
+  rows.forEach((tr) => [...tr.children].forEach((td) => { td.dataset.n0 = td.colSpan || 1; }));
+  // الأعمدة المضافة: أجزاء التقسيم أولًا ثم الأعمدة الإضافية
+  const E = [];
+  Object.entries(CC).forEach(([k, v]) => { const n = Math.min(8, +v.split || 1); if (n > 1 && !hid.has(+k)) for (let j = 1; j < n; j++) E.push({ pos: +k, join: true, w: 0, fill: '', h: 'center', title: '' }); });
+  extra.forEach((e) => E.push({ pos: e.pos === 'start' ? 'start' : /^after:\d+$/.test(e.pos || '') ? +e.pos.slice(6) : 'end', join: false, w: +e.w || 60, fill: e.fill || '', h: e.h, title: e.title || '' }));
+  const firstH = hrows[0]?.querySelector('td'), proto = body[0]?.querySelector('td');
+  const mk = (src, text, e, head, span) => { const td = src.cloneNode(true); td.removeAttribute('data-c'); td.dataset.x = 1; td.colSpan = 1; td.rowSpan = span || 1; td.style.width = ''; td.style.writingMode = ''; setText(td, text); const p = td.querySelector('p'); if (p && !head) p.style.textAlign = e.h || 'center'; return td; };
+  const lastH = {}, startE = E.filter((e) => e.pos === 'start' && !e.join), endE = E.filter((e) => e.pos === 'end' && !e.join), lastB = new Map();
+  [...startE].reverse().forEach((e) => { if (firstH && hrows[0]) hrows[0].prepend(mk(firstH, e.title, e, true, hrows.length)); if (proto) body.forEach((tr) => tr.prepend(mk(proto, e.fill, e, false))); });
+  endE.forEach((e) => { if (firstH && hrows[0]) hrows[0].append(mk(firstH, e.title, e, true, hrows.length)); if (proto) body.forEach((tr) => tr.append(mk(proto, e.fill, e, false))); });
+  E.filter((e) => typeof e.pos === 'number').forEach((e) => {
+    const c = e.pos;
+    if (!e.join && firstH) for (let i = 0; i < hrows.length; i++) { const tr = hrows[i], td = [...tr.children].find((x) => !x.dataset.x && +x.dataset.c <= c && c < +x.dataset.c + +x.dataset.n0); if (!td) continue; if (+td.dataset.c + +td.dataset.n0 - 1 > c) continue; (lastH[c] || td).after(lastH[c] = mk(firstH, e.title, e, true, hrows.length - i)); break; }
+    if (proto) body.forEach((tr) => { const td = [...tr.children].find((x) => !x.dataset.x && +x.dataset.c === c); if (!td) return; const m = lastB.get(tr) || {}; lastB.set(tr, m); (m[c] || td).after(m[c] = mk(proto, e.fill, e, false)); });
   });
-  put([...exS].reverse(), true); put(exE, false);
-  if (colg) { colg.innerHTML = ''; items.forEach((x) => { const col = d.createElement('col'); col.style.width = x.w.toFixed(1) + 'px'; colg.append(col); }); }
+  // حذف وإعادة حساب امتداد خلايا الرأس
+  for (const tr of rows) for (const td of [...tr.children]) {
+    if (td.dataset.x) continue; const a = +td.dataset.c, n = +td.dataset.n0; let k = 0;
+    for (let i = a; i < a + n; i++) if (!hid.has(i)) k++;
+    if (hset.has(tr)) { for (const e of E) if (typeof e.pos === 'number' && e.pos >= a && (e.join ? e.pos < a + n : e.pos < a + n - 1)) k++; }
+    if (!k) td.remove(); else td.colSpan = k;
+  }
+  // دمج أعمدة متجاورة
+  for (const [ck, v] of Object.entries(CC)) { const k = Math.min(8, +v.merge || 1); if (k < 2) continue; for (const tr of rows) { const td = [...tr.children].find((x) => !x.dataset.x && +x.dataset.c === +ck); if (!td) continue; for (let j = 1; j < k; j++) { const sib = td.nextElementSibling; if (!sib || sib.rowSpan !== td.rowSpan) break; td.colSpan += sib.colSpan; sib.remove(); } } }
+  // العروض
+  const items = [], base = (i) => (CC[i]?.w ? +CC[i].w : orig[i]), fxOf = (i) => !!CC[i]?.w;
+  E.filter((e) => e.pos === 'start' && !e.join).forEach((e) => items.push({ w: e.w, fx: true }));
+  orig.forEach((_, i) => { if (!hid.has(i)) { const n = Math.min(8, +CC[i]?.split || 1); items.push({ w: base(i) / n, fx: fxOf(i) }); } E.filter((e) => e.pos === i).forEach((e) => items.push(e.join ? { w: base(i) / Math.min(8, +CC[i]?.split || 1), fx: fxOf(i) } : { w: e.w, fx: true })); });
+  E.filter((e) => e.pos === 'end' && !e.join).forEach((e) => items.push({ w: e.w, fx: true }));
+  const fixed = items.filter((x) => x.fx).reduce((a, x) => a + x.w, 0), free = items.filter((x) => !x.fx).reduce((a, x) => a + x.w, 0), f = free > 0 ? Math.max(0.3, (total - fixed) / free) : 1;
+  if (colg) { colg.innerHTML = ''; items.forEach((x) => { const col = d.createElement('col'); col.style.width = (x.fx ? x.w : x.w * f).toFixed(1) + 'px'; colg.append(col); }); }
   rows.forEach((tr) => [...tr.children].forEach((td) => { td.style.width = ''; }));
 }
 // قائمة أعمدة جدول المشاركين في قالب نوع كشف (لشاشة الإعدادات)

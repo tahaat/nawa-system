@@ -22,4 +22,8 @@ await pg.check('[data-pc="cols.2.hide"]'); await pg.waitForTimeout(400); h = awa
 await pg.click('[data-act=pcAddCol]'); await pg.waitForTimeout(400); h = await prev(); log('إدراج عمود إضافي', h.includes('عمود جديد'));
 await pg.fill('[data-px="0.fill"]', 'ملاحظة'); await pg.dispatchEvent('[data-px="0.fill"]', 'change'); await pg.waitForTimeout(400); h = await prev(); log('نص ثابت في العمود الإضافي', h.includes('ملاحظة'));
 await pg.click('[data-act=pcAl][data-key="1"][data-h="left"][data-v="top"]'); await pg.waitForTimeout(400); h = await prev(); log('محاذاة 9 اتجاهات للعمود', /text-align:\s*left/.test(h));
+await pg.selectOption('[data-px="0.pos"]', 'after:3'); await pg.waitForTimeout(400); h = await prev();
+{ const n = await pg.evaluate((x) => { const t = new DOMParser().parseFromString(x, 'text/html').querySelector('table.rost'); return [t.textContent.includes('عمود جديد'), [...t.querySelectorAll('tr')].find((q) => q.firstElementChild?.textContent.trim() === '1').children.length]; }, h); log('عمود إضافي بعد عمود محدد داخل مجموعة الجنس ' + n, n[0] && n[1] === 8); }
+await pg.fill('[data-pc="cols.7.split"]', '2'); await pg.dispatchEvent('[data-pc="cols.7.split"]', 'change'); await pg.waitForTimeout(400); h = await prev();
+log('تقسيم عمود إلى جزأين', await pg.evaluate((x) => [...new DOMParser().parseFromString(x, 'text/html').querySelectorAll('table.rost tr')].find((q) => q.firstElementChild?.textContent.trim() === '1').children.length === 9, h));
 console.log('أخطاء الصفحة:', errs.length ? errs : 'لا شيء'); await b.close();
