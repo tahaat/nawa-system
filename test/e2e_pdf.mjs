@@ -27,7 +27,7 @@ for (const k of kinds) {
   const plain = out.replace(/<[^>]+>/g, ' ');
   log(k + ': اسم المشروع مملوء', /اسم المشروع:\s*\S+/.test(plain)); log(k + ': الشعار والهيدر والفوتر', out.includes('data:image/png') && plain.includes('NCAA-M&amp;E') && plain.includes('توقيع'));
   log(k + ': لا بقايا قالب {{LOGO}}', !out.includes('{{LOGO'));
-  if (k === 'activity') { log('activity: عنوان النشاط وتاريخه', plain.includes('قيمة title') && plain.includes('10/03/2026')); log('activity: الوقت', /من الساعة:\s*09:00/.test(plain) && /حتى الساعة:\s*11:30/.test(plain)); log('activity: علامة وجاهي', /\(\s*×\s*\)\s*وجاهي/.test(plain.replace(/\s+/g, ' '))); log('activity: عدد صفوف المشاركين ≥ 20', (out.match(/<tr/g) || []).length > 30); }
+  if (k === 'activity') { log('activity: عنوان النشاط وتاريخه', plain.includes('قيمة title') && plain.includes('10/03/2026')); log('activity: الوقت', /من الساعة:\s*09:00/.test(plain) && /حتى الساعة:\s*11:30/.test(plain)); log('activity: علامة وجاهي', /\(\s*✓\s*\)\s*وجاهي/.test(plain.replace(/\s+/g, ' '))); log('activity: عدد صفوف المشاركين ≥ 20', (out.match(/<tr/g) || []).length > 30); }
   const pp = await b.newPage(); await pp.setContent(out); await pp.pdf({ path: `/tmp/pdfout/${k}.pdf`, preferCSSPageSize: true, printBackground: true }); await pp.close();
 }
 console.log(errs.length ? 'أخطاء الصفحة: ' + errs.join(' | ') : 'أخطاء الصفحة: لا شيء'); await b.close();

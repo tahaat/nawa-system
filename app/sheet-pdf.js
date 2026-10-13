@@ -7,7 +7,7 @@ const FILE = { course: '1e5fc21a', edu: '2c872279', parents: '00ce7a59', activit
 const NP = (s) => String(s || '').replace(/[\s‌‎‏ :：.…_ً-ٟ]+/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي'); // يُبقي الأقواس
 const N = (s) => NP(s).replace(/[()]/g, '');
 const dmy = (d) => (d ? d.split('-').reverse().join('/') : '');
-const MARK = '×';
+const MARK = '✓';
 
 // ---------- أدوات DOM ----------
 const tds = (root) => [...root.querySelectorAll('td')];
@@ -19,13 +19,14 @@ function setText(td, text) {
 }
 // نص بعد النص الأصلي داخل نفس الخلية (مثل «عدد الساعات التدريبية: 12»)
 function appendText(td, text) { const p = td.querySelector('p'), sp = [...p.querySelectorAll('span')].pop() || p; sp.textContent = sp.textContent.replace(/[\s:]*$/, '') + ': ' + text; }
+function alignCell(td, h) { td.style.verticalAlign = 'middle'; td.querySelectorAll('p').forEach((p) => { p.style.textAlign = h; }); }
 // أول خلية عنوانها يطابق label؛ تعود بالخلية
 function labelCell(root, label, from = 0) { const L = N(label); return tds(root).slice(from).find((td) => { const t = N(txt(td)); return t === L || (t.startsWith(L) && t.length - L.length <= 6); }); }
 function after(root, label, value, o = {}) {
   if (value == null || value === '') return;
   const l = labelCell(root, label); if (!l) return;
   if (o.inline) return appendText(l, value);
-  let n = l.nextElementSibling; if (n) setText(n, String(value));
+  let n = l.nextElementSibling; if (n) { setText(n, String(value)); alignCell(n, 'right'); }
 }
 // استبدال أول «(   )» في نص الخلية التي تحتوي pattern
 function fillParen(root, re, value, scope) {
@@ -82,7 +83,7 @@ function fillRoster(table, people, sh, joint) {
   const model = table.querySelector('tr.mr'); if (!model) return;
   const lab = leafLabels(table), roles = {}; const cols = [...model.children].map((td) => +td.dataset.c); for (const c of cols) roles[c] = colRole(lab[c] || '');
   if (joint) { const ch = joint.child; for (const c of cols) { if (c >= 5) roles[c] = ({ 5: 'name', 6: 'sex', 7: 'age', 8: 'dis', 9: 'sig' })[c]; else roles[c] = ({ 0: 'idx', 1: 'name', 2: 'sex', 3: 'phone', 4: 'sig' })[c]; } }
-  const held = heldMeetings(sh), nTpl = +model.dataset.n || 10, total = Math.max((people || []).length, joint ? Math.max(joint.parents.length, joint.kids.length) : 0, Math.min(nTpl, 40));
+  const held = heldMeetings(sh), nTpl = +model.dataset.n || 10, total = joint ? Math.max(joint.parents.length, joint.kids.length) : (people || []).length;
   const rowsData = joint ? Array.from({ length: Math.max(joint.parents.length, joint.kids.length) }, (_, i) => ({ P: joint.parents[i], K: joint.kids[i] })) : (people || []);
   const tb = document.implementation.createHTMLDocument('').body, out = [];
   // الرأس داخل thead ليتكرر في كل صفحة
@@ -96,15 +97,15 @@ function fillRoster(table, people, sh, joint) {
       if (pp) {
         if (role === 'name') v = pp.missing ? '(محذوف)' : pp.name;
         else if (role === 'sex') v = pp.sex === 'M' ? 'ذكر' : pp.sex === 'F' ? 'أنثى' : '';
-        else if (role === 'sexM') v = pp.sex === 'M' ? '✓' : '';
-        else if (role === 'sexF') v = pp.sex === 'F' ? '✓' : '';
+        else if (role === 'sexM') v = pp.sex === 'M' ? '/' : '';
+        else if (role === 'sexF') v = pp.sex === 'F' ? '/' : '';
         else if (role === 'age') v = pp.age ?? '';
         else if (role === 'dis') v = pp.disability ? (pp.dtype || '') + (pp.dtypeOther ? ': ' + pp.dtypeOther : '') : '';
         else if (role === 'phone') v = pp.phone || '';
-        else if (role.startsWith('mt:')) { const m = held[+role.slice(3) - 1]; v = m && m.present.includes(pp.id) ? '✓' : ''; }
+        else if (role.startsWith('mt:')) { const m = held[+role.slice(3) - 1]; v = m ? (m.present.includes(pp.id) ? '✓' : 'غـ') : ''; }
       }
       setText(td, String(v)); if (role === 'idx') td.querySelector('p').style.whiteSpace = 'nowrap';
-      td.querySelector('p').style.textAlign = role === 'name' || role === 'dis' ? '' : 'center';
+      td.querySelector('p').style.textAlign = role === 'name' ? 'right' : 'center'; td.style.verticalAlign = 'middle';
     }
     out.push(tr);
   }
@@ -136,6 +137,19 @@ function fillDis(root, c) {
   }
 }
 
+// الهيدر كما في Word: الجدول يسارًا والشعار يمينًا بمحاذاة أعلاه، و«مستند مراقب» تحت الجدول من اليسار
+function fixHeader(H) {
+  const tbl = H.querySelector('table'), img = H.querySelector('img.anch'); if (!tbl) return;
+  const x = parseFloat((img?.getAttribute('style') || '').match(/--x:([\d.\-]+)px/)?.[1] || 0), y = parseFloat((img?.getAttribute('style') || '').match(/--y:([\d.\-]+)px/)?.[1] || 0), w = parseFloat(img?.style.width || 98), h = parseFloat(img?.style.height || 98);
+  const ind = parseFloat((tbl.getAttribute('style') || '').match(/margin-inline-start:([\d.\-]+)px/)?.[1] || 0);
+  const wrap = H.ownerDocument.createElement('div'); wrap.style.cssText = `position:relative;min-height:${Math.round(y + h + 28)}px`;
+  tbl.before(wrap); wrap.append(tbl); if (x < 300) { tbl.style.position = 'relative'; tbl.style.left = -(w + 12) + 'px'; }
+  const stamp = H.ownerDocument.createElement('p'); stamp.textContent = 'مستند مراقب'; stamp.style.cssText = `direction:rtl;text-align:left;margin:8px 0 0 ${ind}px;font:700 10.5pt Tahoma,'Simplified Arabic',sans-serif;color:#7f7f7f`; wrap.append(stamp);
+  if (img) { img.removeAttribute('class'); img.style.cssText = `position:absolute;right:${x < 300 ? 0 : x}px;top:${y}px;width:${w}px;height:${h}px`; wrap.append(img); }
+  // نزيل الفقرات الأخرى في الهيدر (الفارغة وفقرة الشعار القديمة)
+  [...H.children].forEach((c) => { if (c !== wrap) c.remove(); });
+}
+
 // ---------- التعبئة الكاملة ----------
 export function buildSheetDoc(sh, db, o = {}) {
   const K = KINDS[sh.kind], T = TPL.kinds[FILE[sh.kind]], m = sh.meta || {}, proj = db.projects.find((p) => p.id === sh.projectId), center = db.centers.find((c) => c.id === sh.centerId)?.name || '';
@@ -145,22 +159,25 @@ export function buildSheetDoc(sh, db, o = {}) {
   // اسم المشروع
   const pn = [...B.querySelectorAll('p')].find((p) => N(p.textContent).startsWith('اسمالمشروع')); if (pn) { const sp = [...pn.querySelectorAll('span')].find((s) => s.textContent.trim()); if (sp) { [...pn.querySelectorAll('span')].forEach((s) => s !== sp && s.remove()); sp.textContent = 'اسم المشروع: ' + (proj?.name || ''); pn.style.margin = '0'; pn.style.maxWidth = 'none'; pn.style.width = 'auto'; pn.style.paddingInline = '0'; } }
   const lines = (a) => (a || []).map((x, i) => `${i + 1}. ${x}`).join('\n');
-  const setLines = (label, arr) => { const l = labelCell(B, label), n = l?.nextElementSibling; if (n && arr?.length) { const p = n.querySelector('p'), st = p.getAttribute('style') || ''; const sp = p.querySelector('span'); const sty = sp?.getAttribute('style') || ''; n.innerHTML = arr.map((x, i) => `<p style="${st}"><span style="${sty}">${i + 1}. ${x.replace(/</g, '&lt;')}</span></p>`).join(''); } };
+  const setLines = (label, arr) => { const l = labelCell(B, label), n = l?.nextElementSibling; if (n && arr?.length) { const p = n.querySelector('p'), st = p.getAttribute('style') || ''; const sp = p.querySelector('span'); const sty = sp?.getAttribute('style') || ''; n.innerHTML = arr.map((x, i) => `<p style="${st};text-align:right"><span style="${sty}">${i + 1}. ${x.replace(/</g, '&lt;')}</span></p>`).join(''); n.style.verticalAlign = 'middle'; } };
+  // سطرا اسم المشروع وعنوان الكشف: أسود بلا تظليل وبينهما تباعد
+  { let k = 0; for (const el of [...B.children]) { if (el.tagName === 'TABLE') break; if (el.tagName !== 'P') continue; el.querySelectorAll('span').forEach((x) => { x.style.background = 'none'; x.style.color = '#000'; }); el.style.marginBottom = '10px'; el.style.marginTop = k ? '4px' : '0'; k++; } }
+  fixHeader(dom.getElementById('h'));
   const kind = sh.kind;
   if (kind === 'course') {
     after(B, 'عنوان الدورة', m.title); after(B, 'تاريخ بدء الدورة', dmy(m.start)); after(B, 'تاريخ انتهاء الدورة', dmy(m.end)); after(B, 'اسم المنشط/ة- المدرب/ة', m.facilitator);
     after(B, 'نوع الدورة', [m.type, m.hours !== '' && m.hours != null ? `عدد الساعات التدريبية: ${m.hours}` : ''].filter(Boolean).join(' — '));
     after(B, 'اجمالي عدد لقاءات الدورة', m.meetings); after(B, 'المطوية', m.booklet); after(B, 'نسبة الحضور الإلزامية', m.mandatoryPct !== '' && m.mandatoryPct != null ? m.mandatoryPct + '%' : '');
-    const ms = labelCell(B, 'مكان تنفيذ الدورة'); if (ms) { const n = ms.nextElementSibling; if (n && m.mode !== 'online') setText(n, m.venue || ''); }
+    const ms = labelCell(B, 'مكان تنفيذ الدورة'); if (ms) { const n = ms.nextElementSibling; if (n && m.mode !== 'online') { setText(n, m.venue || ''); alignCell(n, 'right'); }; }
   } else if (kind === 'edu') {
     after(B, 'موضوع التدريب', m.title); after(B, 'نوع التدريب', m.type); after(B, 'اجمالي ساعات التدريب', m.hours); after(B, 'اجمالي عدد اللقاءات', m.meetings); after(B, 'نسبة الحضور الإلزامية', m.mandatoryPct !== '' && m.mandatoryPct != null ? m.mandatoryPct + '%' : '');
-    const ms = labelCell(B, 'مكان تنفيذ التدريب'); if (ms && m.mode !== 'online') { const n = ms.nextElementSibling; if (n) setText(n, m.venue || ''); }
+    const ms = labelCell(B, 'مكان تنفيذ التدريب'); if (ms && m.mode !== 'online') { const n = ms.nextElementSibling; if (n) { setText(n, m.venue || ''); alignCell(n, 'right'); }; }
   } else if (kind === 'parents') {
     after(B, 'اسم الدورة التدريبية', m.title); after(B, 'اسم المدرب/ة', m.facilitator); after(B, 'تاريخ بدء الدورة التدريبية', dmy(m.start)); after(B, 'تاريخ انتهاء الدورة التدريبية', dmy(m.end)); after(B, 'نوع الدورة التدريبية', m.type); after(B, 'اجمالي عدد الجلسات', m.meetings); after(B, 'المطوية', m.booklet);
-    const ms = labelCell(B, 'مكان تنفيذ التدريب'); if (ms && m.mode !== 'online') { const n = ms.nextElementSibling; if (n) setText(n, m.venue || ''); }
+    const ms = labelCell(B, 'مكان تنفيذ التدريب'); if (ms && m.mode !== 'online') { const n = ms.nextElementSibling; if (n) { setText(n, m.venue || ''); alignCell(n, 'right'); }; }
   } else if (kind === 'activity' || kind === 'interview') {
     after(B, 'اسم النشاط', m.title); after(B, 'نوع النشاط', m.type); after(B, 'اسم المنشط/ة', m.facilitator); after(B, 'تاريخ تنفيذ النشاط', dmy(m.date)); after(B, 'المطوية', m.booklet);
-    const ms = labelCell(B, 'مكان تنفيذ النشاط'); if (ms && m.mode !== 'online') { const n = ms.nextElementSibling; if (n) setText(n, kind === 'interview' ? m.place || '' : m.venue || ''); }
+    const ms = labelCell(B, 'مكان تنفيذ النشاط'); if (ms && m.mode !== 'online') { const n = ms.nextElementSibling; if (n) { setText(n, kind === 'interview' ? m.place || '' : m.venue || ''); alignCell(n, 'right'); }; }
   } else if (kind === 'openday') {
     setLines('أسماء الأنشطة', m.activities); setLines('أسماء المنشطين/ات', m.facilitators); after(B, 'نوع النشاط', m.type); after(B, 'المطوية', m.booklet); after(B, 'المركز', center); after(B, 'مكان تنفيذ النشاط', m.venue); after(B, 'تاريخ التنفيذ', dmy(m.date));
   } else if (kind === 'trip') {
@@ -170,7 +187,7 @@ export function buildSheetDoc(sh, db, o = {}) {
     after(B, 'مكان استضافة الجهة الزائرة', m.venue); after(B, 'اسم الجهة الزائرة', m.body); after(B, 'شخص التواصل', m.contact); after(B, 'رقم التواصل', m.contactPhone); setLines('أسماء المرافقين', m.companions);
   } else if (kind === 'joint') {
     after(B, 'اسم النشاط', m.title); after(B, 'اسم المنشط /ة', m.facilitator); after(B, 'نوع النشاط', m.type); after(B, 'تاريخ النشاط', dmy(m.date)); after(B, 'المطوية', m.booklet);
-    const ms = labelCell(B, 'مكان تنفيذ النشاط'); if (ms && m.mode !== 'online') { const n = ms.nextElementSibling; if (n) setText(n, m.venue || ''); }
+    const ms = labelCell(B, 'مكان تنفيذ النشاط'); if (ms && m.mode !== 'online') { const n = ms.nextElementSibling; if (n) { setText(n, m.venue || ''); alignCell(n, 'right'); }; }
   }
   fillTimes(B, m.from, m.to); fillMode(B, m, center); fillGroups(B, m.groups || []);
   // الأعداد ونوع الإعاقة
