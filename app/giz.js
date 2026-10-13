@@ -89,3 +89,18 @@ export function giz() {
   for (const k of ['projects', 'centers', 'beneficiaries']) db[k].forEach((r) => { r.demo = true; });
   return db;
 }
+
+// كشوف تجريبية إضافية بأسماء وهمية لأنواع الكشوف التي ينقصها المثال (تربويون، نشاط، رحلة) — تُضاف عند الطلب دون المساس ببقية البيانات
+export function gizExtras(db) {
+  let sd = 4242; const r = () => ((sd = (sd * 1664525 + 1013904223) % 4294967296) / 4294967296), pk = (a) => a[Math.floor(r() * a.length)], rin = (a, b) => a + Math.floor(r() * (b - a + 1));
+  const have = new Set(db.sheets.map((s) => s.id)); let added = 0;
+  const FN = ['ريم', 'هبة', 'دعاء', 'إسراء', 'نور', 'آلاء', 'سجى', 'ميس'], MN = ['أسامة', 'بلال', 'ثائر', 'جمال', 'حاتم', 'زياد', 'ماجد', 'نبيل'], P = ['الشوا', 'أبو سيدو', 'العطار', 'البردويل', 'الحلو', 'قنن', 'مقداد', 'الدباغ'];
+  if (!db.beneficiaries.some((b) => b.id === 'bx_e1')) for (let i = 1; i <= 14; i++) { const sex = i % 4 === 0 ? 'M' : 'F', d = i === 5; db.beneficiaries.push({ id: 'bx_e' + i, name: `${sex === 'F' ? pk(FN) : pk(MN)} ${pk(MN)} ${pk(MN)} ${pk(P)}`, sex, age: rin(24, 52), disability: d, disabilityType: d ? 'حركية' : '', phone: '059' + rin(1000000, 9999999), center: 'c_main', demo: true }); }
+  const edu = db.beneficiaries.filter((b) => b.id.startsWith('bx_e')).map((b) => b.id), kids = db.beneficiaries.filter((b) => b.demo && b.age >= 7 && b.age <= 15 && !b.id.startsWith('bx_')).map((b) => b.id);
+  const mk = (id, kind, act, meta, lists, meetings) => { if (have.has(id)) return; const s = newSheet(kind, GIZ_ID, 'c_main'); s.id = id; s.activityId = act; s.meta = { mode: 'inperson', ...meta }; Object.assign(s, lists); if (meetings) s.meetings = meetings; s.demo = true; commitSheet(db, s); added++; };
+  const meet = (dates, ids) => dates.map((d, i) => ({ n: i + 1, date: d, present: ids.filter((_, j) => (j + i) % 6 !== 0) }));
+  mk('sx_edu', 'edu', 'a_edu', { title: 'أساليب الدعم النفسي الاجتماعي في الصف', type: 'ورشة عمل', facilitator: 'د. ريم الأسطل', start: '2026-09-01', end: '2026-09-15', hours: 12, meetings: 4, from: '09:00', to: '12:00', venue: 'القاعة 2', mandatoryPct: 75, groups: ['edN', 'edS'] }, { roster: edu }, meet(['2026-09-01', '2026-09-08', '2026-09-10', '2026-09-15'], edu));
+  mk('sx_act', 'activity', 'a_arts', { title: 'ورشة رسم الذاكرة', type: 'فني', facilitator: 'منى أبو شمالة', date: '2026-09-18', from: '10:00', to: '12:00', venue: 'قاعة الفنون', booklet: 'مطوية «ألواني»', groups: ['c712', 'y1315'] }, { roster: kids.slice(0, 32) });
+  mk('sx_trip', 'trip', 'a_open', { type: 'رحلة ثقافية إلى متحف القرارة', date: '2026-09-25', facilitator: 'عدي الغول', from: '08:00', to: '14:00', place: 'متحف القرارة', booklet: 'دليل الرحلة', groups: ['c712', 'y1315'] }, { roster: kids.slice(10, 28) });
+  return added;
+}

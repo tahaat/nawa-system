@@ -9,7 +9,7 @@ import { ask, askText } from './dialogs.js';
 import { initBuilder, builderCard } from './form-builder.js';
 import { importResponses, computeOutcomes } from '../core/outcomes.js';
 import { france } from './sim_france.js';
-import { giz, GIZ_ID } from './giz.js';
+import { giz, gizExtras, GIZ_ID } from './giz.js';
 import { vPlan, initPlan } from './plan-view.js';
 import { tr, getLang, toggleLang, applyDoc } from './i18n.js';
 import { initCopy } from './copy-card.js';
@@ -430,7 +430,7 @@ const actions = {
   cardReset(el) { const id = el.dataset.c, a = csAll(); delete a[id]; try { localStorage.setItem('nawa.cards', JSON.stringify(a)); } catch { /* خاص */ } vDash(); openPanel(cardPanel(id)); },
   lang() { toggleLang(); nav(); go(route); setSyncBadge(); },
   demo() { if (db.projects.some((x) => x.id === 'p_fr')) { toast('المشروع التجريبي محمّل مسبقًا'); ui.projectId = 'p_fr'; save(); return go('dash'); } const d = france(); for (const k of Object.keys(d)) db[k].push(...d[k]); ui.projectId = 'p_fr'; save(); toast('تم تحميل المشروع التجريبي (بيانات محاكاة)'); go('dash'); },
-  demoGiz() { if (db.projects.some((x) => x.id === GIZ_ID)) { toast('مشروع GIZ النموذجي محمّل مسبقًا'); ui.projectId = GIZ_ID; save(); return go('dash'); } const d = giz(); for (const k of Object.keys(d)) db[k].push(...d[k]); ui.projectId = GIZ_ID; save(); toast('تم تحميل مشروع GIZ النموذجي (بيانات تجريبية)'); go('projects'); },
+  demoGiz() { if (db.projects.some((x) => x.id === GIZ_ID)) { const n = gizExtras(db); toast(n ? `أُضيف ${n} كشوف تجريبية جديدة (تربويون/نشاط/رحلة)` : 'مشروع GIZ النموذجي محمّل مسبقًا'); ui.projectId = GIZ_ID; save(); return go(n ? 'sheets' : 'dash'); } const d = giz(); for (const k of Object.keys(d)) db[k].push(...d[k]); gizExtras(db); ui.projectId = GIZ_ID; save(); toast('تم تحميل مشروع GIZ النموذجي (بيانات تجريبية)'); go('projects'); },
   async purgeDemo() { if (!(await ask('سيُحذف المشروع التجريبي وكل بياناته (جلسات، مستفيدون، مراكز، ردود استبيان) نهائيًا. بياناتك الحقيقية لا تتأثر. متابعة؟'))) return; const r = purgeDemo(db); ui.projectId = db.projects[0]?.id || null; save(); toast(`تم مسح المحاكاة: ${r.sessions} جلسة، ${r.beneficiaries} مستفيد`); go('projects'); },
   async delProject() { if (!(await ask('حذف المشروع وكل جلساته؟'))) return; const id = ui.projectId; db.projects = db.projects.filter((p) => p.id !== id); db.sessions = db.sessions.filter((s) => s.projectId !== id); ui.projectId = db.projects[0]?.id; save(); rerender(); },
   addIv() { project().interventions.push({ id: uid('i'), result: 'R1', name: 'بند جديد', group: 'child' }); save(); rerender(); },
