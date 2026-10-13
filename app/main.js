@@ -18,6 +18,7 @@ import { loadGlossary } from './glossary.js';
 import { vSettings, initSettings, settingsActions } from './settings-view.js';
 import { loadConfig } from '../core/settings.js';
 import { setPrintCfg } from './sheet-pdf.js';
+import { ROLE_AR, initUsers, vUsers, wireUsers, usersActions, showLogin, loginCall, wipeLocal } from './users-view.js';
 import { DTYPES } from '../core/sheets.js';
 import { kvGet } from './store.js';
 import { initOffline, offlineCard, offlineActions } from './offline.js';
@@ -51,7 +52,15 @@ let route = 'dash', charts = [], sess = { mode: 'roll', att: new Set(), q: '', b
 
 // الإشعارات: أخطاء وتحذيرات التحقق والتكامل (مجمَّعة بالنص)
 function notes() { const m = new Map(); for (const i of [...reconcile(db), ...validateEntry(db)]) { if (i.level !== 'error' && i.level !== 'warn') continue; const k = i.level + i.msg; const e = m.get(k) || { ...i, n: 0 }; e.n++; m.set(k, e); } return [...m.values()].sort((a, b) => (a.level === 'error' ? 0 : 1) - (b.level === 'error' ? 0 : 1)); }
+const ENTRY_TABS = ['sheets', 'sessions', 'surveys', 'cloud'];
+const entryMode = () => { try { return me()?.role === 'facilitator' || localStorage.getItem('nawa.entry') === '1'; } catch { return me()?.role === 'facilitator'; } };
+function entryUI() {
+  const on = entryMode(); document.body.classList.toggle('entry', on); let tb = $('#tabbar');
+  if (!on) { tb?.remove(); return; } if (!tb) { tb = document.createElement('nav'); tb.id = 'tabbar'; document.body.append(tb); }
+  tb.innerHTML = ENTRY_TABS.filter(allowed).map((k) => `<a data-go="${k}" class="${k === route ? 'on' : ''}">${{ sheets: 'كشوف الحضور', sessions: 'الجلسات', surveys: 'الاستبيانات', cloud: 'المزامنة' }[k]}</a>`).join('');
+}
 function nav() {
+  entryUI();
   $('#nav').innerHTML = Object.entries(ROUTES).filter(([k]) => allowed(k)).map(([k, [t]]) => `<a data-go="${k}" class="${k === route ? 'on' : ''}">${t}</a>`).join('');
   const opts = db.projects.map((p) => `<option value="${p.id}" ${p.id === ui.projectId ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
   $('#top').innerHTML = `<div class="tl"><button class="sec ic" data-act="side" title="إظهار/إخفاء الشريط الجانبي" aria-label="إظهار/إخفاء الشريط الجانبي">${icon('menu')}</button><h1>${ROUTES[route][0]}</h1></div><div class="tools"><label>المشروع<select id="pj">${opts || '<option>— لا مشاريع —</option>'}</select></label>
@@ -62,7 +71,7 @@ function nav() {
     <button class="sec lang" data-act="lang" title="Language / اللغة">${getLang() === 'en' ? 'العربية' : 'English'}</button></div>`;
 }
 function autoAll(clear = false) { const a = [sheetAuto(clear), sessAuto(clear), opsAuto(clear), bnfAuto(clear)]; return a.some(Boolean); }
-function go(r) { chartTheme(); if (!allowed(r)) r = 'dash'; if (r !== route && autoAll(true)) toast('حُفظ عملك غير المكتمل كمسودة'); route = r; charts.forEach((c) => c.destroy()); charts = []; nav(); ROUTES[r][1](); if (fixActive()) { if (r === 'check') fixEnd(false); else fixRender(); } }
+function go(r) { chartTheme(); if (!allowed(r)) r = Object.keys(ROUTES).find(allowed) || 'dash'; if (r !== route && autoAll(true)) toast('حُفظ عملك غير المكتمل كمسودة'); route = r; charts.forEach((c) => c.destroy()); charts = []; nav(); ROUTES[r][1](); if (fixActive()) { if (r === 'check') fixEnd(false); else fixRender(); } }
 const rerender = () => go(route);
 const grpOf = (t) => { const f = (a) => { const m = new Map(); for (const i of a) { if (ckf !== 'all' && i.level !== ckf) continue; const k = i.level + i.code + i.msg; const e = m.get(k) || { ...i, items: [] }; e.items.push(i); m.set(k, e); } return [...m.values()].sort((a, b) => ['error', 'warn', 'info'].indexOf(a.level) - ['error', 'warn', 'info'].indexOf(b.level)); }; return f(t.dataset.s === 'r' ? reconcile(db) : validateEntry(db))[+t.dataset.k]; };
 function openSession(id) { const x = db.sessions.find((r) => r.id === id); if (!x || x.sheetId) return false; ui.projectId = x.projectId; Object.assign(sess, { editId: id, act: x.activityId, center: x.centerId, date: x.date, educator: x.educator || '', grp: x.grp || '', units: x.units || 1, notes: x.notes || '', mode: x.mode, att: new Set(x.attendance || []), counts: x.counts || null, bands: !!x.bandCounts, bandCounts: x.bandCounts || null }); vSessions(); scrollTo({ top: 0 }); return true; }
@@ -315,28 +324,6 @@ function vSurveys() {
 }
 // ======================= المستخدمون والصلاحيات =======================
 const capi = async (path, method = 'GET', body) => { const r = await fetch(sync.cfg.url.replace(/\/$/, '') + path, { method, headers: { authorization: 'Bearer ' + sync.cfg.token, 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }); if (!r.ok) throw new Error('رفض الخادم ' + r.status); return r.json(); };
-const ROLE_AR = { admin: 'مدير', meal: 'MEAL', entry: 'مدخل بيانات (المكتب)', coordinator: 'منسق مركز' };
-async function vUsers() {
-  view().innerHTML = '<div class="card">…</div>'; let us, pol;
-  try { us = (await capi('/api/users')).users; pol = (await capi('/api/policy')).policy; } catch (e) { view().innerHTML = `<div class="card">تعذّر التحميل: ${esc(e.message)}</div>`; return; }
-  const routesAll = Object.entries(ROUTES).filter(([k]) => k !== 'users');
-  view().innerHTML = `<div class="card"><h2>المستخدمون</h2><table><tr><th>المستخدم</th><th>الدور</th><th>المراكز</th><th>الحالة</th><th></th></tr>${us.map((u) => `<tr><td>${esc(u.name)}</td><td>${ROLE_AR[u.role] || u.role}</td><td>${u.centers.map((id) => esc(db.centers.find((c) => c.id === id)?.name || id)).join('، ')}</td><td>${u.active ? '<span class="badge b-ok">فعّال</span>' : '<span class="badge b-error">معطّل</span>'}</td><td>${u.name === me()?.name ? '' : `<button class="sec" data-act="uToggle" data-n="${esc(u.name)}" data-a="${u.active ? 0 : 1}">${u.active ? 'تعطيل' : 'تفعيل'}</button>`}</td></tr>`).join('')}</table>
-  <h3>إضافة مستخدم</h3><div class="row"><label>الاسم<input id="un"></label><label>الدور<select id="ur">${Object.entries(ROLE_AR).map(([k, t]) => `<option value="${k}">${t}</option>`).join('')}</select></label>
-  <label>المراكز (للمنسق)<select id="uc" multiple size="3">${db.centers.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></label><button data-act="uAdd">إضافة</button></div><p id="utok"></p></div>
-  <div class="card"><h2>صلاحيات الأدوار</h2><p class="small">تُفرض على الخادم. «مراكزه فقط» تعني أن المستخدم يرى ويكتب جلسات وردود مراكزه فقط. الحقول المخفية لا تصل جهازه أصلًا وتبقى محفوظة كما هي عند تعديله للسجل.</p>
-  ${['entry', 'coordinator', 'meal'].map((r) => { const p = pol[r]; return `<h3>${ROLE_AR[r]}</h3><div class="row">
-    <label>الجلسات<select data-pol="${r}|sessions">${[['all', 'كل المراكز'], ['own', 'مراكزه فقط']].map(([v, t]) => `<option value="${v}" ${p.read.sessions === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
-    <label>الشاشات<span class="row">${routesAll.map(([k, [t]]) => `<label style="flex-direction:row;align-items:center;color:inherit"><input type="checkbox" data-polr="${r}|${k}" ${p.routes === '*' || p.routes.includes(k) ? 'checked' : ''}> ${t}</label>`).join('')}</span></label></div>
-    <div class="row"><span class="small">إخفاء من بيانات المستفيد (الجنس والعمر وكون المستفيد من ذوي الإعاقة لا تُخفى لأن الحسابات تعتمد عليها):</span>${['phone', 'disabilityType'].map((f) => `<label style="flex-direction:row;align-items:center;color:inherit"><input type="checkbox" data-polh="${r}|${f}" ${(p.hidden?.beneficiaries || []).includes(f) ? 'checked' : ''}> ${{ phone: 'الهاتف', disabilityType: 'نوع الإعاقة' }[f]}</label>`).join('')}</div>`; }).join('')}
-  <div class="row" style="margin-top:12px"><button data-act="polSave">حفظ الصلاحيات</button></div><p id="pmsg"></p></div>`;
-  window.__pol = pol;
-}
-document.addEventListener('change', (e) => {
-  const t = e.target, P = window.__pol; if (!P) return;
-  if (t.dataset?.pol) { const [r, c] = t.dataset.pol.split('|'); P[r].read[c] = t.value; if (P[r].write[c]) P[r].write[c] = t.value; }
-  if (t.dataset?.polr) { const [r, k] = t.dataset.polr.split('|'); const cur = P[r].routes === '*' ? Object.keys(ROUTES).filter((x) => x !== 'users') : P[r].routes; P[r].routes = t.checked ? [...new Set([...cur, k])] : cur.filter((x) => x !== k); }
-  if (t.dataset?.polh) { const [r, f] = t.dataset.polh.split('|'); const h = (P[r].hidden ||= {}); const a = new Set(h.beneficiaries || []); t.checked ? a.add(f) : a.delete(f); h.beneficiaries = [...a]; }
-});
 // ======================= السحابة =======================
 let syncing = false, syncMsg = '';
 const engine = () => createSync({ db, meta: sync.meta, cfg: sync.cfg });
@@ -356,10 +343,24 @@ async function doSync(opts) {
   if (isFolder()) return doSyncFolder(opts);
   if (syncing || !sync.cfg.url || !sync.cfg.token) return; syncing = true; setSyncBadge('⟳ مزامنة…');
   try { try { sync.cfg.me = await engine().me(); } catch (e) { if (/رمز/.test(e.message)) throw e; } const r = await engine().sync(opts); if (!project()) ui.projectId = db.projects[0]?.id || null; save(); syncMsg = `تمت المزامنة: دُفع ${r.pushed} وسُحب ${r.pulled} (${new Date().toLocaleTimeString('ar')})`; if (r.pulled && ['dash', 'sessions', 'bnf', 'check'].includes(route) && !document.activeElement?.closest('#view input,#view select')) rerender(); }
-  catch (e) { syncMsg = 'تعذّرت المزامنة: ' + e.message + ' — البيانات محفوظة محليًا وستُرسل لاحقًا'; }
+  catch (e) { syncMsg = 'تعذّرت المزامنة: ' + e.message + ' — البيانات محفوظة محليًا وستُرسل لاحقًا'; if (/رمز/.test(e.message)) { sync.cfg.token = ''; sync.cfg.me = null; save(); nav(); showLogin({ msg: 'انتهت الجلسة أو أُلغي هذا الجهاز؛ سجّل الدخول من جديد', onDone: afterLogin }); } }
   syncing = false; nav(); setSyncBadge(); if (route === 'cloud') vCloud();
 }
 function setSyncBadge(t) { const el = $('#sync'); if (!el) return; const pend = isFolder() ? (folderEngine()?.pending() || 0) : (sync.cfg.url ? engine().pending().length : 0); el.textContent = t || ((isFolder() ? !sync.handle : !sync.cfg.url) ? 'غير مرتبط بالسحابة' : syncMsg.startsWith('تعذّر') ? `⚠ غير متصل — ${pend} تغيير معلّق` : `☁ ${pend ? pend + ' تغيير معلّق' : 'متزامن'}`); }
+async function afterLogin() { try { sync.cfg.me = await engine().me(); } catch { /* */ } save(); nav(); go(Object.keys(ROUTES).find(allowed) || 'dash'); await doSync({ firstMode: db.projects.length ? 'merge' : 'replace' }); nav(); }
+async function startAuth() {
+  if (IN_ARTIFACT()) return;
+  if (!sync.cfg.url && document.querySelector('meta[name=nawa-server]')) { sync.cfg.url = location.origin; sync.cfg.mode = 'server'; sync.cfg.auto = true; save(); }
+  if (!sync.cfg.url || isFolder()) return;
+  if (sync.cfg.token) { try { sync.cfg.me = await engine().me(); save(); return; } catch (e) { if (!/رمز/.test(e.message)) return; sync.cfg.token = ''; sync.cfg.me = null; save(); } }
+  await new Promise((res) => showLogin({ msg: sync.cfg.user ? 'انتهت الجلسة؛ سجّل الدخول من جديد' : '', onDone: async () => { await afterLogin(); res(); } }));
+}
+const authActions = {
+  cloudLogin() { sync.cfg.url = ($('#cu')?.value || sync.cfg.url).trim(); sync.cfg.mode = 'server'; save(); showLogin({ onDone: async () => { await afterLogin(); vCloud(); } }); },
+  async cloudLogout() { if (sync.cfg.url && engine().pending().length && !(await ask('توجد تغييرات لم تُرفع بعد. اتصل بالإنترنت وزامن أولًا، أو تابع الخروج وستبقى على الجهاز. متابعة الخروج؟'))) return; try { await capi('/api/logout', 'POST'); } catch { /* دون اتصال */ } sync.cfg.token = ''; sync.cfg.me = null; save(); nav(); vCloud(); showLogin({ onDone: afterLogin }); },
+  async cloudLogoutWipe() { if (!(await ask('سيُحذف كل ما على هذا الجهاز من بيانات ويُسجَّل خروجك. التغييرات غير المرفوعة تضيع. متابعة؟'))) return; try { await capi('/api/logout', 'POST'); } catch { /* */ } sync.cfg.token = ''; wipeLocal(); ui.projectId = null; save(); nav(); go('cloud'); showLogin({ onDone: afterLogin }); },
+  entryTog(t) { try { t.checked ? localStorage.setItem('nawa.entry', '1') : localStorage.removeItem('nawa.entry'); } catch { /* */ } nav(); go(allowed(route) ? route : 'sheets'); },
+};
 async function vCloud() {
   if (IN_ARTIFACT()) { view().innerHTML = '<div class="card"><h2>السحابة والمزامنة</h2><p>أنت تستخدم نسخة الرابط: البيانات تُحفظ داخل هذا المتصفح فقط، والمزامنة مع مجلد OneDrive أو الخادم غير متاحة هنا.</p><p class="small">لنقل بياناتك بين الأجهزة أو المتصفحات: من «التصدير والنسخ» اختر «حفظ نسخة JSON» ثم «استرجاع» في الجهاز الآخر. وللمزامنة التلقائية استخدم نسخة الملف (Nawa_System.html).</p></div>'; return; }
   const f = isFolder();
@@ -383,16 +384,14 @@ async function vCloud() {
   }
   view().innerHTML = `${tabs}<div class="card"><h2>الاتصال بخادم مزامنة</h2><p class="small">خيار متقدّم يتطلب تشغيل خادم (انظر README).</p>
   <div class="row"><label>عنوان الخادم<input id="cu" style="width:300px" placeholder="https://sync.example.org" value="${esc(sync.cfg.url)}"></label>
-  <label>رمز الدخول<input id="ct" type="password" style="width:300px" value="${esc(sync.cfg.token)}"></label>
+  <details style="width:100%"><summary class="small">متقدم: الدخول برمز مزامنة بدل كلمة المرور</summary><label>رمز الدخول<input id="ct" type="password" style="width:300px" value="${esc(sync.cfg.token)}"></label></details>
   <label style="flex-direction:row;align-items:center"><input type="checkbox" id="ca" ${sync.cfg.auto ? 'checked' : ''}> مزامنة تلقائية</label></div>
-  <div class="row" style="margin-top:10px"><button data-act="cloudSave">حفظ واختبار الاتصال</button><button class="gold" data-act="cloudSync">مزامنة الآن</button></div>
+  <div class="row" style="margin-top:10px">${sync.cfg.token ? `<span>مسجّل الدخول: <b>${esc(me()?.name || sync.cfg.user || '')}</b> ${me()?.role ? '(' + esc(ROLE_AR[me().role] || me().role) + ')' : ''}</span><button class="gold" data-act="cloudSync">مزامنة الآن</button><button class="sec" data-act="cloudLogout">تسجيل الخروج</button><button class="x" data-act="cloudLogoutWipe">خروج ومسح بيانات هذا الجهاز</button>` : '<button data-act="cloudLogin">تسجيل الدخول</button>'}<button class="sec" data-act="cloudSave">حفظ واختبار الاتصال</button></div>
+  <label style="flex-direction:row;align-items:center;margin-top:8px"><input type="checkbox" data-act="entryTog" ${localStorage.getItem('nawa.entry') === '1' ? 'checked' : ''}> وضع الإدخال السريع (واجهة مبسّطة للموبايل: كشوف الحضور والجلسات والاستبيانات فقط)</label>
   <p id="cmsg">${esc(syncMsg)}</p><p class="small">آخر مزامنة: ${sync.meta.lastSync ? new Date(sync.meta.lastSync).toLocaleString('ar') : '—'} · تغييرات معلّقة: ${sync.cfg.url ? engine().pending().length : 0}</p></div>`;
 }
 // ======================= الإجراءات =======================
 const actions = {
-  async uAdd() { const name = $('#un').value.trim(); if (!name) return toast('الاسم مطلوب'); const r = await capi('/api/users', 'POST', { name, role: $('#ur').value, centers: [...$('#uc').selectedOptions].map((o) => o.value) }); $('#utok').innerHTML = `<span class="badge b-ok">تم</span> رمز دخول <b>${esc(name)}</b> (يظهر مرة واحدة، سلّمه له بشكل آمن): <code>${esc(r.token)}</code>`; },
-  async uToggle(t) { await capi('/api/users/disable', 'POST', { name: t.dataset.n, active: t.dataset.a === '1' }); vUsers(); },
-  async polSave() { await capi('/api/policy', 'PUT', { policy: window.__pol }); $('#pmsg').innerHTML = '<span class="badge b-ok">حُفظت</span>'; },
   addOutc() { const p = project(); (p.outcomeIndicators ||= []).push({ id: uid('x'), row: 7, name: 'مؤشر نتيجة جديد', formId: TEMPLATES[0].id, kind: 'threshold', valuePct: 70, round: 'endline' }); save(); rerender(); },
   delOutc(t) { project().outcomeIndicators.splice(+t.dataset.i, 1); save(); rerender(); },
   async dlForm(t) { const tpl = allForms(project()).find((x) => x.id === t.dataset.id); dl(await xlsformBuffer(buildForm(tpl, { projectId: ui.projectId, centers: db.centers })), `${tpl.id}.xlsx`, XL); },
@@ -479,7 +478,7 @@ const actions = {
 };
 
 $('.logo').src = logoUrl; { const l = document.createElement('link'); l.rel = 'icon'; l.href = logoUrl; document.head.append(l); }
-initPlan({ project, save, rerender, view, empty }); initSheets({ db, project, save, view, empty, ask, toast, myCenters, route: () => route }); initOps({ db, project, save, view, empty, ask, toast, myCenters }); initBuilder({ project, save, rerender }); initGloss({ view, ask }); initFix({ db, ui, go, toast, openSession, openOp, route: () => route }); Object.assign(actions, fixActions); initSettings({ view, db, ask, askText }); initBnf({ view, db, ask, ui }); Object.assign(actions, offlineActions, bnfActions({ toast, ask, save, rerender, dl }), glossActions({ toast, dl }), settingsActions({ toast, dl, go, save, rerender, ui, ask })); loadConfig(await kvGet('config'), DTYPES); setPrintCfg(await kvGet('printcfg')); await load(); await loadGlossary(); await loadDrafts(); try { if (localStorage.getItem('nawa.nonav')) document.body.classList.add('nonav'); } catch { /* خاص */ } initTheme(); applyDoc(); nav(); go('dash'); initHints(view); initCopy({ toast }); initOffline(); initPlaceholders(); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
+initPlan({ project, save, rerender, view, empty }); initSheets({ db, project, save, view, empty, ask, toast, myCenters, route: () => route }); initOps({ db, project, save, view, empty, ask, toast, myCenters }); initBuilder({ project, save, rerender }); initGloss({ view, ask }); initFix({ db, ui, go, toast, openSession, openOp, route: () => route }); Object.assign(actions, fixActions); initSettings({ view, db, ask, askText }); initUsers({ db, sync, save, view, toast, ask, ROUTES, capi, me }); wireUsers(); Object.assign(actions, usersActions(), authActions); initBnf({ view, db, ask, ui }); Object.assign(actions, offlineActions, bnfActions({ toast, ask, save, rerender, dl }), glossActions({ toast, dl }), settingsActions({ toast, dl, go, save, rerender, ui, ask })); loadConfig(await kvGet('config'), DTYPES); setPrintCfg(await kvGet('printcfg')); await load(); await loadGlossary(); await loadDrafts(); try { if (localStorage.getItem('nawa.nonav')) document.body.classList.add('nonav'); } catch { /* خاص */ } initTheme(); applyDoc(); await startAuth(); nav(); go('dash'); initHints(view); initCopy({ toast }); initOffline(); initPlaceholders(); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
 setInterval(() => { if (sync.cfg.auto) doSync(); else setSyncBadge(); }, 60000);
 window.addEventListener('online', () => sync.cfg.auto && doSync());
 window.addEventListener('nawa:drafts', () => nav());

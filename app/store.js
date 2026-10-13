@@ -15,7 +15,7 @@ export const kvSet = (k, v) => kv.kv.put({ key: k, value: JSON.parse(JSON.string
 export const saveHandle = (h) => kv.kv.put({ key: 'folderHandle', value: h });
 let timer;
 export async function load() {
-  try { const rows = await kv.kv.toArray(); for (const r of rows) { if (r.key === 'ui') Object.assign(ui, r.value); else if (db[r.key]) db[r.key] = r.value; } } catch (e) { console.warn('storage', e); }
+  try { const rows = await kv.kv.toArray(); for (const r of rows) { if (r.key === 'ui') Object.assign(ui, r.value); else if (r.key === 'syncCfg') Object.assign(sync.cfg, r.value); else if (r.key === 'syncMeta') sync.meta = { ...newMeta(), ...r.value }; else if (r.key === 'folderMeta') sync.fmeta = { ...newFolderMeta(), ...r.value }; else if (db[r.key]) db[r.key] = r.value; } } catch (e) { console.warn('storage', e); }
   if (!db.projects.find((p) => p.id === ui.projectId)) ui.projectId = db.projects[0]?.id || null;
 }
 export function save() { window.dispatchEvent(new CustomEvent('nawa:dbsave')); clearTimeout(timer); timer = setTimeout(async () => { try { await kv.transaction('rw', kv.kv, async () => { for (const k of Object.keys(db)) await kv.kv.put({ key: k, value: JSON.parse(JSON.stringify(db[k])) }); await kv.kv.put({ key: 'ui', value: { ...ui } }); await kv.kv.put({ key: 'syncCfg', value: { ...sync.cfg } }); await kv.kv.put({ key: 'syncMeta', value: JSON.parse(JSON.stringify(sync.meta)) }); await kv.kv.put({ key: 'folderMeta', value: JSON.parse(JSON.stringify(sync.fmeta)) }); }); } catch (e) { console.warn(e); } }, 250); }

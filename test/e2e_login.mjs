@@ -1,0 +1,32 @@
+// دخول حقيقي على الخادم: واجهة الدخول، تغيير كلمة المرور المؤقتة، وضع الإدخال، التقييد بالتكليف، لوحة المستخدمين
+import http from 'node:http'; import { chromium } from '/opt/npm-tools/node_modules/playwright/index.mjs';
+import { newSheet } from '../core/sheets.js'; import { openDb, addUser, createApp, setPassword } from '../server/server.js';
+const db = openDb(':memory:'), srv = http.createServer(createApp(db, { staticFile: new URL('../dist/index.html', import.meta.url).pathname })); await new Promise((r) => srv.listen(8790, r));
+const admin = addUser(db, 'admin', 'admin'); setPassword(db, 'admin', 'AdminPass123', 0);
+const call = async (path, tok, method = 'GET', body) => (await fetch('http://localhost:8790' + path, { method, headers: { 'content-type': 'application/json', authorization: 'Bearer ' + tok }, body: body ? JSON.stringify(body) : undefined })).json();
+const rec = (coll, id, data) => ({ coll, id, data, ts: Date.now(), baseSeq: 0 });
+await call('/api/push', admin, 'POST', { changes: [rec('projects', 'p1', { id: 'p1', name: 'مشروعي', donor: '', start: '2026-01-01', end: '2026-12-31', directRule: { mode: 'once' }, interventions: [], activities: [], outputIndicators: [] }), rec('projects', 'p2', { id: 'p2', name: 'مشروع آخر', donor: '', start: '2026-01-01', end: '2026-12-31', directRule: { mode: 'once' }, interventions: [], activities: [], outputIndicators: [] }), rec('centers', 'c1', { id: 'c1', name: 'مركز 1' }), rec('sheets', 'sh1', { ...newSheet('activity', 'p1', 'c1'), id: 'sh1' }), rec('sheets', 'sh2', { ...newSheet('activity', 'p2', 'c1'), id: 'sh2' })] });
+const mk = await call('/api/users', admin, 'POST', { name: 'منشط', role: 'facilitator', assignments: [{ project: 'p1', center: 'c1' }] });
+const b = await chromium.launch(), pg = await (await b.newContext({ viewport: { width: 390, height: 800 } })).newPage(); const errs = [];
+pg.on('pageerror', (e) => errs.push(e.message + ' ' + (e.stack || '').split('\n').slice(1, 3).join('|'))); pg.on('console', (m) => m.type() === 'error' && !/401|404|favicon|manifest|sw\.js/.test(m.text()) && errs.push(m.text()));
+const log = (m, ok) => console.log(ok ? 'ok  ' : 'FAIL', m);
+await pg.goto('http://localhost:8790/'); await pg.waitForSelector('#login');
+log('واجهة الدخول تظهر أولًا', await pg.isVisible('#lgn'));
+await pg.fill('#lgn', 'منشط'); await pg.fill('#lgp', 'wrong'); await pg.click('#login button[type=submit]'); await pg.waitForTimeout(500); log('كلمة مرور خاطئة ترفض', /غير صحيحة/.test(await pg.textContent('#lgm')));
+await pg.fill('#lgp', mk.password); await pg.click('#login button[type=submit]'); await pg.waitForSelector('#np1'); log('تُطلب كلمة مرور جديدة عند أول دخول', true);
+await pg.fill('#np1', 'MyNewPass456'); await pg.fill('#np2', 'MyNewPass456'); await pg.click('#login button[type=submit]'); await pg.waitForSelector('#login', { state: 'detached' }); await pg.waitForTimeout(1500);
+log('وضع الإدخال مفعّل للمنشط', await pg.evaluate(() => document.body.classList.contains('entry')) && await pg.isVisible('#tabbar'));
+log('الشريط الجانبي مخفي', !(await pg.isVisible('#side')));
+const tabs = await pg.locator('#tabbar a').allTextContents(); log('تبويبات الإدخال فقط: ' + tabs.join('، '), tabs.length === 4 && !tabs.some((t) => /لوحة|المستفيدون/.test(t)));
+const d = await pg.evaluate(() => ({ p: window.__nawa.db.projects.map((x) => x.id), s: window.__nawa.db.sheets.map((x) => x.id) })); log('لا يصله إلا مشروعه وكشفه: ' + JSON.stringify(d), d.p.join() === 'p1' && d.s.join() === 'sh1');
+await pg.reload(); await pg.waitForTimeout(1200); log('الجلسة تستمر بعد إعادة التحميل', !(await pg.locator('#login').count()));
+await pg.click('#tabbar a[data-go=cloud]'); await pg.waitForTimeout(500); await pg.click('[data-act=cloudLogoutWipe]'); await pg.waitForSelector('.modal button, dialog button, #dlg button', { timeout: 3000 }).catch(() => {});
+await pg.evaluate(() => [...document.querySelectorAll('button')].find((x) => /^(موافق|نعم|متابعة|تأكيد)/.test(x.textContent.trim()))?.click()); await pg.waitForSelector('#login', { timeout: 5000 });
+log('الخروج مع المسح يرجع لواجهة الدخول ويفرّغ الجهاز', (await pg.evaluate(() => window.__nawa.db.sheets.length)) === 0);
+// المدير: لوحة المستخدمين
+await pg.setViewportSize({ width: 1300, height: 900 }); await pg.fill('#lgn', 'admin'); await pg.fill('#lgp', 'AdminPass123'); await pg.click('#login button[type=submit]'); await pg.waitForSelector('#login', { state: 'detached' }); await pg.waitForTimeout(1500);
+await pg.click('a[data-go=users]'); await pg.waitForSelector('[data-act=uEdit]'); const html = await pg.textContent('#view');
+log('لوحة المستخدمين: التكليفات والأجهزة والتدقيق', /منشط/.test(html) && /مشروعي/.test(html) && /الأجهزة المسجّلة/.test(html) && /سجل التدقيق/.test(html));
+await pg.click('[data-act=uEdit][data-n="منشط"]'); await pg.waitForSelector('#asedit'); await pg.selectOption('[data-as="0.project"]', 'p2'); await pg.click('[data-act=asSave]'); await pg.waitForTimeout(700);
+const us = await call('/api/users', admin); log('نقل المنشط إلى مشروع آخر من اللوحة', us.users.find((u) => u.name === 'منشط').assignments[0].project === 'p2');
+console.log('أخطاء الصفحة:', errs.length ? errs : 'لا شيء'); await b.close(); srv.close();
