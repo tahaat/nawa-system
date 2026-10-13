@@ -2,6 +2,7 @@
 import { KINDS, SG, DTYPES, newSheet, validateSheet, derivedCounts, completion, commitSheet, removeSheet, peopleOf, nameOk, phoneOk, heldMeetings } from '../core/sheets.js';
 import { ageAt, uid } from '../core/model.js';
 import { pager } from './pager.js';
+import { printSheet } from './sheet-pdf.js';
 import { putDraft, delDraft, getDraft, draftsCard } from './drafts.js';
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const $ = (s, r = document) => r.querySelector(s);
@@ -34,7 +35,7 @@ export function vSheets() {
   ctx.view().innerHTML = draftsCard(p.id, 'sheet') + `<div class="card"><h2>كشف حضور جديد</h2><p class="small">اختر نوع الكشف كما في الكشوف الورقية. كل ما يُكتب هنا يُفحص قبل الحفظ، ولا يُحفظ كشف فيه خطأ.</p>
     <div class="row">${Object.entries(KINDS).map(([k, K]) => `<button data-shact="new" data-k="${k}">${esc(K.name)}</button>`).join('')}</div></div>
   <div class="card"><h2>الكشوف المسجَّلة (${list.length})</h2>${list.length ? `${SH.html()}<div class="tw"><table><tr><th>النوع</th><th>العنوان</th><th>التاريخ</th><th>المركز</th><th>الحضور</th><th>الحالة</th><th></th></tr>${SH.slice(list).map((s) => { const K = KINDS[s.kind], d = derivedCounts(s, db), v = validateSheet(s, db, { others: db.sessions.filter((x) => x.sheetId !== s.id) });
-    return `<tr><td>${esc(K.name)}</td><td>${esc(s.meta.title || (s.meta.activities || [])[0] || s.meta.type || s.meta.body || '')}</td><td>${esc(K.multi ? `${s.meta.start || ''} → ${s.meta.end || ''}` : s.meta.date || '')}${K.multi ? `<br><span class="small">${heldMeetings(s).length} / ${s.meta.meetings || '؟'} لقاء</span>` : ''}</td><td>${esc(db.centers.find((c) => c.id === s.centerId)?.name || '')}</td><td><b>${d.total}</b><div class="gcs">${countChips(d)}</div></td><td>${v.errors.length ? `<span class="badge b-error" title="${esc(v.errors.join(' | '))}">${v.errors.length} خطأ</span>` : v.warnings.length ? `<span class="badge b-warn" title="${esc(v.warnings.join(' | '))}">${v.warnings.length} تنبيه</span>` : '<span class="badge b-ok">✔</span>'}</td><td><button class="sec" data-shact="edit" data-id="${s.id}">فتح</button> <button class="x" data-shact="del" data-id="${s.id}">حذف</button></td></tr>`; }).join('')}</table></div>${SH.html()}` : '<p class="small">لا كشوف بعد.</p>'}</div>`;
+    return `<tr><td>${esc(K.name)}</td><td>${esc(s.meta.title || (s.meta.activities || [])[0] || s.meta.type || s.meta.body || '')}</td><td>${esc(K.multi ? `${s.meta.start || ''} → ${s.meta.end || ''}` : s.meta.date || '')}${K.multi ? `<br><span class="small">${heldMeetings(s).length} / ${s.meta.meetings || '؟'} لقاء</span>` : ''}</td><td>${esc(db.centers.find((c) => c.id === s.centerId)?.name || '')}</td><td><b>${d.total}</b><div class="gcs">${countChips(d)}</div></td><td>${v.errors.length ? `<span class="badge b-error" title="${esc(v.errors.join(' | '))}">${v.errors.length} خطأ</span>` : v.warnings.length ? `<span class="badge b-warn" title="${esc(v.warnings.join(' | '))}">${v.warnings.length} تنبيه</span>` : '<span class="badge b-ok">✔</span>'}</td><td><button class="sec" data-shact="edit" data-id="${s.id}">فتح</button> <button class="sec" data-shact="pdf" data-id="${s.id}">PDF</button> <button class="x" data-shact="del" data-id="${s.id}">حذف</button></td></tr>`; }).join('')}</table></div>${SH.html()}` : '<p class="small">لا كشوف بعد.</p>'}</div>`;
 }
 
 // ---------- المحرر ----------
@@ -137,7 +138,7 @@ function checkHTML() {
   return `<h2>الأعداد (تُحسب تلقائياً من القائمة)</h2><div class="row"><span class="badge b-info">الإجمالي <b>${d.total}</b></span>${gc('gm', 'ذكور', d.M)}${gc('gf', 'إناث', d.F)}${gc('gd', 'ذكور ذوو إعاقة', d.MWD)}${gc('gd', 'إناث ذوات إعاقة', d.FWD)}${gc('gn', 'بلا إعاقة', d.total - d.MWD - d.FWD)}${types ? `<span class="badge b-info">نوع الإعاقة: ${esc(types)}</span>` : ''}
     ${comp && cur.meta.mandatoryPct != null && cur.meta.mandatoryPct !== '' ? `<span class="badge b-ok">مستوفون لنسبة الحضور (${cur.meta.mandatoryPct}%): <b>${comp.filter((c) => c.ok).length}</b> من ${comp.length}</span>` : ''}</div>
     <h2>الفحص قبل الحفظ</h2>${r.errors.map((e) => `<p style="margin:3px 0"><span class="badge b-error">خطأ</span> ${esc(e)}</p>`).join('')}${r.warnings.map((e) => `<p style="margin:3px 0"><span class="badge b-warn">تنبيه</span> ${esc(e)}</p>`).join('')}${!r.errors.length && !r.warnings.length ? '<span class="badge b-ok">لا ملاحظات ✔</span>' : ''}
-    <div class="row" style="margin-top:12px"><button data-shact="save" ${r.errors.length ? 'disabled' : ''}>حفظ الكشف</button>${r.errors.length ? `<span class="small">لا يمكن الحفظ قبل معالجة ${r.errors.length} خطأ</span>` : ''}</div>`;
+    <div class="row" style="margin-top:12px"><button data-shact="save" ${r.errors.length ? 'disabled' : ''}>حفظ الكشف</button><button class="sec" data-shact="pdf" title="يفتح نافذة الطباعة: اختر «حفظ كـ PDF»">تصدير PDF (النموذج الورقي)</button>${r.errors.length ? `<span class="small">لا يمكن الحفظ قبل معالجة ${r.errors.length} خطأ</span>` : ''}</div>`;
 }
 const relist = () => { const e = $('#sh-lists'); if (e) e.innerHTML = KINDS[cur.kind].lists.map(listCard).join(''); refreshCheck(); };
 const remeet = () => { const e = $('#sh-meet'); if (e) e.innerHTML = KINDS[cur.kind].multi ? meetingsCard() : ''; };
@@ -166,6 +167,7 @@ function onInput(e) {
 async function onClick(e) {
   const t = e.target.closest('[data-shact]'); if (!t) return; const a = t.dataset.shact, db = ctx.db, p = ctx.project();
   if (a === 'new') { setCur(newSheet(t.dataset.k, p.id, ctx.myCenters()[0]?.id)); return editor(); }
+  if (a === 'pdf') { const sh = t.dataset.id ? ctx.db.sheets.find((x) => x.id === t.dataset.id) : cur; if (!sh) return; try { printSheet(sh, ctx.db); ctx.toast('اختر «حفظ كـ PDF» في نافذة الطباعة'); } catch (e) { ctx.toast('تعذّر التصدير: ' + e.message); } return; }
   if (a === 'edit') { setCur(JSON.parse(JSON.stringify(db.sheets.find((s) => s.id === t.dataset.id)))); return editor(); }
   if (a === 'del') { if (!(await ctx.ask('حذف هذا الكشف وكل جلساته؟'))) return; removeSheet(db, t.dataset.id); ctx.save(); return vSheets(); }
   if (!live()) return;
