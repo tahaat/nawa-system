@@ -24,7 +24,8 @@ import { backfillEnrollments } from '../core/enroll.js';
 import { assignFolders, folderOf } from '../core/share.js';
 import { setFolderMap } from '../core/sync-folder.js';
 import { initTeam, teamCard, teamActions, loadTeam } from './team-view.js';
-import { kvGet } from './store.js';
+import { initDevRole, devMe, ensureRole, revalidate, roleActions, pinsCard, roleChip, canManage } from './devrole.js';
+import { kvGet, kvSet } from './store.js';
 import { initOffline, offlineCard, offlineActions } from './offline.js';
 import { vBnf, initBnf, bnfActions, bnfAuto, restoreBnf } from './bnf-view.js';
 import { initPlaceholders, icon, getTheme, toggleTheme, initTheme, initHints, openPanel, closePanel, hintsHtml } from './ui-tools.js';
@@ -48,7 +49,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<
 const view = () => $('#view');
 const toast = (m) => { const t = $('#toast'); t.textContent = m; t.style.display = 'block'; setTimeout(() => (t.style.display = 'none'), 3500); };
 const ROUTES = { dash: ['لوحة القيادة', vDash], sheets: ['كشوفات الحضور (إدخال)', vSheets], sessions: ['الجلسات (STT)', vSessions], ops: ['الإنجاز التشغيلي', vOps], bnf: ['المستفيدون (BTT)', vBnf], projects: ['المشاريع (PTT)', vProjects], plan: ['ملف PTT الكامل', vPlan], centers: ['المراكز', vCenters], check: ['التحقق والتكامل', vCheck], surveys: ['الاستبيانات (KoBo)', vSurveys], users: ['المستخدمون والصلاحيات', vUsers], cloud: ['السحابة والمزامنة', vCloud], export: ['التصدير والنسخ', vExport], settings: ['القوائم والإعدادات', vSettings], gloss: ['الترجمة', vGloss] };
-const me = () => sync.cfg.me || null;
+const me = () => sync.cfg.me || devMe();
 const allowed = (r) => { const p = me()?.policy; if (r === 'users') return !!p?.manageUsers; return !p || p.routes === '*' || p.routes.includes(r); };
 const myCenters = () => { const x = me(); return x?.role === 'coordinator' || x?.policy?.write?.sessions === 'own' ? db.centers.filter((c) => x.centers.includes(c.id)) : db.centers; };
 function chartTheme() { const d = getTheme() === 'dark', cs = getComputedStyle(document.documentElement); Chart.defaults.color = d ? '#d8cac6' : '#4a3f3f'; Chart.defaults.borderColor = d ? 'rgba(255,235,225,.12)' : 'rgba(0,0,0,.08)'; Chart.defaults.font.family = 'Tajawal'; Chart.defaults.elements.arc.borderColor = cs.getPropertyValue('--card').trim() || '#fff'; }
@@ -67,7 +68,7 @@ function nav() {
   entryUI();
   $('#nav').innerHTML = Object.entries(ROUTES).filter(([k]) => allowed(k)).map(([k, [t]]) => `<a data-go="${k}" class="${k === route ? 'on' : ''}">${t}</a>`).join('');
   const opts = db.projects.map((p) => `<option value="${p.id}" ${p.id === ui.projectId ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
-  $('#top').innerHTML = `<div class="tl"><button class="sec ic" data-act="side" title="إظهار/إخفاء الشريط الجانبي" aria-label="إظهار/إخفاء الشريط الجانبي">${icon('menu')}</button><h1>${ROUTES[route][0]}</h1></div><div class="tools"><label>المشروع<select id="pj">${opts || '<option>— لا مشاريع —</option>'}</select></label>
+  $('#top').innerHTML = `<div class="tl"><button class="sec ic" data-act="side" title="إظهار/إخفاء الشريط الجانبي" aria-label="إظهار/إخفاء الشريط الجانبي">${icon('menu')}</button><h1>${ROUTES[route][0]}</h1></div><div class="tools">${roleChip()}<label>المشروع<select id="pj">${opts || '<option>— لا مشاريع —</option>'}</select></label>
     <button class="sec ic" data-act="bell" title="الإشعارات" aria-label="الإشعارات">${icon('bell')}${notes().length ? `<b class="dot">${notes().length}</b>` : ''}</button>
     <button class="sec ic" data-act="drafts" title="المسودات" aria-label="المسودات">${icon('clip')}${draftCount(ui.projectId) ? `<b class="dot">${draftCount(ui.projectId)}</b>` : ''}</button>
     <button class="sec ic" data-act="hints" title="التلميحات" aria-label="التلميحات">${icon('hint')}</button>
@@ -341,7 +342,7 @@ async function doSyncFolder(opts, ask) {
   prepFolders();
   if (syncing || !sync.handle) return; if ((await folderPerm(ask)) !== 'granted') { syncMsg = 'يلزم تفعيل صلاحية المجلد (اضغط «مزامنة الآن»)'; setSyncBadge(); return; }
   syncing = true; setSyncBadge('⟳ مزامنة…');
-  try { const r = await folderEngine().sync(opts); if (!project()) ui.projectId = db.projects[0]?.id || null; save(); syncMsg = `تمت المزامنة: كُتب ${r.wrote} ملف وطُبّق ${r.applied} سجل${r.deleted ? ` وحُذف ${r.deleted}` : ''} (${new Date().toLocaleTimeString('ar')})${r.errors.length ? ' — ⚠ ' + r.errors.join(' | ') : ''}`; if ((r.applied || r.deleted) && ['dash', 'sessions', 'bnf', 'check'].includes(route) && !document.activeElement?.closest('#view input,#view select')) rerender(); }
+  try { const r = await folderEngine().sync(opts); if (!project()) ui.projectId = db.projects[0]?.id || null; save(); revalidate(); syncMsg = `تمت المزامنة: كُتب ${r.wrote} ملف وطُبّق ${r.applied} سجل${r.deleted ? ` وحُذف ${r.deleted}` : ''} (${new Date().toLocaleTimeString('ar')})${r.errors.length ? ' — ⚠ ' + r.errors.join(' | ') : ''}`; if ((r.applied || r.deleted) && ['dash', 'sessions', 'bnf', 'check'].includes(route) && !document.activeElement?.closest('#view input,#view select')) rerender(); }
   catch (e) { syncMsg = 'تعذّرت المزامنة: ' + e.message; }
   syncing = false; setSyncBadge(); if (route === 'cloud') vCloud();
 }
@@ -385,7 +386,7 @@ async function vCloud() {
     <ol class="small"><li>أنشئ مجلدًا باسم <code>NawaSync</code> وداخله مجلدات: <code>core</code> و<code>pii</code> و<code>c-&lt;رمز المركز&gt;</code> لكل مركز (الرمز يظهر أعلاه بعد أول مزامنة، أو اتركه ينشئها النظام على جهازك ثم شاركها).</li>
     <li><b>core</b>: شاركه (تحرير) مع كل من يستخدم النظام. <b>pii</b> (الهواتف ونوع الإعاقة): مع المكتب الرئيسي وMEAL فقط. <b>c-المركز</b>: مع منسق ذلك المركز ومع المكتب الرئيسي فقط.</li>
     <li>على جهاز المنسق: أضف المجلدات المشاركة إلى OneDrive («إضافة اختصار إلى ملفاتي»)، ثم اختر مجلد <code>NawaSync</code> الذي يحويها.</li>
-    <li>الصلاحيات تُفرض بمشاركة OneDrive نفسها: الجهاز لا يستلم إلا المجلدات المشاركة معه.</li></ol></div>${teamCard()}`;
+    <li>الصلاحيات تُفرض بمشاركة OneDrive نفسها: الجهاز لا يستلم إلا المجلدات المشاركة معه.</li></ol></div>${canManage() ? teamCard() + pinsCard() : ''}`;
     return;
   }
   view().innerHTML = `${tabs}<div class="card"><h2>الاتصال بخادم مزامنة</h2><p class="small">خيار متقدّم يتطلب تشغيل خادم (انظر README).</p>
@@ -491,7 +492,7 @@ const actions = {
 };
 
 $('.logo').src = logoUrl; { const l = document.createElement('link'); l.rel = 'icon'; l.href = logoUrl; document.head.append(l); }
-initPlan({ project, save, rerender, view, empty }); initSheets({ db, project, save, view, empty, ask, toast, myCenters, route: () => route }); initOps({ db, project, save, view, empty, ask, toast, myCenters }); initBuilder({ project, save, rerender }); initGloss({ view, ask }); initFix({ db, ui, go, toast, openSession, openOp, route: () => route }); Object.assign(actions, fixActions); initSettings({ view, db, ask, askText }); initUsers({ db, sync, save, view, toast, ask, ROUTES, capi, me }); wireUsers(); Object.assign(actions, usersActions(), authActions, teamActions()); initTeam({ db, toast, dl, rerender }); initBnf({ view, db, ask, ui }); Object.assign(actions, offlineActions, bnfActions({ toast, ask, save, rerender, dl }), glossActions({ toast, dl }), settingsActions({ toast, dl, go, save, rerender, ui, ask })); loadConfig(await kvGet('config'), DTYPES); setPrintCfg(await kvGet('printcfg')); await load(); { const bf = () => { if (backfillEnrollments(db)) save(); }; bf(); let bt; window.addEventListener('nawa:dbsave', () => { clearTimeout(bt); bt = setTimeout(bf, 1500); }); } await loadGlossary(); await loadDrafts(); try { if (localStorage.getItem('nawa.nonav')) document.body.classList.add('nonav'); } catch { /* خاص */ } initTheme(); applyDoc(); await startAuth(); nav(); go('dash'); initHints(view); initCopy({ toast }); initOffline(); initPlaceholders(); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
+initPlan({ project, save, rerender, view, empty }); initSheets({ db, project, save, view, empty, ask, toast, myCenters, route: () => route }); initOps({ db, project, save, view, empty, ask, toast, myCenters }); initBuilder({ project, save, rerender }); initGloss({ view, ask }); initFix({ db, ui, go, toast, openSession, openOp, route: () => route }); Object.assign(actions, fixActions); initSettings({ view, db, ask, askText }); initUsers({ db, sync, save, view, toast, ask, ROUTES, capi, me }); wireUsers(); Object.assign(actions, usersActions(), authActions, teamActions(), roleActions()); initTeam({ db, toast, dl, rerender }); initBnf({ view, db, ask, ui }); Object.assign(actions, offlineActions, bnfActions({ toast, ask, save, rerender, dl }), glossActions({ toast, dl }), settingsActions({ toast, dl, go, save, rerender, ui, ask })); loadConfig(await kvGet('config'), DTYPES); setPrintCfg(await kvGet('printcfg')); await load(); { const bf = () => { if (backfillEnrollments(db)) save(); }; bf(); let bt; window.addEventListener('nawa:dbsave', () => { clearTimeout(bt); bt = setTimeout(bf, 1500); }); } await loadGlossary(); await loadDrafts(); try { if (localStorage.getItem('nawa.nonav')) document.body.classList.add('nonav'); } catch { /* خاص */ } initTheme(); applyDoc(); await startAuth(); initDevRole({ sync, db, kvGet, kvSet, toast, nav, go, route: () => route, isFolder, inArtifact: IN_ARTIFACT }); await ensureRole(); nav(); go('dash'); initHints(view); initCopy({ toast }); initOffline(); initPlaceholders(); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
 setInterval(() => { if (sync.cfg.auto) doSync(); else setSyncBadge(); }, 60000);
 window.addEventListener('online', () => sync.cfg.auto && doSync());
 window.addEventListener('nawa:drafts', () => nav());
