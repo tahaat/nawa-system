@@ -2,7 +2,7 @@
 // تُحفظ على جهاز المدير فقط (kv) ولا تدخل في المزامنة، لأنها تحوي بريدًا.
 import ExcelJS from 'exceljs';
 import { kvGet, kvSet } from './store.js';
-import { SHARE_RULES, roleFrom, sharePlan, ACC_AR, folderOf } from '../core/share.js';
+import { SHARE_RULES, roleFrom, sharePlan, ACC_AR, folderOf, groupsOf, groupAccess } from '../core/share.js';
 const ROLE_AR = { admin: 'مدير النظام (IT)', meal: 'منسق/مسؤول المتابعة والتقييم', projects: 'مسؤول مشاريع', coordinator: 'منسق', facilitator: 'منشط / تربوي', entry: 'مدخل بيانات (المكتب)' };
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const $ = (s, r = document) => r.querySelector(s);
@@ -19,17 +19,20 @@ export function teamCard() {
   <div class="tw"><table><tr><th>المركز</th><th>اسم المجلد في OneDrive</th><th></th></tr>${cs.map((c) => `<tr><td>${esc(c.name)}</td><td dir="ltr"><code>${esc(folderOf(c))}</code></td><td><button class="sec" data-act="tmCopy" data-t="${esc(folderOf(c))}">نسخ</button></td></tr>`).join('') || '<tr><td colspan="3">لا مراكز</td></tr>'}</table></div></div>`;
   const rows = team.map((p) => { const pl = sharePlan(p, cs);
     return `<tr><td>${esc(p.name)}</td><td dir="ltr">${esc(p.email || '')}</td><td>${esc(ROLE_AR[p.role] || '؟ غير محدد')}</td><td>${esc(cname(p.center) || (SHARE_RULES[p.role]?.centers === 'all' ? 'كل المراكز' : '—'))}</td>
+    <td class="small">${groupsOf(p, cs).map((g) => `<div><code dir="ltr">${esc(g)}</code></div>`).join('') || '—'}</td>
     <td class="small">${pl.map((x) => x.access ? `<div><code dir="ltr">${esc(x.folder)}</code> — ${ACC_AR[x.access]}</div>` : `<div><span class="badge b-warn">${esc(x.note || x.label)}</span></div>`).join('') || '<span class="badge b-warn">حدّد الدور</span>'}</td>
     <td><button class="sec" data-act="tmDel" data-id="${esc(p.id)}">حذف</button></td></tr>`; }).join('');
   const form = `<div class="row"><label>الاسم<input id="tmn"></label><label>البريد (حساب Microsoft)<input id="tme" dir="ltr" type="email" style="width:240px"></label>
   <label>الدور<select id="tmr"><option value="">— اختر —</option>${Object.entries(ROLE_AR).map(([k, t]) => `<option value="${k}">${t}</option>`).join('')}</select></label>
   <label>المركز<select id="tmc"><option value="">— (لأدوار كل المراكز) —</option>${cs.map((c) => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}</select></label>
   <button data-act="tmAdd">+ إضافة</button></div>`;
-  return map + `<div class="card"><h2>الفريق المخوَّل بالعمل على النظام</h2>
+  const gmap = `<div class="card"><h2>مجموعات Microsoft 365 ↔ المجلدات (تُنشأ وتُشارَك مرة واحدة)</h2><p class="small">شارك كل مجلد مع المجموعة المقابلة مرة واحدة فقط؛ بعدها يكفي إضافة الموظف إلى مجموعته من مركز إدارة Microsoft 365 (Teams والمجموعات ← المجموعات النشطة). منسق/منشط المركز: مجموعة <code dir="ltr">Nawa-Field</code> + مجموعة مركزه.</p>
+  <div class="tw"><table><tr><th>المجموعة</th><th>المجلدات وصلاحيتها</th></tr>${groupAccess(cs).map((g) => `<tr><td dir="ltr"><code>${esc(g.group)}</code></td><td class="small">${g.items.map((x) => `<code dir="ltr">${esc(x.folder)}</code> — ${ACC_AR[x.access]}`).join(' · ')}</td></tr>`).join('')}</table></div></div>`;
+  return map + gmap + `<div class="card"><h2>الفريق المخوَّل بالعمل على النظام</h2>
   <p class="small">أضف كل شخص بدوره ومركزه، فيظهر أي مجلدات تُشارَك معه. لا يُرسل شيء من هنا: تُنفَّذ المشاركة من OneDrive نفسه (زر أيمن على المجلد ← مشاركة ← أدخل البريد ← «يمكنه التحرير» أو «يمكنه العرض»). هذه القائمة محفوظة على هذا الجهاز فقط.</p>
   ${form}
   <div class="row" style="margin:8px 0"><label>استيراد من Excel<input type="file" id="tmf" accept=".xlsx"></label><button class="sec" data-act="tmImp">استيراد</button><button class="sec" data-act="tmTpl">قالب الاستيراد</button><button class="sec" data-act="tmExp" ${team.length ? '' : 'disabled'}>تصدير خطة المشاركة (Excel)</button></div><p id="tmmsg" class="small"></p>
-  <div class="tw"><table><tr><th>الاسم</th><th>البريد</th><th>الدور</th><th>المركز</th><th>المجلدات التي تُشارَك معه</th><th></th></tr>${rows || '<tr><td colspan="6">لا أحد بعد</td></tr>'}</table></div></div>`;
+  <div class="tw"><table><tr><th>الاسم</th><th>البريد</th><th>الدور</th><th>المركز</th><th>المجموعات التي يُضاف إليها</th><th>المجلدات (للتحقق)</th><th></th></tr>${rows || '<tr><td colspan="7">لا أحد بعد</td></tr>'}</table></div></div>`;
 }
 
 const toBuf = async (wb) => new Blob([await wb.xlsx.writeBuffer()], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -64,9 +67,9 @@ export const teamActions = () => ({
   },
   async tmExp() {
     const wb = new ExcelJS.Workbook(), a = wb.addWorksheet('خطة المشاركة', { views: [{ rightToLeft: true }] }), b = wb.addWorksheet('مجلدات المراكز', { views: [{ rightToLeft: true }] });
-    a.addRow(['الاسم', 'البريد', 'الدور', 'المجلد', 'الصلاحية في OneDrive']); a.getRow(1).font = { bold: true };
-    for (const p of team) for (const x of sharePlan(p, C.db.centers)) if (x.access) a.addRow([p.name, p.email, ROLE_AR[p.role], x.folder, ACC_AR[x.access]]);
-    [24, 30, 30, 26, 22].forEach((w, i) => (a.getColumn(i + 1).width = w));
+    a.addRow(['الاسم', 'البريد', 'الدور', 'المجموعات', 'المجلد', 'الصلاحية في OneDrive']); a.getRow(1).font = { bold: true };
+    for (const p of team) { const g = groupsOf(p, C.db.centers).join(' + '); for (const x of sharePlan(p, C.db.centers)) if (x.access) a.addRow([p.name, p.email, ROLE_AR[p.role], g, x.folder, ACC_AR[x.access]]); }
+    [24, 30, 30, 34, 26, 22].forEach((w, i) => (a.getColumn(i + 1).width = w));
     b.addRow(['المركز', 'اسم المجلد']); b.getRow(1).font = { bold: true }; C.db.centers.forEach((c) => b.addRow([c.name, folderOf(c)])); b.getColumn(1).width = 34; b.getColumn(2).width = 30;
     await C.dl(await toBuf(wb), 'خطة-مشاركة-المجلدات.xlsx');
   },

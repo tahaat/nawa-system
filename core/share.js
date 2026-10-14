@@ -36,3 +36,27 @@ export function sharePlan(p, centers) {
   return out;
 }
 export const ACC_AR = { edit: 'تحرير', view: 'عرض فقط' };
+
+// مجموعات Microsoft 365 (تُنشأ مرة واحدة؛ الموظف الجديد يُضاف إليها فقط بدل مشاركة كل مجلد)
+// مجموعات الأدوار: Nawa-Admin-MEAL / Nawa-Projects / Nawa-Entry / Nawa-Field · ومجموعة لكل مركز: Nawa-<اسم المجلد بلا c->
+export const GRP = { adminMeal: 'Nawa-Admin-MEAL', projects: 'Nawa-Projects', entry: 'Nawa-Entry', field: 'Nawa-Field' };
+export const centerGroup = (c) => 'Nawa-' + (c.folder || c.id);
+export function groupsOf(p, centers) {
+  const k = p.role, out = [];
+  if (k === 'admin' || k === 'meal') out.push(GRP.adminMeal);
+  else if (k === 'projects') out.push(GRP.projects);
+  else if (k === 'entry') out.push(GRP.entry);
+  else if (k === 'coordinator' || k === 'facilitator') { out.push(GRP.field); const c = centers.find((x) => x.id === p.center); if (c) out.push(centerGroup(c)); }
+  return out;
+}
+// لكل مجموعة: أي مجلد وبأي صلاحية تُشارَك معها (مرة واحدة)
+export function groupAccess(centers) {
+  const all = (acc) => centers.map((c) => ({ folder: folderOf(c), access: acc }));
+  return [
+    { group: GRP.adminMeal, items: [{ folder: 'NawaSync (الكل)', access: 'edit' }] },
+    { group: GRP.projects, items: [{ folder: 'core', access: 'edit' }, ...all('view')] },
+    { group: GRP.entry, items: [{ folder: 'core', access: 'view' }, { folder: 'pii', access: 'edit' }, ...all('edit')] },
+    { group: GRP.field, items: [{ folder: 'core', access: 'view' }] },
+    ...centers.map((c) => ({ group: centerGroup(c), items: [{ folder: folderOf(c), access: 'edit' }] })),
+  ];
+}

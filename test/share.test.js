@@ -22,3 +22,11 @@ test('أسماء مجلدات المراكز مقروءة وفريدة ومثب�
   c[0].name = 'اسم جديد'; assert.equal(assignFolders(c), 0); assert.equal(folderOf(c[0]), 'c-مركز-زيتونة'); // لا يتغير بتغيّر الاسم
   setFolderMap(c); assert.equal(chanOf('sessions', { centerId: 'c_1' }), 'c-مركز-زيتونة'); assert.equal(chanOf('sheets', { centerId: 'غير' }), 'c-غير');
 });
+
+import { groupsOf, groupAccess } from '../core/share.js';
+test('المجموعات لكل دور', () => {
+  const c = [{ id: 'c_a', name: 'مركز زيتونة', folder: 'مركز-زيتونة' }, { id: 'c_b', name: 'ب', folder: 'ب' }];
+  assert.deepEqual(groupsOf({ role: 'meal' }, c), ['Nawa-Admin-MEAL']); assert.deepEqual(groupsOf({ role: 'projects' }, c), ['Nawa-Projects']); assert.deepEqual(groupsOf({ role: 'entry' }, c), ['Nawa-Entry']);
+  assert.deepEqual(groupsOf({ role: 'facilitator', center: 'c_a' }, c), ['Nawa-Field', 'Nawa-مركز-زيتونة']); assert.deepEqual(groupsOf({ role: 'coordinator' }, c), ['Nawa-Field']);
+  const g = groupAccess(c); assert.equal(g.length, 4 + 2); assert.deepEqual(g.find((x) => x.group === 'Nawa-مركز-زيتونة').items, [{ folder: 'c-مركز-زيتونة', access: 'edit' }]);
+});
