@@ -4,7 +4,10 @@ import { dirFromHandle } from './fsdir.js';
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const KEY = 'nawa.devrole';
 let C, fails = 0, lockUntil = 0;
-export const initDevRole = (c) => { C = c; };
+export const initDevRole = (c) => {
+  C = c; wireEyes(document);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target?.id?.startsWith('pin_')) { e.preventDefault(); document.querySelector('[data-act=pinsSave]')?.click(); } });
+};
 const active = () => !!C && C.isFolder() && !C.inArtifact();
 const load = () => { try { const r = JSON.parse(localStorage.getItem(KEY) || 'null'); return r && DEV_ROLES[r.role] ? r : null; } catch { return null; } };
 const store = (r) => { try { r ? localStorage.setItem(KEY, JSON.stringify(r)) : localStorage.removeItem(KEY); } catch { /* خاص */ } };
@@ -13,6 +16,17 @@ export const devRoleKey = () => (active() ? load()?.role || '' : '');
 export const canManage = () => !active() || !load() || ['admin', 'meal'].includes(load().role);   // بطاقة الفريق
 export const canPins = () => !active() || !load() || load().role === 'admin';
 export const roleChip = () => { if (!active()) return ''; const r = load(); if (!r) return ''; const cn = r.center ? C.db.centers.find((c) => c.id === r.center)?.name : ''; return `<button class="sec" data-act="roleSwitch" title="تبديل الدور على هذا الجهاز">${esc(DEV_ROLES[r.role].ar)}${cn ? ' · ' + esc(cn) : ''}</button>`; };
+
+
+// حقل سرّي بزر عين لإظهار/إخفاء ما يُكتب
+const EYE = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const EYE_OFF = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.9 10.9 0 0 1 12 19c-7 0-11-7-11-7a19.8 19.8 0 0 1 5.06-5.94M9.9 4.24A10.9 10.9 0 0 1 12 4c7 0 11 7 11 7a19.9 19.9 0 0 1-3.17 4.19M1 1l22 22"/></svg>';
+export const eyeIcon = () => EYE;
+export const secretInput = (id, { w = '' } = {}) => `<span class="pw"><input id="${id}" type="password" autocomplete="off" dir="ltr" ${w ? `style="width:${w}"` : ''}><button type="button" class="eye" data-eye="${id}" aria-label="إظهار/إخفاء" title="إظهار/إخفاء">${EYE}</button></span>`;
+// يربط أزرار العين داخل root (تفويض الأحداث)
+export function wireEyes(root) {
+  root.addEventListener('click', (e) => { const b = e.target.closest?.('[data-eye]'); if (!b) return; e.preventDefault(); const i = root.querySelector('#' + b.dataset.eye); if (!i) return; const show = i.type === 'password'; i.type = show ? 'text' : 'password'; b.innerHTML = show ? EYE_OFF : EYE; i.focus(); });
+}
 
 // ---- المُتحقِّقات: من core/roles.pin (تصل كل الأجهزة عبر OneDrive) أو النسخة المخزّنة محليًا
 async function fromFile(askPerm) {
@@ -57,8 +71,8 @@ function pick({ cancelable }) {
       if (d.pin && !boot && !vs[role]) { dlg.innerHTML = `<h2>${esc(d.ar)}</h2><p>لم يضبط المدير رمز هذا الدور بعد، أو لم يُختَر مجلد المزامنة على هذا الجهاز بعد. اختر المجلد وزامن، ثم أعد المحاولة.</p><div class="row"><button class="sec" id="rp-b">رجوع</button></div>`; q('#rp-b').onclick = home; return; }
       dlg.innerHTML = `<h2>${esc(d.ar)}</h2>
         ${d.center ? `<label>المركز<select id="rp-c">${centers.map((c) => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}</select></label>` : ''}
-        ${boot ? `<p class="small">لم تُضبط رموز بعد. أنشئ رمز المدير الآن (${PIN_MIN} خانات على الأقل)؛ ثم تضبط رموز بقية الأدوار من «السحابة والمزامنة».</p><label>رمز المدير الجديد<input id="rp-p1" autocomplete="off" dir="ltr"></label><label>أعد كتابته<input id="rp-p2" autocomplete="off" dir="ltr"></label>`
-          : d.pin ? `<label>رمز هذا الدور<input id="rp-p1" type="password" autocomplete="off" dir="ltr"></label>` : ''}
+        ${boot ? `<p class="small">لم تُضبط رموز بعد. أنشئ رمز المدير الآن (${PIN_MIN} خانات على الأقل)؛ ثم تضبط رموز بقية الأدوار من «السحابة والمزامنة».</p><label>رمز المدير الجديد${secretInput('rp-p1')}</label><label>أعد كتابته${secretInput('rp-p2')}</label>`
+          : d.pin ? `<label>رمز هذا الدور${secretInput('rp-p1')}</label>` : ''}
         <p id="rp-m" class="small"></p><div class="row"><button id="rp-ok">متابعة</button><button class="sec" id="rp-b">رجوع</button></div>`;
       q('#rp-b').onclick = home; (q('#rp-p1') || q('#rp-ok')).focus();
       q('#rp-ok').onclick = async () => {
@@ -71,6 +85,7 @@ function pick({ cancelable }) {
         if (++fails >= 5) { lockUntil = Date.now() + 30000; fails = 0; return msg('خمس محاولات خاطئة؛ انتظر 30 ثانية'); } msg('الرمز غير صحيح');
       };
     };
+    wireEyes(w); w.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.tagName !== 'BUTTON' && q('#rp-ok')) { e.preventDefault(); q('#rp-ok').click(); } if (e.key === 'Escape' && cancelable) close(false); });
     home(); document.body.append(w);
   });
 }
@@ -97,4 +112,4 @@ export const roleActions = () => ({
 });
 export const pinsCard = () => !canPins() ? '' : `<div class="card"><h2>رموز الأدوار العليا</h2>
   <p class="small">لكل دور رمز مختلف (${PIN_MIN} خانات على الأقل). يختاره الموظف عند اختيار دوره على جهازه. اترك الحقل فارغًا ليبقى الرمز الحالي. الرمز لا يُحفظ نصًا، بل بصمة مملّحة في <code>core/roles.pin</code>. هذا يمنع الخطأ العادي، أما حماية البيانات فمن مشاركة OneDrive. إن نسيت رمز المدير: احذف الملف <code>core/roles.pin</code> من OneDrive ثم اختر دور المدير من جديد.</p>
-  <div class="row">${PIN_ROLES.map((r) => `<label>${esc(DEV_ROLES[r].ar)}<input id="pin_${r}" autocomplete="off" dir="ltr" style="width:160px"></label>`).join('')}<button data-act="pinsSave">حفظ الرموز</button></div><p id="pinmsg" class="small"></p></div>`;
+  <div class="row">${PIN_ROLES.map((r) => `<label>${esc(DEV_ROLES[r].ar)}${secretInput('pin_' + r, { w: '140px' })}</label>`).join('')}<button data-act="pinsSave">حفظ الرموز</button></div><p id="pinmsg" class="small"></p></div>`;

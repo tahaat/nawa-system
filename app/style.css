@@ -201,3 +201,5 @@ body.entry #side{display:none}body.entry main{padding-bottom:84px}
 body.entry #tabbar{display:flex;position:fixed;inset-inline:0;bottom:0;z-index:40;background:var(--card,#fff);border-top:3px solid var(--gold,#e6a901);padding-bottom:env(safe-area-inset-bottom)}
 body.entry #tabbar a{flex:1;text-align:center;padding:.95rem .3rem;font-weight:700;cursor:pointer;color:inherit}body.entry #tabbar a.on{background:var(--brand,#a21008);color:#fff}
 body.entry button,body.entry input,body.entry select{min-height:44px}body.entry .tools label:not(:first-child),body.entry [data-act=side]{display:none}
+.pw{position:relative;display:inline-flex;align-items:center;width:100%}.pw input{width:100%;padding-inline-end:40px}.pw .eye{position:absolute;inset-inline-end:4px;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--muted,#7a6a68);padding:6px;cursor:pointer;display:flex;box-shadow:none}.pw .eye:hover{color:var(--ink,#333)}
+.row .pw{width:auto}

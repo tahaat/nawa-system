@@ -39,5 +39,9 @@ await pg.click('[data-act=roleSwitch]'); await pg.click('#rp-x'); // إلغاء
 await pg.click('[data-act=roleSwitch]'); await roleBtn('admin'); await pg.fill('#rp-p1', 'Admin-2026'); await pg.click('#rp-ok'); await pg.waitForSelector('#rolepick', { state: 'detached' });
 await pg.evaluate(() => window.__nawa.go('cloud')); await pg.waitForSelector('#pin_meal'); await pg.fill('#pin_meal', 'Typing-123'); await pg.evaluate(async () => { document.querySelector('#pin_meal').blur(); await new Promise((r) => setTimeout(r, 200)); document.getElementById('ca')?.dispatchEvent(new Event('change', { bubbles: true })); });
 await pg.waitForTimeout(6500); log('ما كُتب في حقل الرمز يبقى بعد المزامنة التلقائية', (await pg.inputValue('#pin_meal')) === 'Typing-123');
+// 9) العين وEnter
+await pg.click('[data-act=roleSwitch]'); await roleBtn('meal'); const t0 = await pg.getAttribute('#rp-p1', 'type'); await pg.fill('#rp-p1', 'Meal-2026'); await pg.click('[data-eye=rp-p1]'); const t1 = await pg.getAttribute('#rp-p1', 'type');
+log('الرمز مخفي ثم يظهر بالعين (' + t0 + '→' + t1 + ')', t0 === 'password' && t1 === 'text'); await pg.click('[data-eye=rp-p1]'); log('العين تخفيه ثانية', (await pg.getAttribute('#rp-p1', 'type')) === 'password');
+await pg.press('#rp-p1', 'Enter'); await pg.waitForSelector('#rolepick', { state: 'detached', timeout: 5000 }); log('Enter يدخل الدور', (await pg.textContent('[data-act=roleSwitch]')).includes('المتابعة'));
 log('لا أخطاء في الصفحة: ' + (errs.join('|') || '—'), errs.length === 0);
 await b.close();
