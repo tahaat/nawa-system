@@ -35,5 +35,9 @@ await pg.reload(); await pg.waitForTimeout(1200); log('الدور محفوظ ب�
 await pg.evaluate(async () => { const r = await navigator.storage.getDirectory(); const d = await r.getDirectoryHandle('core'); const fh = await d.getFileHandle('roles.pin'); const j = JSON.parse(await (await fh.getFile()).text()); j.roles.projects.hash = 'AAAAAAAAAAAA' + j.roles.projects.hash.slice(12); const w = await fh.createWritable(); await w.write(JSON.stringify(j)); await w.close(); });
 await pg.evaluate(async () => { await window.__nawa.useHandle(await navigator.storage.getDirectory()); });
 await pg.click('[data-act=roleSwitch]'); await pg.click('#rp-x'); // إلغاء
+// 8) الكتابة في حقل الرمز لا تُمسح عند مزامنة تلقائية
+await pg.click('[data-act=roleSwitch]'); await roleBtn('admin'); await pg.fill('#rp-p1', 'Admin-2026'); await pg.click('#rp-ok'); await pg.waitForSelector('#rolepick', { state: 'detached' });
+await pg.evaluate(() => window.__nawa.go('cloud')); await pg.waitForSelector('#pin_meal'); await pg.fill('#pin_meal', 'Typing-123'); await pg.evaluate(async () => { document.querySelector('#pin_meal').blur(); await new Promise((r) => setTimeout(r, 200)); document.getElementById('ca')?.dispatchEvent(new Event('change', { bubbles: true })); });
+await pg.waitForTimeout(6500); log('ما كُتب في حقل الرمز يبقى بعد المزامنة التلقائية', (await pg.inputValue('#pin_meal')) === 'Typing-123');
 log('لا أخطاء في الصفحة: ' + (errs.join('|') || '—'), errs.length === 0);
 await b.close();

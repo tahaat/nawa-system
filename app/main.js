@@ -335,6 +335,9 @@ const engine = () => createSync({ db, meta: sync.meta, cfg: sync.cfg });
 let fsync = null, fsyncFor = null;
 const folderEngine = () => { if (!sync.handle) return null; if (!fsync || fsyncFor !== sync.handle) { fsync = createFolderSync({ db, meta: sync.fmeta, dir: dirFromHandle(sync.handle) }); fsyncFor = sync.handle; } return fsync; };
 const isFolder = () => sync.cfg.mode === 'folder';
+// لا نعيد رسم شاشة السحابة أثناء الكتابة فيها (رموز الأدوار/الفريق) وإلا ضاع ما كُتب؛ نحدّث سطر الحالة فقط
+const cloudBusy = () => { const v = $('#view'); if (!v) return false; if (document.activeElement?.closest?.('#view input,#view select,#view textarea')) return true; return [...v.querySelectorAll('input:not([type=checkbox]):not([type=file]),textarea')].some((i) => i.value && i.value.trim()); };
+function cloudRefresh() { if (route !== 'cloud') return; if (cloudBusy()) { const m = $('#cmsg'); if (m) m.textContent = syncMsg; return; } vCloud(); }
 let fstate = '';   // granted | prompt | none
 async function folderPerm(ask) { if (!sync.handle) return (fstate = 'none'); try { let p = await sync.handle.queryPermission({ mode: 'readwrite' }); if (p !== 'granted' && ask) p = await sync.handle.requestPermission({ mode: 'readwrite' }); return (fstate = p); } catch { return (fstate = 'none'); } }
 const prepFolders = () => { if (assignFolders(db.centers)) save(); setFolderMap(db.centers); };
@@ -344,14 +347,14 @@ async function doSyncFolder(opts, ask) {
   syncing = true; setSyncBadge('⟳ مزامنة…');
   try { const r = await folderEngine().sync(opts); if (!project()) ui.projectId = db.projects[0]?.id || null; save(); revalidate(); syncMsg = `تمت المزامنة: كُتب ${r.wrote} ملف وطُبّق ${r.applied} سجل${r.deleted ? ` وحُذف ${r.deleted}` : ''} (${new Date().toLocaleTimeString('ar')})${r.errors.length ? ' — ⚠ ' + r.errors.join(' | ') : ''}`; if ((r.applied || r.deleted) && ['dash', 'sessions', 'bnf', 'check'].includes(route) && !document.activeElement?.closest('#view input,#view select')) rerender(); }
   catch (e) { syncMsg = 'تعذّرت المزامنة: ' + e.message; }
-  syncing = false; setSyncBadge(); if (route === 'cloud') vCloud();
+  syncing = false; setSyncBadge(); cloudRefresh();
 }
 async function doSync(opts) {
   if (isFolder()) return doSyncFolder(opts);
   if (syncing || !sync.cfg.url || !sync.cfg.token) return; syncing = true; setSyncBadge('⟳ مزامنة…');
   try { try { sync.cfg.me = await engine().me(); } catch (e) { if (/رمز/.test(e.message)) throw e; } const r = await engine().sync(opts); if (!project()) ui.projectId = db.projects[0]?.id || null; save(); syncMsg = `تمت المزامنة: دُفع ${r.pushed} وسُحب ${r.pulled} (${new Date().toLocaleTimeString('ar')})`; if (r.pulled && ['dash', 'sessions', 'bnf', 'check'].includes(route) && !document.activeElement?.closest('#view input,#view select')) rerender(); }
   catch (e) { syncMsg = 'تعذّرت المزامنة: ' + e.message + ' — البيانات محفوظة محليًا وستُرسل لاحقًا'; if (/رمز/.test(e.message)) { sync.cfg.token = ''; sync.cfg.me = null; save(); nav(); showLogin({ msg: 'انتهت الجلسة أو أُلغي هذا الجهاز؛ سجّل الدخول من جديد', onDone: afterLogin }); } }
-  syncing = false; nav(); setSyncBadge(); if (route === 'cloud') vCloud();
+  syncing = false; nav(); setSyncBadge(); cloudRefresh();
 }
 function setSyncBadge(t) { const el = $('#sync'); if (!el) return; const pend = isFolder() ? (folderEngine()?.pending() || 0) : (sync.cfg.url ? engine().pending().length : 0); el.textContent = t || ((isFolder() ? !sync.handle : !sync.cfg.url) ? 'غير مرتبط بالسحابة' : syncMsg.startsWith('تعذّر') ? `⚠ غير متصل — ${pend} تغيير معلّق` : `☁ ${pend ? pend + ' تغيير معلّق' : 'متزامن'}`); }
 async function afterLogin() { try { sync.cfg.me = await engine().me(); } catch { /* */ } save(); nav(); go(Object.keys(ROUTES).find(allowed) || 'dash'); await doSync({ firstMode: db.projects.length ? 'merge' : 'replace' }); nav(); }
