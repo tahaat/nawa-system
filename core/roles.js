@@ -1,6 +1,6 @@
 // أدوار الجهاز (وضع مجلد OneDrive): تسهيل في الواجهة وليس حماية؛ الحماية الفعلية هي مشاركة المجلدات.
 // الأدوار العليا تُقفل برمز لكل دور (PBKDF2 مملّح)، ويُحفظ المُتحقِّق في core/roles.pin فيصل كل الأجهزة.
-export const PIN_MIN = 6;
+export const PIN_MIN = 4;   // أرقام فقط، 4 فأكثر بلا حد أعلى
 export const DEV_ROLES = {
   admin: { ar: 'مدير النظام (IT)', pin: true, routes: '*' },
   meal: { ar: 'المتابعة والتقييم', pin: true, routes: '*' },
@@ -17,15 +17,18 @@ export function roleMe(role, center = '') {
   const d = DEV_ROLES[role]; if (!d) return null;
   return { name: '', role, centers: center ? [center] : [], policy: { routes: d.routes, manageUsers: false, write: { sessions: d.center ? 'own' : 'all' } } };
 }
+// الأرقام العربية/الفارسية (٠-٩ ۰-۹) تُحوَّل إلى لاتينية كي يعمل الرمز بأي لوحة مفاتيح
+export const normPin = (p) => String(p ?? '').trim().replace(/[٠-٩]/g, (c) => String(c.charCodeAt(0) - 0x660)).replace(/[۰-۹]/g, (c) => String(c.charCodeAt(0) - 0x6f0));
+export const pinProblem = (p) => { const n = normPin(p); if (!/^\d+$/.test(n)) return 'الرمز أرقام فقط'; if (n.length < PIN_MIN) return `الرمز ${PIN_MIN} أرقام على الأقل`; return ''; };
 const enc = new TextEncoder();
 const b64 = (u) => btoa(String.fromCharCode(...u));
 const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 async function derive(pin, salt, it) {
-  const k = await crypto.subtle.importKey('raw', enc.encode(String(pin).trim()), 'PBKDF2', false, ['deriveBits']);
+  const k = await crypto.subtle.importKey('raw', enc.encode(normPin(pin)), 'PBKDF2', false, ['deriveBits']);
   return new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: it }, k, 256));
 }
 export async function makeVerifier(pin, it = 150000) {
-  if (String(pin).trim().length < PIN_MIN) throw new Error(`الرمز ${PIN_MIN} خانات على الأقل`);
+  const bad = pinProblem(pin); if (bad) throw new Error(bad);
   const salt = crypto.getRandomValues(new Uint8Array(16));
   return { salt: b64(salt), it, hash: b64(await derive(pin, salt, it)) };
 }

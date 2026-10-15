@@ -14,32 +14,32 @@ await pg.evaluate(async () => { const r = await navigator.storage.getDirectory()
 // 3) مدير: رفض الرمز القصير، ثم إنشاء الرمز
 await pg.click('[data-act=roleSwitch]').catch(() => {}); 
 if (!(await pg.$('#rolepick'))) await pg.evaluate(() => document.querySelector('[data-act=roleSwitch]')?.click());
-await roleBtn('admin'); await pg.fill('#rp-p1', 'abc'); await pg.fill('#rp-p2', 'abc'); await pg.click('#rp-ok'); await msgSet(); log('رفض رمز قصير', /6/.test(await pg.textContent('#rp-m')));
-await pg.fill('#rp-p1', 'Admin-2026'); await pg.fill('#rp-p2', 'Admin-2026'); await pg.press('#rp-p2', 'Enter'); await closed();
+await roleBtn('admin'); await pg.fill('#rp-p1', '123'); await pg.fill('#rp-p2', '123'); await pg.click('#rp-ok'); await msgSet(); log('رفض رمز قصير', /4/.test(await pg.textContent('#rp-m')));
+await pg.fill('#rp-p1', '482915'); await pg.fill('#rp-p2', '482915'); await pg.press('#rp-p2', 'Enter'); await closed();
 l = await links(); log('المدير يرى كل الشاشات (' + l.length + ')', l.includes('settings') && l.includes('cloud'));
 const f = await pg.evaluate(async () => { const r = await navigator.storage.getDirectory(); const d = await r.getDirectoryHandle('core'); try { return await (await (await d.getFileHandle('roles.pin')).getFile()).text(); } catch { return null; } });
-log('roles.pin كُتب في core ولا يحوي الرمز نصًا', !!f && !f.includes('Admin-2026') && !!JSON.parse(f).roles.admin?.hash);
+log('roles.pin كُتب في core ولا يحوي الرمز نصًا', !!f && !f.includes('482915') && !!JSON.parse(f).roles.admin?.hash);
 // 4) بطاقة الرموز: مشاريع + متابعة + مدخل بيانات
 await pg.evaluate(() => window.__nawa.go('cloud')); await pg.waitForSelector('#pin_entry');
-await pg.fill('#pin_projects', 'Proj-2026'); await pg.fill('#pin_meal', 'Meal-2026'); await pg.fill('#pin_entry', 'Entry-2026'); await pg.press('#pin_entry', 'Enter');
+await pg.fill('#pin_projects', '731904'); await pg.fill('#pin_meal', '205861'); await pg.fill('#pin_entry', '6159'); await pg.press('#pin_entry', 'Enter');
 await pg.waitForFunction(() => /حُفظت/.test(document.getElementById('pinmsg')?.textContent || '')); log('حفظ الرموز الثلاثة (Enter)', /المجلد/.test(await pg.textContent('#pinmsg')));
 // 5) مدخل البيانات: رمز خاطئ ثم صحيح
-await pg.click('[data-act=roleSwitch]'); await roleBtn('entry'); await pg.fill('#rp-p1', 'Proj-2026'); await pg.press('#rp-p1', 'Enter'); await msgSet(); log('رمز دور آخر لا يفتح المدخل', /غير صحيح/.test(await pg.textContent('#rp-m')));
-await pg.fill('#rp-p1', 'Entry-2026'); await pg.press('#rp-p1', 'Enter'); await closed();
+await pg.click('[data-act=roleSwitch]'); await roleBtn('entry'); await pg.fill('#rp-p1', '731904'); await pg.press('#rp-p1', 'Enter'); await msgSet(); log('رمز دور آخر لا يفتح المدخل', /غير صحيح/.test(await pg.textContent('#rp-m')));
+await pg.fill('#rp-p1', '6159'); await pg.press('#rp-p1', 'Enter'); await closed();
 l = await links(); log('المدخل: لا إعدادات ولا مشاريع (' + l.join(',') + ')', !l.includes('settings') && !l.includes('projects') && l.includes('bnf'));
 // 6) مسؤول مشاريع
-await pg.click('[data-act=roleSwitch]'); await roleBtn('projects'); await pg.fill('#rp-p1', 'Admin-2026'); await pg.click('#rp-ok'); await msgSet(); log('رمز المدير لا يفتح دور المشاريع', /غير صحيح/.test(await pg.textContent('#rp-m')));
-await pg.fill('#rp-p1', 'Proj-2026'); await pg.click('#rp-ok'); await closed();
+await pg.click('[data-act=roleSwitch]'); await roleBtn('projects'); await pg.fill('#rp-p1', '482915'); await pg.click('#rp-ok'); await msgSet(); log('رمز المدير لا يفتح دور المشاريع', /غير صحيح/.test(await pg.textContent('#rp-m')));
+await pg.fill('#rp-p1', '731904'); await pg.click('#rp-ok'); await closed();
 l = await links(); log('مسؤول المشاريع: يرى المشاريع ولا الإعدادات (' + l.join(',') + ')', l.includes('projects') && !l.includes('settings'));
 await pg.evaluate(() => window.__nawa.go('cloud')); await pg.waitForTimeout(300); log('بطاقة الرموز مخفية عن غير المدير', (await pg.$('#pin_admin')) === null);
 // 7) بقاء الدور بعد التحديث
 await pg.reload(); await pg.waitForTimeout(1200); log('الدور محفوظ بعد التحديث', (await pg.$('#rolepick')) === null && (await links()).includes('projects'));
 // 8) الكتابة في حقل الرمز لا تُمسح بالمزامنة التلقائية
-await pg.click('[data-act=roleSwitch]'); await roleBtn('admin'); await pg.fill('#rp-p1', 'Admin-2026'); await pg.click('#rp-ok'); await closed();
-await pg.evaluate(() => window.__nawa.go('cloud')); await pg.waitForSelector('#pin_meal'); await pg.fill('#pin_meal', 'Typing-123'); await pg.evaluate(async () => { document.querySelector('#pin_meal').blur(); await new Promise((r) => setTimeout(r, 200)); document.getElementById('ca')?.dispatchEvent(new Event('change', { bubbles: true })); });
-await pg.waitForTimeout(6500); log('ما كُتب في حقل الرمز يبقى بعد المزامنة التلقائية', (await pg.inputValue('#pin_meal')) === 'Typing-123');
+await pg.click('[data-act=roleSwitch]'); await roleBtn('admin'); await pg.fill('#rp-p1', '482915'); await pg.click('#rp-ok'); await closed();
+await pg.evaluate(() => window.__nawa.go('cloud')); await pg.waitForSelector('#pin_meal'); await pg.fill('#pin_meal', '9988'); await pg.evaluate(async () => { document.querySelector('#pin_meal').blur(); await new Promise((r) => setTimeout(r, 200)); document.getElementById('ca')?.dispatchEvent(new Event('change', { bubbles: true })); });
+await pg.waitForTimeout(6500); log('ما كُتب في حقل الرمز يبقى بعد المزامنة التلقائية', (await pg.inputValue('#pin_meal')) === '9988');
 // 9) العين
-await pg.click('[data-act=roleSwitch]'); await roleBtn('meal'); const t0 = await pg.getAttribute('#rp-p1', 'type'); await pg.fill('#rp-p1', 'Meal-2026'); await pg.click('[data-eye=rp-p1]'); const t1 = await pg.getAttribute('#rp-p1', 'type');
+await pg.click('[data-act=roleSwitch]'); await roleBtn('meal'); const t0 = await pg.getAttribute('#rp-p1', 'type'); await pg.fill('#rp-p1', '205861'); await pg.click('[data-eye=rp-p1]'); const t1 = await pg.getAttribute('#rp-p1', 'type');
 log('الرمز مخفي ثم يظهر بالعين (' + t0 + '→' + t1 + ')', t0 === 'password' && t1 === 'text'); await pg.click('[data-eye=rp-p1]'); log('العين تخفيه ثانية', (await pg.getAttribute('#rp-p1', 'type')) === 'password');
 await pg.press('#rp-p1', 'Enter'); await closed(); log('Enter يدخل الدور', (await pg.textContent('[data-act=roleSwitch]')).includes('المتابعة'));
 log('لا أخطاء في الصفحة: ' + (errs.join('|') || '—'), errs.length === 0);
