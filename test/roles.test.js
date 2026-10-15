@@ -6,8 +6,8 @@ test('الرمز: صحيح يُقبل وخاطئ يُرفض ولا يُخزَّ�
   await assert.rejects(() => makeVerifier('12345'));
   assert.ok(!(await checkPin('x', null)));
 });
-test('الأدوار العليا هي مشاريع/متابعة/مدير فقط، وكل منها برمز مستقل', async () => {
-  assert.deepEqual(PIN_ROLES.sort(), ['admin', 'meal', 'projects']); assert.ok(!needsPin('entry') && !needsPin('facilitator') && !needsPin('coordinator'));
+test('الأدوار المقفلة: مشاريع/متابعة/مدير/مدخل بيانات، وكل منها برمز مستقل', async () => {
+  assert.deepEqual(PIN_ROLES.sort(), ['admin', 'entry', 'meal', 'projects']); assert.ok(needsPin('entry') && !needsPin('facilitator') && !needsPin('coordinator'));
   const a = await makeVerifier('Same-pin-1'), b = await makeVerifier('Same-pin-1'); assert.notEqual(a.salt, b.salt);
 });
 test('سياسة الدور: المدخل بلا إعدادات/فريق والمنشط شاشات قليلة والمنسق مركز واحد', () => {

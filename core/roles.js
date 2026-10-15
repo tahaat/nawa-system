@@ -5,9 +5,10 @@ export const DEV_ROLES = {
   admin: { ar: 'مدير النظام (IT)', pin: true, routes: '*' },
   meal: { ar: 'المتابعة والتقييم', pin: true, routes: '*' },
   projects: { ar: 'مسؤول مشاريع', pin: true, routes: ['dash', 'projects', 'plan', 'bnf', 'ops', 'sessions', 'sheets', 'check', 'export', 'cloud', 'gloss'] },
-  entry: { ar: 'مدخل بيانات (المكتب)', routes: ['bnf', 'sheets', 'sessions', 'ops', 'surveys', 'check', 'cloud', 'gloss'] },
+  entry: { ar: 'مدخل بيانات (المكتب)', pin: true, routes: ['bnf', 'sheets', 'sessions', 'ops', 'surveys', 'check', 'cloud', 'gloss'] },
   coordinator: { ar: 'منسق مركز', center: true, routes: ['dash', 'sheets', 'sessions', 'ops', 'bnf', 'surveys', 'check', 'cloud', 'gloss'] },
   facilitator: { ar: 'منشط / تربوي', center: true, routes: ['sheets', 'sessions', 'surveys', 'cloud'] },
+  setup: { ar: 'إعداد الجهاز (اختيار المجلد)', hidden: true, routes: ['cloud'] },   // مؤقت: لاختيار مجلد المزامنة قبل اختيار الدور
 };
 export const PIN_ROLES = Object.keys(DEV_ROLES).filter((k) => DEV_ROLES[k].pin);
 export const needsPin = (r) => !!DEV_ROLES[r]?.pin;

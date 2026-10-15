@@ -59,9 +59,9 @@ function pick({ cancelable }) {
     const set = (role, center, fp) => { store({ role, center: center || '', fp: fp || '' }); close(true); };
     const home = () => {
       dlg.innerHTML = `<h2>اختر دورك على هذا الجهاز</h2><p class="small">الدور يحدد الشاشات الظاهرة لك. ما تراه من بيانات يحدده OneDrive حسب مجموعاتك.</p>
-      <div style="display:grid;gap:8px">${Object.entries(DEV_ROLES).map(([k, d]) => `<button class="sec" data-r="${k}" style="text-align:start">${esc(d.ar)}${d.pin ? ' 🔒' : ''}</button>`).join('')}</div>${cancelable ? '<div class="row" style="margin-top:10px"><button class="sec" id="rp-x">إلغاء</button></div>' : ''}`;
+      <div style="display:grid;gap:8px">${Object.entries(DEV_ROLES).filter(([, d]) => !d.hidden).map(([k, d]) => `<button class="sec" data-r="${k}" style="text-align:start">${esc(d.ar)}${d.pin ? ' 🔒' : ''}</button>`).join('')}</div>${cancelable ? '<div class="row" style="margin-top:10px"><button class="sec" id="rp-x">إلغاء</button></div>' : '<p class="small" style="margin-top:10px">جهاز جديد؟ اختر مجلد المزامنة أولًا ثم عُد لاختيار دورك.</p><button class="sec" id="rp-setup">اختيار مجلد المزامنة أولًا</button>'}`;
       dlg.querySelectorAll('[data-r]').forEach((b) => (b.onclick = () => step(b.dataset.r)));
-      q('#rp-x') && (q('#rp-x').onclick = () => close(false));
+      q('#rp-x') && (q('#rp-x').onclick = () => close(false)); q('#rp-setup') && (q('#rp-setup').onclick = () => { set('setup'); setTimeout(() => { C.nav(); C.go('cloud'); }, 0); });
     };
     const step = async (role) => {
       const d = DEV_ROLES[role]; const centers = C.db.centers;
@@ -97,7 +97,9 @@ export async function ensureRole() {
 }
 // بعد كل مزامنة ناجحة: إن غيّر المدير رمز دوري العالي، يُطلب الرمز الجديد
 export async function revalidate() {
-  if (!active()) return; const r = load(); if (!r || !needsPin(r.role)) return;
+  if (!active()) return; const r = load();
+  if (r?.role === 'setup' && C.sync.handle && C.db.centers.length) { store(null); C.toast('تمت المزامنة؛ اختر دورك الآن'); if (await pick({ cancelable: false })) { C.nav(); C.go(C.route()); } return; }
+  if (!r || !needsPin(r.role)) return;
   const vs = await getVerifiers(false), v = vs[r.role]; if (!v) return;
   if (r.fp && fpOf(v) !== r.fp) { store(null); C.toast('غُيّر رمز دورك؛ أعد اختيار الدور'); await pick({ cancelable: false }); C.nav(); C.go(C.route()); }
 }
