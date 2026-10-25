@@ -21,11 +21,15 @@ const [dl] = await Promise.all([pg.waitForEvent('download', { timeout: 8000 }).c
 await pg.click('a[data-go=bnf]'); await pg.waitForSelector('#uqres');
 const uqTbl = async () => pg.evaluate(() => [...document.querySelectorAll('#uqres tr')].map((r) => [...r.children].map((c) => c.textContent.trim())));
 let t = await uqTbl(); log('جدول بلا تكرار يظهر (' + (t.length - 2) + ' نشاط)', t.length >= 3);
-const last = t[t.length - 1]; const uniqTotal = +last[4], sumRows = t.slice(1, -1).reduce((a, r) => a + +r[4], 0);
+const last = t[t.length - 1]; const uniqTotal = +last[3], sumRows = t.slice(1, -1).reduce((a, r) => a + +r[3], 0);
 log(`الإجمالي بلا تكرار ${uniqTotal} ≤ مجموع الصفوف ${sumRows}`, uniqTotal <= sumRows && uniqTotal > 0);
 const expected = await pg.evaluate(() => { const d = window.__nawa.db, s = new Set(); for (const x of d.sessions) if (x.mode === 'roll') for (const id of x.attendance || []) if (d.beneficiaries.some((b) => b.id === id)) s.add(id); return s.size; });
 log('الإجمالي = عدّ مستقل (' + expected + ')', uniqTotal === expected);
 await pg.selectOption('[data-uq=by]', 'center'); await pg.waitForTimeout(300); t = await uqTbl(); log('عرض حسب المركز', /المركز/.test(t[0][0]));
 await pg.selectOption('[data-uq=by]', 'project'); await pg.waitForTimeout(300); t = await uqTbl(); log('عرض حسب المشروع', /المشروع/.test(t[0][0]));
 await pg.fill('[data-uq=from]', '2099-01-01'); await pg.dispatchEvent('[data-uq=from]', 'change'); await pg.waitForTimeout(300); log('فترة بلا جلسات تعرض رسالة', /لا جلسات/.test(await pg.textContent('#uqres')));
+// الشريط الجانبي يتحرك مع التمرير ولا يبقى ثابتًا، ولا حقول وحدات/مجموعة في النموذج
+await pg.click('a[data-go=sessions]'); await pg.waitForSelector('#sfbar'); log('لا حقل وحدات ولا مجموعة', (await pg.$('#su')) === null && (await pg.$('#sg')) === null && (await pg.$('[data-sf=grp]')) === null);
+await pg.evaluate(() => window.scrollTo(0, 900)); await pg.waitForTimeout(200); const sb = await pg.evaluate(() => { const r = document.querySelector('aside').getBoundingClientRect(); return { top: r.top, h: r.height, doc: document.documentElement.scrollHeight, y: scrollY }; });
+log(`الشريط الجانبي يتحرك مع التمرير (top=${Math.round(sb.top)}, h=${Math.round(sb.h)}, page=${sb.doc})`, sb.y > 0 && sb.top < -100 && sb.h >= sb.doc - 5);
 log('لا أخطاء في الصفحة: ' + (errs.join('|') || '—'), errs.length === 0); await b.close();

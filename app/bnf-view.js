@@ -108,8 +108,8 @@ function uqCard() {
 const uqRun = () => { const db = ctx.db, cx = context(db); return { cx, r: uniqueReach(db, cx, uq, uq.by) }; };
 function paintUq() {
   const e = $('#uqres'); if (!e) return; const { r } = uqRun(), lab = { act: 'النشاط', center: 'المركز', project: 'المشروع' }[uq.by];
-  const row = (x, b = false) => `<tr${b ? ' style="font-weight:700;background:var(--soft,#f6efe9)"' : ''}><td>${esc(x.name)}${uq.by === 'act' && !b && ctx.db.projects.length > 1 ? `<div class="small">${esc(x.project)}</div>` : ''}</td><td>${x.sessions}</td><td>${x.units}</td><td>${x.instances}</td><td><b>${x.unique}</b></td><td>${x.cats.M}</td><td>${x.cats.F}</td><td>${x.cats.CWD_M}</td><td>${x.cats.CWD_F}</td><td>${x.blind || '—'}</td></tr>`;
-  e.innerHTML = r.rows.length ? `<div class="tw uq"><table><tr><th>${lab}</th><th>الجلسات</th><th>الوحدات</th><th>مرات الحضور (بتكرار)</th><th>مستفيدون بلا تكرار</th><th>ذكور</th><th>إناث</th><th>ذكور (إعاقة)</th><th>إناث (إعاقة)</th><th>حضور بالأعداد (بلا هوية)</th></tr>${r.rows.map((x) => row(x)).join('')}${row(r.total, true)}</table></div>` : '<p class="small">لا جلسات ضمن هذه المعايير.</p>';
+  const row = (x, b = false) => `<tr${b ? ' style="font-weight:700;background:var(--soft,#f6efe9)"' : ''}><td>${esc(x.name)}${uq.by === 'act' && !b && ctx.db.projects.length > 1 ? `<div class="small">${esc(x.project)}</div>` : ''}</td><td>${x.sessions}</td><td>${x.instances}</td><td><b>${x.unique}</b></td><td>${x.cats.M}</td><td>${x.cats.F}</td><td>${x.cats.CWD_M}</td><td>${x.cats.CWD_F}</td><td>${x.blind || '—'}</td></tr>`;
+  e.innerHTML = r.rows.length ? `<div class="tw uq"><table><tr><th>${lab}</th><th>الجلسات</th><th>مرات الحضور (بتكرار)</th><th>مستفيدون بلا تكرار</th><th>ذكور</th><th>إناث</th><th>ذكور (إعاقة)</th><th>إناث (إعاقة)</th><th>حضور بالأعداد (بلا هوية)</th></tr>${r.rows.map((x) => row(x)).join('')}${row(r.total, true)}</table></div>` : '<p class="small">لا جلسات ضمن هذه المعايير.</p>';
 }
 function paintList() {
   const e = $('#bnres'); if (!e) return; const db = ctx.db, q = st.q.trim(), f = st.f, need = nameNeed(), today = iso(new Date());
@@ -183,9 +183,9 @@ export function bnfActions({ toast, ask, save, rerender, dl }) {
     bfReset() { st.f = {}; st.q = ''; vBnf(); },
     async uqXl() {
       const { r } = uqRun(), wb = new ExcelJS.Workbook(), ws = wb.addWorksheet('بلا تكرار', { views: [{ rightToLeft: true }] }), lab = { act: 'النشاط', center: 'المركز', project: 'المشروع' }[uq.by];
-      ws.addRow(['الفترة', `${uq.from || 'البداية'} → ${uq.to || 'النهاية'}`]); ws.addRow([]); ws.addRow([lab, 'المشروع', 'الجلسات', 'الوحدات', 'مرات الحضور (بتكرار)', 'مستفيدون بلا تكرار', 'ذكور', 'إناث', 'ذكور (إعاقة)', 'إناث (إعاقة)', 'حضور بالأعداد (بلا هوية)']); ws.getRow(3).font = { bold: true };
-      for (const x of [...r.rows, r.total]) ws.addRow([x.name, uq.by === 'act' && x !== r.total ? x.project : '', x.sessions, x.units, x.instances, x.unique, x.cats.M, x.cats.F, x.cats.CWD_M, x.cats.CWD_F, x.blind]);
-      ws.getRow(ws.rowCount).font = { bold: true }; [38, 28, 10, 10, 18, 18, 9, 9, 13, 13, 20].forEach((w, i) => (ws.getColumn(i + 1).width = w));
+      ws.addRow(['الفترة', `${uq.from || 'البداية'} → ${uq.to || 'النهاية'}`]); ws.addRow([]); ws.addRow([lab, 'المشروع', 'الجلسات', 'مرات الحضور (بتكرار)', 'مستفيدون بلا تكرار', 'ذكور', 'إناث', 'ذكور (إعاقة)', 'إناث (إعاقة)', 'حضور بالأعداد (بلا هوية)']); ws.getRow(3).font = { bold: true };
+      for (const x of [...r.rows, r.total]) ws.addRow([x.name, uq.by === 'act' && x !== r.total ? x.project : '', x.sessions, x.instances, x.unique, x.cats.M, x.cats.F, x.cats.CWD_M, x.cats.CWD_F, x.blind]);
+      ws.getRow(ws.rowCount).font = { bold: true }; [38, 28, 10, 18, 18, 9, 9, 13, 13, 20].forEach((w, i) => (ws.getColumn(i + 1).width = w));
       await dl(new Blob([await wb.xlsx.writeBuffer()], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'المستفيدون-بلا-تكرار.xlsx');
     },
     bCancel() { st.edit = null; st.keep = []; st.pend = []; vBnf(); },
