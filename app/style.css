@@ -208,3 +208,10 @@ body.entry button,body.entry input,body.entry select{min-height:44px}body.entry 
 .pw input:not([dir=ltr]){padding-left:42px}.pw input:not([dir=ltr])+.eye{left:4px;right:auto}
 .row .pw{width:auto}
 .uqf select{max-width:240px}.uq td,.uq th{white-space:nowrap}.uq td:first-child{white-space:normal;min-width:180px}
+
+#sidefab{position:fixed;top:20px;inset-inline-start:calc(12px + 228px + 8px);z-index:5;box-shadow:0 4px 12px rgba(60,5,3,.25);transition:inset-inline-start .25s}
+body.nonav #sidefab{inset-inline-start:12px}
+.sidetog{display:none}
+@media(min-width:801px) and (max-width:1100px){#sidefab{inset-inline-start:calc(12px + 200px + 8px)}body.nonav #sidefab{inset-inline-start:12px}}
+@media(max-width:800px){#sidefab{display:none}.sidetog{display:inline-flex}}
+body.entry #sidefab{display:none}

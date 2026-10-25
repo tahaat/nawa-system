@@ -70,7 +70,9 @@ function nav() {
   entryUI();
   $('#nav').innerHTML = Object.entries(ROUTES).filter(([k]) => allowed(k)).map(([k, [t]]) => `<a data-go="${k}" class="${k === route ? 'on' : ''}">${t}</a>`).join('');
   const opts = db.projects.map((p) => `<option value="${p.id}" ${p.id === ui.projectId ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
-  $('#top').innerHTML = `<div class="tl"><button class="sec ic" data-act="side" title="إظهار/إخفاء الشريط الجانبي" aria-label="إظهار/إخفاء الشريط الجانبي">${icon('menu')}</button><h1>${ROUTES[route][0]}</h1></div><div class="tools">${roleChip()}<label>المشروع<select id="pj">${opts || '<option>— لا مشاريع —</option>'}</select></label>
+  if (!$('#sidefab')) { const b = document.createElement('button'); b.id = 'sidefab'; b.className = 'sec ic'; b.dataset.act = 'side'; b.title = 'إظهار/إخفاء الشريط الجانبي'; b.setAttribute('aria-label', b.title); document.body.appendChild(b); }
+  $('#sidefab').innerHTML = icon('menu');
+  $('#top').innerHTML = `<div class="tl"><button class="sec ic sidetog" data-act="side" title="إظهار/إخفاء الشريط الجانبي" aria-label="إظهار/إخفاء الشريط الجانبي">${icon('menu')}</button><h1>${ROUTES[route][0]}</h1></div><div class="tools">${roleChip()}<label>المشروع<select id="pj">${opts || '<option>— لا مشاريع —</option>'}</select></label>
     <button class="sec ic" data-act="bell" title="الإشعارات" aria-label="الإشعارات">${icon('bell')}${notes().length ? `<b class="dot">${notes().length}</b>` : ''}</button>
     <button class="sec ic" data-act="drafts" title="المسودات" aria-label="المسودات">${icon('clip')}${draftCount(ui.projectId) ? `<b class="dot">${draftCount(ui.projectId)}</b>` : ''}</button>
     <button class="sec ic" data-act="hints" title="التلميحات" aria-label="التلميحات">${icon('hint')}</button>
