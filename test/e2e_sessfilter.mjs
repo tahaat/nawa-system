@@ -31,5 +31,5 @@ await pg.fill('[data-uq=from]', '2099-01-01'); await pg.dispatchEvent('[data-uq=
 // الشريط الجانبي يتحرك مع التمرير ولا يبقى ثابتًا، ولا حقول وحدات/مجموعة في النموذج
 await pg.click('a[data-go=sessions]'); await pg.waitForSelector('#sfbar'); log('لا حقل وحدات ولا مجموعة', (await pg.$('#su')) === null && (await pg.$('#sg')) === null && (await pg.$('[data-sf=grp]')) === null);
 await pg.evaluate(() => window.scrollTo(0, 900)); await pg.waitForTimeout(200); const sb = await pg.evaluate(() => { const r = document.querySelector('aside').getBoundingClientRect(); return { top: r.top, h: r.height, doc: document.documentElement.scrollHeight, y: scrollY }; });
-log(`الشريط الجانبي يتحرك مع التمرير (top=${Math.round(sb.top)}, h=${Math.round(sb.h)}, page=${sb.doc})`, sb.y > 0 && sb.top < -100 && sb.h >= sb.doc - 5);
+log(`الشريط الجانبي عائم ويلازم الشاشة عند التمرير (top=${Math.round(sb.top)}, h=${Math.round(sb.h)}, page=${sb.doc})`, sb.y > 0 && Math.abs(sb.top - 12) <= 2 && sb.h < sb.doc);
 log('لا أخطاء في الصفحة: ' + (errs.join('|') || '—'), errs.length === 0); await b.close();
