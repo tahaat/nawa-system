@@ -8,7 +8,7 @@ await pg.click('a[data-go=export]'); await pg.waitForTimeout(500);
 await pg.waitForFunction(() => navigator.serviceWorker.controller || false, null, { timeout: 8000 }).catch(async () => { await pg.reload(); await pg.waitForSelector('#nav'); });
 await pg.waitForTimeout(1200); await pg.reload(); await pg.waitForSelector('#nav'); await pg.waitForTimeout(800);
 log('ملف الخدمة يتحكم بالصفحة', await pg.evaluate(() => !!navigator.serviceWorker.controller));
-const keys = await pg.evaluate(async () => (await (await caches.open('nawa-v1')).keys()).map((r) => new URL(r.url).pathname)); console.log(keys); log('الملفات الأساسية مخزّنة', keys.includes('/index.html') || keys.includes('/'));
+const keys = await pg.evaluate(async () => (await (await caches.open('nawa-v2')).keys()).map((r) => new URL(r.url).pathname)); console.log(keys); log('الملفات الأساسية مخزّنة', keys.includes('/index.html') || keys.includes('/'));
 const before = await pg.evaluate(() => window.__nawa.db.sessions.length);
 await ctx.setOffline(true); await pg.reload(); await pg.waitForSelector('#nav', { timeout: 8000 }); await pg.waitForTimeout(800);
 log('فتح الصفحة بلا اتصال', (await pg.title()).includes('نوى') || (await pg.locator('#nav a').count()) > 5);
