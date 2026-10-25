@@ -92,7 +92,7 @@ async function api(req, env, url) {
   const email = await accessEmail(req, env);
   if (!email) return json({ error: 'unauthorized' }, 401);
   let user = await one(env, 'SELECT * FROM users WHERE email=?', email);
-  if (!user && env.ADMIN_EMAIL && email === String(env.ADMIN_EMAIL).toLowerCase()) { await run(env, "INSERT INTO users(email,name,role,centers,assignments,active) VALUES(?,?, 'admin','[]','[]',1)", email, email.split('@')[0]); user = await one(env, 'SELECT * FROM users WHERE email=?', email); }
+  if (!user && env.ADMIN_EMAIL && String(env.ADMIN_EMAIL).toLowerCase().split(/[,;\s]+/).includes(email)) { await run(env, "INSERT INTO users(email,name,role,centers,assignments,active) VALUES(?,?, 'admin','[]','[]',1)", email, email.split('@')[0]); user = await one(env, 'SELECT * FROM users WHERE email=?', email); }
   if (!user || !user.active) return json({ error: 'not provisioned' }, 403);
   const POL = await getPolicy(env), mypol = POL[user.role] || {};
   const body = async () => { const t = await req.text(); if (t.length > 2e6) throw Object.assign(new Error('big'), { code: 413 }); return JSON.parse(t || '{}'); };
