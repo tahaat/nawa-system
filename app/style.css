@@ -207,3 +207,4 @@ body.entry button,body.entry input,body.entry select{min-height:44px}body.entry 
 .pw input[dir=ltr]{padding-right:42px;padding-left:12px}.pw input[dir=ltr]+.eye{right:4px;left:auto}
 .pw input:not([dir=ltr]){padding-left:42px}.pw input:not([dir=ltr])+.eye{left:4px;right:auto}
 .row .pw{width:auto}
+.uqf select{max-width:240px}.uq td,.uq th{white-space:nowrap}.uq td:first-child{white-space:normal;min-width:180px}

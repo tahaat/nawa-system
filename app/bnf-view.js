@@ -5,11 +5,14 @@ import { DTYPES, commitSheet } from '../core/sheets.js';
 import { nameState, phoneState, idState, emailState, normPhone, phoneOkStrict, digits, emailOk, ATT_TYPES, ATT_MAX, urlOk, nameNeed, words, toLatin } from '../core/bnf.js';
 import { putFile, getFile, delFile, fileIds } from './store.js';
 import { pager } from './pager.js';
+import { context, sumCats } from '../core/aggregate.js';
+import { uniqueReach } from '../core/sessquery.js';
 import { ensureEnrollment, endEnrollment, reactivate, findEnrollment } from '../core/enroll.js';
 import { putDraft, delDraft, draftsCard, newDraftId } from './drafts.js';
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const $ = (s, r = document) => r.querySelector(s);
-let ctx; const st = { f: {}, q: '', edit: null, keep: [], pend: [], gone: [], have: new Set() };
+let ctx; const uq = { projectId: '', center: '', act: '', from: '', to: '', by: 'act' };
+const st = { f: {}, q: '', edit: null, keep: [], pend: [], gone: [], have: new Set() };
 export const initBnf = (c) => { ctx = c; };
 const TYPE = Object.fromEntries(ATT_TYPES);
 const CHK = { name: nameState, phone: phoneState, ephone: phoneState, nid: idState, email: emailState };
@@ -72,6 +75,7 @@ export function vBnf() {
   ctx.view().innerHTML = (st.edit ? '' : draftsCard(null, 'bnf')) + formHtml(cur()) + `
   <div class="card"><h2>استيراد من Excel</h2><p class="small">الأعمدة المدعومة: الاسم، الجنس، العمر، تاريخ الميلاد، الإعاقة، نوع الإعاقة، الجوال، الهوية، البريد، اسم الطوارئ، هاتف الطوارئ. تُتجاهل القيم غير الصحيحة (جوال/هوية/بريد) وتُعدّ في التقرير.</p>
   <div class="row"><label>الملف<input type="file" id="bimp" accept=".xlsx"></label><button class="sec" data-act="bImp">استيراد</button><button class="sec" data-act="bTpl">تنزيل قالب الاستيراد</button></div><p id="bimsg" class="small"></p></div>
+  ${uqCard()}
   <div class="card"><div class="row"><label>بحث<input id="bq" placeholder="اسم أو جوال أو هوية" value="${esc(q)}"></label>
     <label>الجنس<select id="bf-sex" data-bf="sex"><option value="">الكل</option><option value="M">ذكر</option><option value="F">أنثى</option></select></label>
     <label>الفئة العمرية<select id="bf-band" data-bf="band"><option value="">الكل</option>${AGE_BANDS.map((x) => `<option>${x.key}</option>`).join('')}<option value="?">بلا عمر</option></select></label>
@@ -81,12 +85,31 @@ export function vBnf() {
     <label>المشروع<select id="bf-proj" data-bf="proj"><option value="">الكل</option><option value="-">بلا مشروع</option>${ctx.db.projects.map((p) => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')}</select></label>
     <label>الحضور<select id="bf-att2" data-bf="att2"><option value="">الكل</option><option value="1">له حضور</option><option value="0">بلا حضور</option></select></label>
     <button class="sec" data-act="bfReset">مسح الفلاتر</button></div><div id="bnres"></div></div>`;
-  paintList();
+  paintList(); paintUq(); document.querySelectorAll('[data-uq]').forEach((e) => (e.onchange = () => { uq[e.dataset.uq] = e.value; if (e.dataset.uq === 'projectId') { const ok = new Set(uqActs().map((a) => a.id)); if (uq.act && !ok.has(uq.act)) uq.act = ''; vBnf(); return; } paintUq(); }));
   const bf = { ...st.f }; for (const [k, v] of Object.entries(bf)) { const e = $('#bf-' + k); if (e) e.value = v; }
   document.querySelectorAll('[data-bf]').forEach((e) => (e.onchange = () => { st.f[e.dataset.bf] = e.value; paintList(); }));
   $('#bq').addEventListener('input', (e) => { st.q = e.target.value; clearTimeout(vBnf.t); vBnf.t = setTimeout(paintList, 200); });
   if (st.fill && !st.edit) { for (const [i, v] of Object.entries(st.fill)) { const e = $('#' + i); if (e) e.value = v; } if ($('#bdtw')) $('#bdtw').hidden = $('#bdis')?.value !== '1'; showOther(); st.fill = null; }
   document.querySelectorAll('#bnform [data-chk]').forEach((t) => t.value && paint(t));
+}
+// ---- عدد المستفيدين بلا تكرار لكل نشاط/مركز/مشروع ضمن فترة ----
+const uqActs = () => ctx.db.projects.filter((p) => !uq.projectId || p.id === uq.projectId).flatMap((p) => p.activities.filter((a) => !a.ops).map((a) => ({ id: a.id, name: a.name, p: p.name })));
+function uqCard() {
+  const db = ctx.db, sel = (k, v, t) => `<option value="${esc(v)}" ${uq[k] === v ? 'selected' : ''}>${esc(t)}</option>`;
+  return `<div class="card" id="uqcard"><h2>المستفيدون بلا تكرار (حسب النشاط / المركز / المشروع)</h2>
+  <p class="small">يُحسب الشخص <b>مرة واحدة</b> داخل كل صف مهما تكرر حضوره في الفترة، ومرة واحدة في الإجمالي إن حضر أكثر من نشاط. الجلسات المسجلة «بالأعداد» لا هوية فيها فلا يمكن حذف تكرارها، وتظهر في عمود منفصل. اترك التاريخ فارغًا لكل الفترة.</p>
+  <div class="row uqf"><label>المشروع<select data-uq="projectId"><option value="">الكل</option>${db.projects.map((p) => sel('projectId', p.id, p.name)).join('')}</select></label>
+  <label>المركز<select data-uq="center"><option value="">الكل</option>${db.centers.map((c) => sel('center', c.id, c.name)).join('')}</select></label>
+  <label>النشاط<select data-uq="act"><option value="">الكل</option>${uqActs().map((a) => sel('act', a.id, uq.projectId ? a.name : `${a.name} — ${a.p}`)).join('')}</select></label>
+  <label>من<input type="date" data-uq="from" value="${esc(uq.from)}"></label><label>إلى<input type="date" data-uq="to" value="${esc(uq.to)}"></label>
+  <label>عرض حسب<select data-uq="by">${[['act', 'النشاط'], ['center', 'المركز'], ['project', 'المشروع']].map(([k, t]) => sel('by', k, t)).join('')}</select></label>
+  <button class="sec" data-act="uqXl">تصدير (Excel)</button></div><div id="uqres"></div></div>`;
+}
+const uqRun = () => { const db = ctx.db, cx = context(db); return { cx, r: uniqueReach(db, cx, uq, uq.by) }; };
+function paintUq() {
+  const e = $('#uqres'); if (!e) return; const { r } = uqRun(), lab = { act: 'النشاط', center: 'المركز', project: 'المشروع' }[uq.by];
+  const row = (x, b = false) => `<tr${b ? ' style="font-weight:700;background:var(--soft,#f6efe9)"' : ''}><td>${esc(x.name)}${uq.by === 'act' && !b && ctx.db.projects.length > 1 ? `<div class="small">${esc(x.project)}</div>` : ''}</td><td>${x.sessions}</td><td>${x.units}</td><td>${x.instances}</td><td><b>${x.unique}</b></td><td>${x.cats.M}</td><td>${x.cats.F}</td><td>${x.cats.CWD_M}</td><td>${x.cats.CWD_F}</td><td>${x.blind || '—'}</td></tr>`;
+  e.innerHTML = r.rows.length ? `<div class="tw uq"><table><tr><th>${lab}</th><th>الجلسات</th><th>الوحدات</th><th>مرات الحضور (بتكرار)</th><th>مستفيدون بلا تكرار</th><th>ذكور</th><th>إناث</th><th>ذكور (إعاقة)</th><th>إناث (إعاقة)</th><th>حضور بالأعداد (بلا هوية)</th></tr>${r.rows.map((x) => row(x)).join('')}${row(r.total, true)}</table></div>` : '<p class="small">لا جلسات ضمن هذه المعايير.</p>';
 }
 function paintList() {
   const e = $('#bnres'); if (!e) return; const db = ctx.db, q = st.q.trim(), f = st.f, need = nameNeed(), today = iso(new Date());
@@ -158,6 +181,13 @@ export function bnfActions({ toast, ask, save, rerender, dl }) {
     },
     bAttsClose() { $('#attmodal')?.remove(); },
     bfReset() { st.f = {}; st.q = ''; vBnf(); },
+    async uqXl() {
+      const { r } = uqRun(), wb = new ExcelJS.Workbook(), ws = wb.addWorksheet('بلا تكرار', { views: [{ rightToLeft: true }] }), lab = { act: 'النشاط', center: 'المركز', project: 'المشروع' }[uq.by];
+      ws.addRow(['الفترة', `${uq.from || 'البداية'} → ${uq.to || 'النهاية'}`]); ws.addRow([]); ws.addRow([lab, 'المشروع', 'الجلسات', 'الوحدات', 'مرات الحضور (بتكرار)', 'مستفيدون بلا تكرار', 'ذكور', 'إناث', 'ذكور (إعاقة)', 'إناث (إعاقة)', 'حضور بالأعداد (بلا هوية)']); ws.getRow(3).font = { bold: true };
+      for (const x of [...r.rows, r.total]) ws.addRow([x.name, uq.by === 'act' && x !== r.total ? x.project : '', x.sessions, x.units, x.instances, x.unique, x.cats.M, x.cats.F, x.cats.CWD_M, x.cats.CWD_F, x.blind]);
+      ws.getRow(ws.rowCount).font = { bold: true }; [38, 28, 10, 10, 18, 18, 9, 9, 13, 13, 20].forEach((w, i) => (ws.getColumn(i + 1).width = w));
+      await dl(new Blob([await wb.xlsx.writeBuffer()], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'المستفيدون-بلا-تكرار.xlsx');
+    },
     bCancel() { st.edit = null; st.keep = []; st.pend = []; vBnf(); },
     async bSave() {
       const b0 = cur(), r = read(); if (!r.name) { $('#bn').focus(); return toast('الاسم مطلوب'); }

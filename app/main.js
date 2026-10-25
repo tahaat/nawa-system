@@ -38,6 +38,7 @@ import { commitSheet } from '../core/sheets.js';
 import { purgeDemo, uid, GROUPS, AGE_BANDS, ageAt, bandOf, iso } from '../core/model.js';
 import { dashboard, sttRows, sessionCats, sumCats, context } from '../core/aggregate.js';
 import { validateEntry, reconcile } from '../core/validate.js';
+import { filterSessions, summarize, emptyF, isActiveF } from '../core/sessquery.js';
 import { exportPTT } from '../core/ptt-export.js';
 import { exportSTT, exportBTT, exportSummary } from '../core/xlsx-export.js';
 import ExcelJS from 'exceljs';
@@ -53,6 +54,7 @@ const me = () => sync.cfg.me || devMe();
 const allowed = (r) => { const p = me()?.policy; if (r === 'users') return !!p?.manageUsers; return !p || p.routes === '*' || p.routes.includes(r); };
 const myCenters = () => { const x = me(); return x?.role === 'coordinator' || x?.policy?.write?.sessions === 'own' ? db.centers.filter((c) => x.centers.includes(c.id)) : db.centers; };
 function chartTheme() { const d = getTheme() === 'dark', cs = getComputedStyle(document.documentElement); Chart.defaults.color = d ? '#d8cac6' : '#4a3f3f'; Chart.defaults.borderColor = d ? 'rgba(255,235,225,.12)' : 'rgba(0,0,0,.08)'; Chart.defaults.font.family = 'Tajawal'; Chart.defaults.elements.arc.borderColor = cs.getPropertyValue('--card').trim() || '#fff'; }
+let sf = emptyF();   // فلتر سجل الجلسات
 let route = 'dash', charts = [], sess = { mode: 'roll', att: new Set(), q: '', bands: false };
 
 // الإشعارات: أخطاء وتحذيرات التحقق والتكامل (مجمَّعة بالنص)
@@ -262,9 +264,24 @@ function vSessions() {
   const cx = context(db), acts = p.activities.filter((x) => !x.ops), a = acts.find((x) => x.id === sess.act) || acts[0]; sess.act = a?.id; sess.pid = p.id;
   const list = db.beneficiaries.filter((b) => !sess.q || b.name.includes(sess.q)).slice(0, 300);
   const today = iso(new Date());
-  const allS = db.sessions.filter((s) => s.projectId === p.id).sort((x, y) => y.date.localeCompare(x.date)), SP = pager('sess-' + p.id, allS.length, () => { const e = $('#sesslog'); if (e) e.innerHTML = sessLog(); });
-  const sessLog = () => `${SP.html()}<div class="tw"><table><tr><th>التاريخ</th><th>النشاط</th><th>المركز</th><th>المنشّط</th><th>النمط</th><th>ذ</th><th>إ</th><th>ذ-إ</th><th>إ-إ</th><th>المجموع</th><th>تحقق</th><th></th></tr>${SP.slice(allS).map((s) => { const c = sessionCats(s, cx), v = validateEntry({ ...db, sessions: [s] }).filter((i) => i.ref === s.id || i.ref === s.activityId); const lv = v.some((i) => i.level === 'error') ? 'error' : v.some((i) => i.level === 'warn') ? 'warn' : 'ok';
-    return `<tr><td>${s.date}</td><td>${esc(cx.act.get(s.activityId)?.name)}</td><td>${esc(cx.ctr.get(s.centerId)?.name)}</td><td>${esc(s.educator)}</td><td>${s.mode === 'roll' ? 'أسماء' : 'أعداد'}</td><td>${c.M}</td><td>${c.F}</td><td>${c.CWD_M}</td><td>${c.CWD_F}</td><td><b>${sumCats(c)}</b></td><td><span class="badge b-${lv}" title="${esc(v.map((i) => i.msg).join(' | '))}">${lv === 'ok' ? '✔' : v.length}</span></td><td>${s.sheetId ? `<button class="sec" data-act="openSheetOf" data-id="${s.sheetId}">فتح الكشف</button>` : `<button class="sec" data-act="editSess" data-id="${s.id}">تعديل</button>`} <button class="x" data-act="delSess" data-id="${s.id}">حذف</button></td></tr>`; }).join('')}</table></div>${SP.html()}`;
+  const allS = db.sessions.filter((s) => s.projectId === p.id).sort((x, y) => y.date.localeCompare(x.date));
+  const issues = new Map(), issuesOf = (s) => { let v = issues.get(s.id); if (!v) { v = validateEntry({ ...db, sessions: [s] }).filter((i) => i.ref === s.id || i.ref === s.activityId); issues.set(s.id, v); } return v; };
+  const levelOf = (s) => { const v = issuesOf(s); return v.some((i) => i.level === 'error') ? 'error' : v.some((i) => i.level === 'warn') ? 'warn' : 'ok'; };
+  const sfList = () => filterSessions(allS, sf, cx, levelOf);
+  const sessLog = () => { const L = sfList(), SP = pager('sess-' + p.id, L.length, () => { const e = $('#sesslog'); if (e) e.innerHTML = sessLog(); }, JSON.stringify(sf)), sm = summarize(L, cx);
+    return `<p class="small" id="sfsum"><b>${sm.sessions}</b> جلسة${isActiveF(sf) ? ` من ${allS.length}` : ''} · <b>${sm.units}</b> وحدة · إجمالي الحضور <b>${sm.attendance}</b> · مستفيدون بلا تكرار (كشوف الأسماء) <b>${sm.unique}</b>${sm.blind ? ` · حضور بالأعداد بلا هوية <b>${sm.blind}</b>` : ''}</p>${SP.html()}<div class="tw"><table><tr><th>التاريخ</th><th>النشاط</th><th>المركز</th><th>المنشّط</th><th>النمط</th><th>ذ</th><th>إ</th><th>ذ-إ</th><th>إ-إ</th><th>المجموع</th><th>تحقق</th><th></th></tr>${SP.slice(L).map((s) => { const c = sessionCats(s, cx), v = issuesOf(s), lv = levelOf(s);
+    return `<tr><td>${s.date}</td><td>${esc(cx.act.get(s.activityId)?.name)}</td><td>${esc(cx.ctr.get(s.centerId)?.name)}</td><td>${esc(s.educator)}</td><td>${s.mode === 'roll' ? 'أسماء' : 'أعداد'}</td><td>${c.M}</td><td>${c.F}</td><td>${c.CWD_M}</td><td>${c.CWD_F}</td><td><b>${sumCats(c)}</b></td><td><span class="badge b-${lv}" title="${esc(v.map((i) => i.msg).join(' | '))}">${lv === 'ok' ? '✔' : v.length}</span></td><td>${s.sheetId ? `<button class="sec" data-act="openSheetOf" data-id="${s.id}">فتح الكشف</button>` : `<button class="sec" data-act="editSess" data-id="${s.id}">تعديل</button>`} <button class="x" data-act="delSess" data-id="${s.id}">حذف</button></td></tr>`; }).join('') || `<tr><td colspan="12">لا جلسات مطابقة للفلتر</td></tr>`}</table></div>${SP.html()}`; };
+  const sfBar = () => `<div class="row" id="sfbar">
+    <label>من تاريخ<input type="date" data-sf="from" value="${esc(sf.from)}"></label><label>إلى تاريخ<input type="date" data-sf="to" value="${esc(sf.to)}"></label>
+    <label>النشاط<select data-sf="act"><option value="">الكل</option>${acts.map((x) => `<option value="${esc(x.id)}" ${sf.act === x.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></label>
+    <label>المركز<select data-sf="center"><option value="">الكل</option>${db.centers.map((c) => `<option value="${esc(c.id)}" ${sf.center === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>
+    <label>المنشّط<input data-sf="edu" list="sfeds" value="${esc(sf.edu)}" placeholder="اسم أو جزء منه" style="width:150px"></label><datalist id="sfeds">${[...new Set(allS.map((x) => x.educator).filter(Boolean))].map((x) => `<option value="${esc(x)}">`).join('')}</datalist>
+    <label>المجموعة<input data-sf="grp" value="${esc(sf.grp)}" style="width:90px"></label>
+    <label>النمط<select data-sf="mode"><option value="">الكل</option><option value="roll" ${sf.mode === 'roll' ? 'selected' : ''}>أسماء</option><option value="counts" ${sf.mode === 'counts' ? 'selected' : ''}>أعداد</option></select></label>
+    <label>المصدر<select data-sf="src"><option value="">الكل</option><option value="sheet" ${sf.src === 'sheet' ? 'selected' : ''}>من كشف حضور</option><option value="direct" ${sf.src === 'direct' ? 'selected' : ''}>إدخال مباشر</option></select></label>
+    <label>التحقق<select data-sf="status"><option value="">الكل</option><option value="ok" ${sf.status === 'ok' ? 'selected' : ''}>سليمة ✔</option><option value="issue" ${sf.status === 'issue' ? 'selected' : ''}>بها ملاحظات</option><option value="warn" ${sf.status === 'warn' ? 'selected' : ''}>تحذير فقط</option><option value="error" ${sf.status === 'error' ? 'selected' : ''}>بها أخطاء</option></select></label>
+    <label>بحث<input data-sf="q" value="${esc(sf.q)}" placeholder="ملاحظات أو أي نص" style="width:150px"></label>
+    <button class="sec" id="sf-reset">مسح الفلتر</button><button class="sec" id="sf-xl">تصدير النتائج (Excel)</button></div>`;
   view().innerHTML = (sess.editId ? '' : draftsCard(p.id, 'session')) + `
   <div class="card"><div class="row-h"><h2>${sess.editId ? 'تعديل جلسة' : 'جلسة جديدة'}</h2>${sess.editId ? '' : '<button class="sec" data-act="saveSessDraft" title="احفظ ما أنجزته كمسودة وأكمله لاحقًا">حفظ كمسودة</button>'}</div><div class="row">
     <label>النشاط<select id="sa">${acts.map((x) => `<option value="${x.id}" ${x.id === a?.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></label>
@@ -279,9 +296,19 @@ function vSessions() {
     <label style="flex-direction:row;align-items:center"><input type="checkbox" id="bandsOn" ${sess.bands ? 'checked' : ''} data-act="toggleBands"> توزيع الفئات العمرية</label></div>
     ${sess.bands ? `<table><tr><th></th>${AGE_BANDS.map((b) => `<th>${b.key}</th>`).join('')}</tr>${[['M', 'ذكور'], ['F', 'إناث'], ['MWD', 'ذكور (إعاقة)'], ['FWD', 'إناث (إعاقة)']].map(([k, t]) => `<tr><td>${t}</td>${AGE_BANDS.map((b, i) => `<td><input type="number" min="0" style="width:60px" id="bd-${k}-${i}" value="${sess.bandCounts?.[k]?.[i] ?? ''}"></td>`).join('')}</tr>`).join('')}</table>` : '<p class="small">بدون توزيع عمري لن تظهر هذه الجلسة في جدول الفئات العمرية (يظهر تنبيه).</p>'}`}
   <div class="row" style="margin-top:10px"><label>ملاحظات<input id="sn" style="width:320px" value="${esc(sess.notes || '')}"></label><button data-act="saveSession">${sess.editId ? 'حفظ التعديل' : 'حفظ الجلسة'}</button>${sess.editId ? '<button class="sec" data-act="cancelEditSess">إلغاء التعديل</button>' : ''}<span id="sres"></span></div></div>
-  <div class="card"><h2>آخر الجلسات</h2><div id="sesslog">${sessLog()}</div></div>`;
+  <div class="card"><h2>آخر الجلسات</h2>${sfBar()}<div id="sesslog">${sessLog()}</div></div>`;
   const rd = () => { sess.center = $('#sc')?.value; sess.date = $('#sd')?.value; sess.educator = $('#se')?.value; sess.grp = $('#sg')?.value; sess.units = +$('#su')?.value || 1; sess.notes = $('#sn')?.value; sess.act = $('#sa')?.value; if (sess.mode === 'counts') { sess.counts = Object.fromEntries(['M', 'F', 'MWD', 'FWD'].map((k) => [k, +$('#n-' + k)?.value || 0])); if (sess.bands) sess.bandCounts = Object.fromEntries(['M', 'F', 'MWD', 'FWD'].map((k) => [k, AGE_BANDS.map((_, i) => +$(`#bd-${k}-${i}`)?.value || 0)])); } };
   sess.rd = rd;
+  { let ft; const draw = () => { const e = $('#sesslog'); if (e) e.innerHTML = sessLog(); };
+    const read = () => { for (const el of document.querySelectorAll('#sfbar [data-sf]')) sf[el.dataset.sf] = el.value; };
+    $('#sfbar').addEventListener('input', (e) => { if (!e.target.dataset.sf) return; clearTimeout(ft); ft = setTimeout(() => { read(); draw(); }, e.target.tagName === 'INPUT' && e.target.type !== 'date' ? 250 : 0); });
+    $('#sf-reset').onclick = () => { sf = emptyF(); vSessions(); };
+    $('#sf-xl').onclick = async () => { const L = sfList(), wb = new ExcelJS.Workbook(), ws = wb.addWorksheet('الجلسات', { views: [{ rightToLeft: true }] });
+      ws.addRow(['التاريخ', 'النشاط', 'المركز', 'المنشّط', 'المجموعة', 'النمط', 'الوحدات', 'ذكور', 'إناث', 'ذكور (إعاقة)', 'إناث (إعاقة)', 'المجموع', 'التحقق']); ws.getRow(1).font = { bold: true };
+      for (const s of L) { const c = sessionCats(s, cx); ws.addRow([s.date, cx.act.get(s.activityId)?.name || '', cx.ctr.get(s.centerId)?.name || '', s.educator || '', s.grp || '', s.mode === 'roll' ? 'أسماء' : 'أعداد', s.units || 1, c.M, c.F, c.CWD_M, c.CWD_F, sumCats(c), { ok: 'سليمة', warn: 'تحذير', error: 'خطأ' }[levelOf(s)]]); }
+      [12, 34, 24, 20, 12, 10, 9, 8, 8, 12, 12, 9, 10].forEach((w, i) => (ws.getColumn(i + 1).width = w));
+      await dl(new Blob([await wb.xlsx.writeBuffer()], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'الجلسات-المفلترة.xlsx'); };
+  }
   $('#sa').onchange = () => { rd(); vSessions(); };
   $('#sd').onchange = () => { rd(); vSessions(); };
   const sq = $('#sq'); if (sq) sq.oninput = () => { rd(); sess.q = sq.value; clearTimeout(sess.t); sess.t = setTimeout(() => { vSessions(); const e = $('#sq'); e.focus(); e.setSelectionRange(e.value.length, e.value.length); }, 300); };
