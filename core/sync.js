@@ -7,7 +7,10 @@ export const newMeta = () => ({ cursor: null, hashes: {}, seqs: {}, ts: {} });
 export function createSync({ db, meta, cfg, fetchFn = globalThis.fetch, now = () => Date.now() }) {
   const H = (c) => (meta.hashes[c] ||= {}), S = (c) => (meta.seqs[c] ||= {});
   const api = async (path, opt = {}) => {
-    const r = await fetchFn(cfg.url.replace(/\/$/, '') + path, { ...opt, headers: { authorization: 'Bearer ' + cfg.token, 'content-type': 'application/json' } });
+    const hdr = { 'content-type': 'application/json' }; if (!cfg.access) hdr.authorization = 'Bearer ' + cfg.token;
+    const r = await fetchFn(cfg.url.replace(/\/$/, '') + path, { ...opt, headers: hdr, credentials: 'same-origin' });
+    if (cfg.access && (r.redirected || /text\/html/.test(r.headers?.get?.('content-type') || ''))) throw new Error('انتهت جلسة الدخول (Cloudflare Access) — أعد تحميل الصفحة');
+    if (r.status === 403 && cfg.access) throw new Error('حسابك غير مُضاف إلى النظام بعد — اطلب من المدير إضافتك');
     if (r.status === 401) throw new Error('رمز الدخول غير صالح');
     if (!r.ok) throw new Error('خطأ الخادم ' + r.status);
     return r.json();
@@ -22,10 +25,10 @@ export function createSync({ db, meta, cfg, fetchFn = globalThis.fetch, now = ()
     return out;
   }
   async function push() {
-    let sent = 0;
+    let sent = 0; const CH = cfg.access ? 25 : 500;
     const all = pending();
-    for (let i = 0; i < all.length; i += 500) {
-      const chunk = all.slice(i, i + 500);
+    for (let i = 0; i < all.length; i += CH) {
+      const chunk = all.slice(i, i + CH);
       const r = await api('/api/push', { method: 'POST', body: JSON.stringify({ changes: chunk.map(({ h, ...c }) => c) }) });
       const byKey = new Map(chunk.map((c) => [c.coll + '|' + c.id, c]));
       for (const x of r.results) { const c = byKey.get(x.coll + '|' + x.id); if (!c || x.error) continue; if (c.data == null) { delete H(c.coll)[c.id]; delete S(c.coll)[c.id]; } else { H(c.coll)[c.id] = c.h; S(c.coll)[c.id] = x.seq; } sent++; }

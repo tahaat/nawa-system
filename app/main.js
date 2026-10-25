@@ -357,7 +357,7 @@ function vSurveys() {
   <div class="card"><h2>ملخص الردود</h2><table><tr><th>النموذج</th><th>المرحلة</th><th>عدد</th><th>متوسط الدرجة %</th></tr>${allForms(p).flatMap((t) => ['baseline', 'endline', 'followup', undefined].map((r) => [t, r])).map(([t, r]) => { const rs = cnt(t.id).filter((x) => (r ? x.round === r : false)); if (!rs.length) return ''; const sc = rs.filter((x) => x.score != null && x.max); return `<tr><td>${esc(t.ar)}</td><td>${r}</td><td>${rs.length}</td><td>${sc.length ? Math.round((100 * sc.reduce((a, x) => a + x.score / x.max, 0)) / sc.length) + '%' : '—'}</td></tr>`; }).join('')}</table></div>`;
 }
 // ======================= المستخدمون والصلاحيات =======================
-const capi = async (path, method = 'GET', body) => { const r = await fetch(sync.cfg.url.replace(/\/$/, '') + path, { method, headers: { authorization: 'Bearer ' + sync.cfg.token, 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }); if (!r.ok) throw new Error('رفض الخادم ' + r.status); return r.json(); };
+const capi = async (path, method = 'GET', body) => { const hd = { 'content-type': 'application/json' }; if (!sync.cfg.access) hd.authorization = 'Bearer ' + sync.cfg.token; const r = await fetch(sync.cfg.url.replace(/\/$/, '') + path, { method, headers: hd, credentials: 'same-origin', body: body ? JSON.stringify(body) : undefined }); if (!r.ok) throw new Error('رفض الخادم ' + r.status); return r.json(); };
 // ======================= السحابة =======================
 let syncing = false, syncMsg = '';
 const engine = () => createSync({ db, meta: sync.meta, cfg: sync.cfg });
@@ -390,6 +390,10 @@ async function afterLogin() { try { sync.cfg.me = await engine().me(); } catch {
 async function startAuth() {
   if (IN_ARTIFACT()) return;
   if (!sync.cfg.url && document.querySelector('meta[name=nawa-server]')) { sync.cfg.url = location.origin; sync.cfg.mode = 'server'; sync.cfg.auto = true; save(); }
+  if (document.querySelector('meta[name=nawa-access]')) { // الدخول عبر Cloudflare Access: الهوية من البوابة، بلا شاشة دخول ولا رموز
+    Object.assign(sync.cfg, { url: location.origin, mode: 'server', auto: true, access: true, token: 'access' });
+    try { sync.cfg.me = await engine().me(); save(); await afterLogin(); } catch (e) { sync.cfg.me = null; syncMsg = e.message; toast(e.message); } return;
+  }
   if (!sync.cfg.url || isFolder()) return;
   if (sync.cfg.token) { try { sync.cfg.me = await engine().me(); save(); return; } catch (e) { if (!/رمز/.test(e.message)) return; sync.cfg.token = ''; sync.cfg.me = null; save(); } }
   await new Promise((res) => showLogin({ msg: sync.cfg.user ? 'انتهت الجلسة؛ سجّل الدخول من جديد' : '', onDone: async () => { await afterLogin(); res(); } }));
@@ -420,6 +424,12 @@ async function vCloud() {
     <li>على جهاز المنسق: أضف المجلدات المشاركة إلى OneDrive («إضافة اختصار إلى ملفاتي»)، ثم اختر مجلد <code>NawaSync</code> الذي يحويها.</li>
     <li>الصلاحيات تُفرض بمشاركة OneDrive نفسها: الجهاز لا يستلم إلا المجلدات المشاركة معه.</li></ol></div>${canManage() ? teamCard() + pinsCard() : ''}`;
     return;
+  }
+  if (sync.cfg.access) { // الدخول عبر Cloudflare Access: بلا عنوان خادم ولا رموز
+    view().innerHTML = `${tabs}<div class="card"><h2>الحساب والمزامنة</h2><p class="small">دخولك عبر بوابة Cloudflare Access ببريدك المؤسسي؛ صلاحياتك يحددها المدير.</p>
+    <div class="row"><span>الحساب: <b dir="ltr">${esc(me()?.email || '')}</b> ${me()?.role ? '(' + esc(ROLE_AR[me().role] || me().role) + ')' : ''}</span><button class="gold" data-act="cloudSync">مزامنة الآن</button></div>
+    <label style="flex-direction:row;align-items:center;margin-top:8px"><input type="checkbox" data-act="entryTog" ${localStorage.getItem('nawa.entry') === '1' ? 'checked' : ''}> وضع الإدخال السريع (واجهة مبسّطة للموبايل: كشوف الحضور والجلسات والاستبيانات فقط)</label>
+    <p id="cmsg">${esc(syncMsg)}</p><p class="small">آخر مزامنة: ${sync.meta.lastSync ? new Date(sync.meta.lastSync).toLocaleString('ar') : '—'} · تغييرات معلّقة: ${engine().pending().length}</p></div>`; return;
   }
   view().innerHTML = `${tabs}<div class="card"><h2>الاتصال بخادم مزامنة</h2><p class="small">خيار متقدّم يتطلب تشغيل خادم (انظر README).</p>
   <div class="row"><label>عنوان الخادم<input id="cu" style="width:300px" placeholder="https://sync.example.org" value="${esc(sync.cfg.url)}"></label>

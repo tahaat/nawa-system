@@ -1,0 +1,19 @@
+# «نَسيج» على Cloudflare: Worker واحد يخدم الواجهة (dist) وواجهة /api، وتحميه بوابة Access.
+name = "naseej"
+main = "worker/index.js"
+compatibility_date = "2025-09-01"
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+run_worker_first = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "naseej"
+database_id = "ضع-معرّف-القاعدة-هنا"
+
+# القيم الحقيقية تُضبط من لوحة Cloudflare (Settings ▸ Variables) ولا تُكتب في المستودع العام:
+#   TEAM_DOMAIN  مثل  yourteam.cloudflareaccess.com
+#   POLICY_AUD   معرّف تطبيق Access (Application Audience tag)
+#   ADMIN_EMAIL  بريد مدير النظام الأول

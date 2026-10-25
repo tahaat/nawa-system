@@ -1,0 +1,21 @@
+// اختبار Worker محليًا: wrangler dev --local --port 8799 مع .dev.vars (DEV_EMAIL). تشغيله يدويًا.
+const B = process.env.W || 'http://localhost:8799', ok = (n, c) => { console.log(c ? 'ok  ' : 'FAIL', n); if (!c) process.exitCode = 1; };
+const call = async (who, path, method = 'GET', body) => { const r = await fetch(B + path, { method, headers: { 'x-dev-email': who, 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }); return { s: r.status, j: await r.json().catch(() => ({})) }; };
+const A = 'admin@test.local', F = 'fac@test.local', stranger = 'nobody@test.local', ts = Date.now();
+ok('health', (await fetch(B + '/api/health')).ok);
+ok('غريب غير مضاف ⇒ 403', (await call(stranger, '/api/me')).s === 403);
+ok('المدير يُنشأ تلقائيًا', (await call(A, '/api/me')).j.role === 'admin');
+ok('إضافة منشّط', (await call(A, '/api/users', 'POST', { email: F, role: 'facilitator', assignments: [{ project: 'p1', center: 'c1' }] })).s === 200);
+ok('منشّط لا يدير المستخدمين', (await call(F, '/api/users')).s === 403);
+const pj = { id: 'p1', name: 'P1' }, p2 = { id: 'p2', name: 'P2' };
+const r1 = await call(A, '/api/push', 'POST', { changes: [{ coll: 'projects', id: 'p1', data: pj, ts, baseSeq: 0 }, { coll: 'projects', id: 'p2', data: p2, ts, baseSeq: 0 }, { coll: 'sessions', id: 's1', data: { id: 's1', projectId: 'p1', centerId: 'c1', date: '2026-10-01' }, ts, baseSeq: 0 }, { coll: 'sessions', id: 's2', data: { id: 's2', projectId: 'p2', centerId: 'c2', date: '2026-10-01' }, ts, baseSeq: 0 }] });
+ok('دفع 4 سجلات', r1.j.results?.length === 4 && r1.j.seq === 4);
+const pu = await call(F, '/api/pull?since=0');
+const ids = pu.j.records?.map((r) => r.coll + ':' + r.id).sort().join();
+ok('المنشّط يرى مشروعه وجلسته فقط', ids === 'projects:p1,sessions:s1');
+const w1 = await call(F, '/api/push', 'POST', { changes: [{ coll: 'sessions', id: 's9', data: { id: 's9', projectId: 'p1', centerId: 'c1' }, ts, baseSeq: 0 }, { coll: 'sessions', id: 's10', data: { id: 's10', projectId: 'p2', centerId: 'c2' }, ts, baseSeq: 0 }, { coll: 'projects', id: 'p1', data: { id: 'p1', name: 'X' }, ts, baseSeq: 0 }] });
+ok('يكتب ضمن تكليفه فقط', w1.j.results.length === 1 && w1.j.forbidden.length === 2);
+ok('تعارض: الأحدث على الخادم يفوز', (await call(A, '/api/push', 'POST', { changes: [{ coll: 'projects', id: 'p1', data: { id: 'p1', name: 'old' }, ts: ts - 5000, baseSeq: 0 }] })).j.rejected?.length === 1);
+ok('تعطيل مستخدم', (await call(A, '/api/users/disable', 'POST', { name: F, active: false })).s === 200 && (await call(F, '/api/me')).s === 403);
+ok('منع >40 تغييرًا', (await call(A, '/api/push', 'POST', { changes: Array.from({ length: 41 }, (_, i) => ({ coll: 'sessions', id: 'z' + i, data: { id: 'z' + i }, ts })) })).s === 413);
+ok('سجل التدقيق', (await call(A, '/api/audit')).j.rows?.length > 3);
