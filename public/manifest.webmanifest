@@ -1,7 +1,7 @@
 {
-  "name": "نظام نوى للمشاريع والمستفيدين",
-  "short_name": "نوى",
-  "description": "تتبع المشاريع والمستفيدين (PTT / STT / BTT) — يعمل بلا إنترنت",
+  "name": "نَسيج",
+  "short_name": "نَسيج",
+  "description": "نظام نوى للمتابعة والتقييم وتتبّع المشاريع والمستفيدين — Nawa MEAL & Programme Tracking System — يعمل بلا إنترنت",
   "lang": "ar",
   "dir": "rtl",
   "start_url": "./",
