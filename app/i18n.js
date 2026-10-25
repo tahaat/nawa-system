@@ -66,7 +66,7 @@ function observe() {
 export function applyDoc() {
   const h = document.documentElement; h.lang = lang; h.dir = lang === 'en' ? 'ltr' : 'rtl';
   if (!document.__arTitle) document.__arTitle = document.title;
-  document.title = lang === 'en' ? 'Naseej | Nawa MEAL & Projects Tracking System' : document.__arTitle;
+  document.title = lang === 'en' ? 'Naseej | Nawa MEAL & Programme Tracking System' : document.__arTitle;
   if (lang === 'en') { walk(document.body); observe(); }
 }
 export function setLang(l) { lang = l; try { localStorage.setItem('nawa.lang', l); } catch { /* خاص */ } applyDoc(); }

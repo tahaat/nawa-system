@@ -2,7 +2,7 @@
 import { getLang } from './i18n.js';
 export const BRAND = {
   ar: { name: 'نَسيج', sub: 'نظام نوى للمتابعة والتقييم وتتبّع المشاريع', title: 'نَسيج | نظام نوى للمتابعة والتقييم وتتبّع المشاريع' },
-  en: { name: 'Naseej', sub: 'Nawa MEAL & Projects Tracking System', title: 'Naseej | Nawa MEAL & Projects Tracking System' },
+  en: { name: 'Naseej', sub: 'Nawa MEAL & Programme Tracking System', title: 'Naseej | Nawa MEAL & Programme Tracking System' },
 };
 export const brand = () => BRAND[getLang() === 'en' ? 'en' : 'ar'];
 export const brandHtml = () => { const b = brand(); return `<div class="brandname">${b.name}</div><div class="brandsub">${b.sub}</div>`; };
