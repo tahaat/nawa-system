@@ -11,7 +11,7 @@ run_worker_first = true
 [[d1_databases]]
 binding = "DB"
 database_name = "naseej"
-database_id = "ضع-معرّف-القاعدة-هنا"
+database_id = "4fcbe18a-c04f-43e0-9b4a-ff98878b5865"
 
 # القيم الحقيقية تُضبط من لوحة Cloudflare (Settings ▸ Variables) ولا تُكتب في المستودع العام:
 #   TEAM_DOMAIN  مثل  yourteam.cloudflareaccess.com
