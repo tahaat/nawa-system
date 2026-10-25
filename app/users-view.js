@@ -1,4 +1,5 @@
 // المستخدمون والتكليفات والأجهزة وسجل التدقيق + تسجيل الدخول (يتطلب خادم المزامنة)
+import { brandHtml } from './brand.js';
 import { newMeta } from '../core/sync.js';
 import { eyeIcon, wireEyes } from './devrole.js';
 export const ROLE_AR = { admin: 'مدير النظام (IT)', meal: 'منسق/مسؤول المتابعة والتقييم', projects: 'مسؤول مشاريع', coordinator: 'منسق', facilitator: 'منشط / تربوي', entry: 'مدخل بيانات (المكتب)' };
@@ -69,7 +70,7 @@ export async function loginCall(url, name, password) {
 }
 export function showLogin({ onDone, msg = '' }) {
   document.getElementById('login')?.remove(); const d = document.createElement('div'); d.id = 'login';
-  d.innerHTML = `<form class="card"><img class="logo" alt="نوى" src="${document.querySelector('.logo')?.src || ''}" style="height:64px;margin:0 auto .6rem;display:block"><h2 style="text-align:center">تسجيل الدخول</h2><label>اسم المستخدم<input id="lgn" autocomplete="username" required></label><label>كلمة المرور<span class="pw"><input id="lgp" type="password" autocomplete="current-password" required><button type="button" class="eye" data-eye="lgp" aria-label="إظهار/إخفاء" title="إظهار/إخفاء">${eyeIcon()}</button></span></label><button type="submit">دخول</button><p id="lgm" class="small" role="alert">${esc(msg)}</p></form>`;
+  d.innerHTML = `<form class="card"><img class="logo" alt="نوى" src="${document.querySelector('.logo')?.src || ''}" style="height:64px;margin:0 auto .6rem;display:block">${brandHtml()}<h2 style="text-align:center">تسجيل الدخول</h2><label>اسم المستخدم<input id="lgn" autocomplete="username" required></label><label>كلمة المرور<span class="pw"><input id="lgp" type="password" autocomplete="current-password" required><button type="button" class="eye" data-eye="lgp" aria-label="إظهار/إخفاء" title="إظهار/إخفاء">${eyeIcon()}</button></span></label><button type="submit">دخول</button><p id="lgm" class="small" role="alert">${esc(msg)}</p></form>`;
   document.body.append(d); wireEyes(d); $('#lgn', d).focus();
   $('form', d).onsubmit = async (e) => { e.preventDefault(); const m = $('#lgm', d); m.textContent = '…'; try { const j = await loginCall(C.sync.cfg.url, $('#lgn', d).value.trim(), $('#lgp', d).value); C.sync.cfg.token = j.token; C.sync.cfg.user = j.name; C.save(); if (j.mustChange) { await forceChange($('#lgp', d).value, d); } d.remove(); await onDone?.(); } catch (er) { m.textContent = er.message; } };
 }

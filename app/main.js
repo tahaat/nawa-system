@@ -11,6 +11,7 @@ import { importResponses, computeOutcomes } from '../core/outcomes.js';
 import { france } from './sim_france.js';
 import { giz, gizExtras, GIZ_ID } from './giz.js';
 import { vPlan, initPlan } from './plan-view.js';
+import { renderBrand, brandHtml } from './brand.js';
 import { tr, getLang, toggleLang, applyDoc } from './i18n.js';
 import { initCopy } from './copy-card.js';
 import { vGloss, initGloss, glossActions } from './gloss-view.js';
@@ -67,7 +68,7 @@ function entryUI() {
   tb.innerHTML = ENTRY_TABS.filter(allowed).map((k) => `<a data-go="${k}" class="${k === route ? 'on' : ''}">${{ sheets: 'كشوف الحضور', sessions: 'الجلسات', surveys: 'الاستبيانات', cloud: 'المزامنة' }[k]}</a>`).join('');
 }
 function nav() {
-  entryUI();
+  entryUI(); renderBrand();
   $('#nav').innerHTML = Object.entries(ROUTES).filter(([k]) => allowed(k)).map(([k, [t]]) => `<a data-go="${k}" class="${k === route ? 'on' : ''}">${t}</a>`).join('');
   const opts = db.projects.map((p) => `<option value="${p.id}" ${p.id === ui.projectId ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
   if (!$('#sidefab')) { const b = document.createElement('button'); b.id = 'sidefab'; b.className = 'sec ic'; b.dataset.act = 'side'; b.title = 'إظهار/إخفاء الشريط الجانبي'; b.setAttribute('aria-label', b.title); document.body.appendChild(b); }
@@ -521,7 +522,7 @@ const actions = {
   async restore() { const f = $('#rf').files[0]; if (!f) return toast('اختر ملفًا'); if (!(await ask('سيُستبدل كل ما في النظام بالنسخة. متابعة؟'))) return; restoreJSON(await f.text()); toast('تم الاسترجاع'); go('dash'); },
 };
 
-$('.logo').src = logoUrl; { const l = document.createElement('link'); l.rel = 'icon'; l.href = logoUrl; document.head.append(l); }
+$('.logo').src = logoUrl; { const sl = $('#sp-logo'); if (sl) sl.src = logoUrl; } { const l = document.createElement('link'); l.rel = 'icon'; l.href = logoUrl; document.head.append(l); }
 initPlan({ project, save, rerender, view, empty }); initSheets({ db, project, save, view, empty, ask, toast, myCenters, route: () => route }); initOps({ db, project, save, view, empty, ask, toast, myCenters }); initBuilder({ project, save, rerender }); initGloss({ view, ask }); initFix({ db, ui, go, toast, openSession, openOp, route: () => route }); Object.assign(actions, fixActions); initSettings({ view, db, ask, askText }); initUsers({ db, sync, save, view, toast, ask, ROUTES, capi, me }); wireUsers(); Object.assign(actions, usersActions(), authActions, teamActions(), roleActions()); initTeam({ db, toast, dl, rerender }); initBnf({ view, db, ask, ui }); Object.assign(actions, offlineActions, bnfActions({ toast, ask, save, rerender, dl }), glossActions({ toast, dl }), settingsActions({ toast, dl, go, save, rerender, ui, ask })); loadConfig(await kvGet('config'), DTYPES); setPrintCfg(await kvGet('printcfg')); await load(); { const bf = () => { if (backfillEnrollments(db)) save(); }; bf(); let bt; window.addEventListener('nawa:dbsave', () => { clearTimeout(bt); bt = setTimeout(bf, 1500); }); } await loadGlossary(); await loadDrafts(); try { if (localStorage.getItem('nawa.nonav')) document.body.classList.add('nonav'); } catch { /* خاص */ } initTheme(); applyDoc(); await startAuth(); initDevRole({ sync, db, kvGet, kvSet, toast, nav, go, route: () => route, isFolder, inArtifact: IN_ARTIFACT }); await ensureRole(); nav(); go('dash'); initHints(view); initCopy({ toast }); initOffline(); initPlaceholders(); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
 setInterval(() => { if (sync.cfg.auto) doSync(); else setSyncBadge(); }, 60000);
 window.addEventListener('online', () => sync.cfg.auto && doSync());
