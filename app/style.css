@@ -235,3 +235,27 @@ body.entry #brand .brandsub{display:none}
 @keyframes spLine{to{width:180px}}
 @media(max-width:600px){.sp-name{font-size:42px}.sp-sub{font-size:14px}}
 .brandname,.brandsub{text-align:center}
+
+/* ===== آيباد/تابلت (801–1100): الشريط درج عائم فوق المحتوى ===== */
+@media(min-width:801px) and (max-width:1100px){
+  aside{position:fixed;top:64px;inset-inline-start:12px;margin:0;z-index:60;width:230px;max-height:calc(100vh - 76px);box-shadow:0 18px 50px rgba(40,3,2,.5)}
+  #sidefab{inset-inline-start:12px!important;z-index:70}
+  body:not(.nonav)::after{content:"";position:fixed;inset:0;background:rgba(30,5,4,.35);z-index:50;pointer-events:none}
+  main{padding-inline:20px}
+}
+body.nonav #top .tl{padding-inline-start:46px}
+@media(min-width:801px) and (max-width:1100px){#top .tl{padding-inline-start:46px}}
+/* ===== موبايل: شريط تنقّل ثابت أعلى الشاشة، أهداف لمس ≥44px ===== */
+@media(max-width:800px){
+  aside{position:sticky;top:0;z-index:60;padding:8px 10px;gap:10px;align-items:center;box-shadow:0 4px 14px rgba(40,3,2,.35)}
+  aside .logo{width:40px;padding:3px;flex:none}
+  #brand{display:block!important;flex:none}#brand .brandname{font-size:18px;color:#fff}#brand .brandsub{display:none}
+  aside nav{flex:1;min-width:0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}aside nav::-webkit-scrollbar{display:none}
+  nav a{padding:10px 14px;min-height:44px;display:inline-flex;align-items:center}
+  #sync{display:none}
+  button,select,input:not([type=checkbox]):not([type=radio]){min-height:44px}
+  .tools{gap:8px}
+  #top .tl{padding-inline-start:0}
+  .hint{min-width:32px;min-height:32px;align-items:center;justify-content:center}
+  input,select,textarea{font-size:16px}
+}

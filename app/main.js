@@ -88,8 +88,9 @@ function openSession(id) { const x = db.sessions.find((r) => r.id === id); if (!
 
 document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches?.('a.kpi')) e.target.click(); });
 document.addEventListener('click', async (e) => {
+  if (innerWidth > 800 && innerWidth <= 1100 && !document.body.classList.contains('nonav') && !e.target.closest('aside,#sidefab')) document.body.classList.add('nonav');
   const t = e.target.closest('[data-go],[data-act]'); if (!t) return;
-  if (t.dataset.go) return go(t.dataset.go);
+  if (t.dataset.go) { if (t.closest('#nav') && innerWidth > 800 && innerWidth <= 1100) document.body.classList.add('nonav'); return go(t.dataset.go); }
   const f = actions[t.dataset.act]; if (f) { try { await f(t, e); } catch (err) { console.error(err); toast('خطأ: ' + err.message); } }
 });
 document.addEventListener('change', (e) => {
@@ -464,7 +465,7 @@ const actions = {
   gocheck() { document.getElementById('panel').style.display = 'none'; go('check'); },
   hints() { openPanel(hintsHtml(view())); },
   theme() { toggleTheme(); chartTheme(); nav(); go(route); },
-  side() { document.body.classList.toggle('nonav'); try { localStorage.setItem('nawa.nonav', document.body.classList.contains('nonav') ? '1' : ''); } catch { /* خاص */ } },
+  side() { document.body.classList.toggle('nonav'); try { localStorage.setItem('nawa.nonav', document.body.classList.contains('nonav') ? '1' : '0'); } catch { /* خاص */ } },
   cardset(el) {
     const id = el.dataset.c; openPanel(cardPanel(id)); const pn = $('#panel');
     const h = (e) => { const t = e.target, k = t.dataset.cs; if (!k) return; const v = t.type === 'checkbox' ? t.checked : k === 'log' ? t.value === '1' : t.type === 'range' ? +t.value : t.value;
@@ -523,7 +524,7 @@ const actions = {
 };
 
 $('.logo').src = logoUrl; { const sl = $('#sp-logo'); if (sl) sl.src = logoUrl; } { const l = document.createElement('link'); l.rel = 'icon'; l.href = logoUrl; document.head.append(l); }
-initPlan({ project, save, rerender, view, empty }); initSheets({ db, project, save, view, empty, ask, toast, myCenters, route: () => route }); initOps({ db, project, save, view, empty, ask, toast, myCenters }); initBuilder({ project, save, rerender }); initGloss({ view, ask }); initFix({ db, ui, go, toast, openSession, openOp, route: () => route }); Object.assign(actions, fixActions); initSettings({ view, db, ask, askText }); initUsers({ db, sync, save, view, toast, ask, ROUTES, capi, me }); wireUsers(); Object.assign(actions, usersActions(), authActions, teamActions(), roleActions()); initTeam({ db, toast, dl, rerender }); initBnf({ view, db, ask, ui }); Object.assign(actions, offlineActions, bnfActions({ toast, ask, save, rerender, dl }), glossActions({ toast, dl }), settingsActions({ toast, dl, go, save, rerender, ui, ask })); loadConfig(await kvGet('config'), DTYPES); setPrintCfg(await kvGet('printcfg')); await load(); { const bf = () => { if (backfillEnrollments(db)) save(); }; bf(); let bt; window.addEventListener('nawa:dbsave', () => { clearTimeout(bt); bt = setTimeout(bf, 1500); }); } await loadGlossary(); await loadDrafts(); try { if (localStorage.getItem('nawa.nonav')) document.body.classList.add('nonav'); } catch { /* خاص */ } initTheme(); applyDoc(); await startAuth(); initDevRole({ sync, db, kvGet, kvSet, toast, nav, go, route: () => route, isFolder, inArtifact: IN_ARTIFACT }); await ensureRole(); nav(); go('dash'); initHints(view); initCopy({ toast }); initOffline(); initPlaceholders(); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
+initPlan({ project, save, rerender, view, empty }); initSheets({ db, project, save, view, empty, ask, toast, myCenters, route: () => route }); initOps({ db, project, save, view, empty, ask, toast, myCenters }); initBuilder({ project, save, rerender }); initGloss({ view, ask }); initFix({ db, ui, go, toast, openSession, openOp, route: () => route }); Object.assign(actions, fixActions); initSettings({ view, db, ask, askText }); initUsers({ db, sync, save, view, toast, ask, ROUTES, capi, me }); wireUsers(); Object.assign(actions, usersActions(), authActions, teamActions(), roleActions()); initTeam({ db, toast, dl, rerender }); initBnf({ view, db, ask, ui }); Object.assign(actions, offlineActions, bnfActions({ toast, ask, save, rerender, dl }), glossActions({ toast, dl }), settingsActions({ toast, dl, go, save, rerender, ui, ask })); loadConfig(await kvGet('config'), DTYPES); setPrintCfg(await kvGet('printcfg')); await load(); { const bf = () => { if (backfillEnrollments(db)) save(); }; bf(); let bt; window.addEventListener('nawa:dbsave', () => { clearTimeout(bt); bt = setTimeout(bf, 1500); }); } await loadGlossary(); await loadDrafts(); try { const pref = localStorage.getItem('nawa.nonav'); if (pref === '1' || (pref === null && innerWidth > 800 && innerWidth <= 1100)) document.body.classList.add('nonav'); } catch { /* خاص */ } initTheme(); applyDoc(); await startAuth(); initDevRole({ sync, db, kvGet, kvSet, toast, nav, go, route: () => route, isFolder, inArtifact: IN_ARTIFACT }); await ensureRole(); nav(); go('dash'); initHints(view); initCopy({ toast }); initOffline(); initPlaceholders(); if (isFolder()) { await folderPerm(false); if (fstate === 'granted' && sync.cfg.auto) doSyncFolder({}); } setSyncBadge();
 setInterval(() => { if (sync.cfg.auto) doSync(); else setSyncBadge(); }, 60000);
 window.addEventListener('online', () => sync.cfg.auto && doSync());
 window.addEventListener('nawa:drafts', () => nav());

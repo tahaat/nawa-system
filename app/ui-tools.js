@@ -44,8 +44,9 @@ function showPop(h) {
 }
 const hidePop = () => { const p = document.getElementById('hintpop'); if (p) p.style.display = 'none'; document.querySelectorAll('.hint.on').forEach((e) => e.classList.remove('on')); };
 export function initHints(view) {
-  document.addEventListener('mouseover', (e) => { const h = e.target.closest?.('.hint,[data-tip]'); if (h) showPop(h); });
-  document.addEventListener('mouseout', (e) => { if (e.target.closest?.('.hint,[data-tip]')) hidePop(); });
+  const noHover = () => matchMedia('(hover: none)').matches;
+  document.addEventListener('mouseover', (e) => { if (noHover()) return; const h = e.target.closest?.('.hint,[data-tip]'); if (h) showPop(h); });
+  document.addEventListener('mouseout', (e) => { if (noHover()) return; if (e.target.closest?.('.hint,[data-tip]')) hidePop(); });
   document.addEventListener('focusin', (e) => { const h = e.target.closest?.('.hint,[data-tip]'); if (h) showPop(h); });
   document.addEventListener('focusout', (e) => { if (e.target.closest?.('.hint,[data-tip]')) hidePop(); });
   document.addEventListener('click', (e) => { const h = e.target.closest?.('.hint,[data-tip]'); if (h) { h.classList.toggle('on'); h.classList.contains('on') ? showPop(h) : hidePop(); } else hidePop(); });
