@@ -24,29 +24,36 @@ npx wrangler d1 execute naseej --remote --file=worker/schema.sql
 ## 3) بوابة Access (Zero Trust)
 1. لوحة Cloudflare ▸ **Zero Trust** ▸ اختر اسم الفريق (يصبح `اسمك.cloudflareaccess.com`) ▸ الخطة المجانية.
 2. **Settings ▸ Authentication ▸ Login methods**: أضف **One-time PIN** (رمز يصل للبريد) — أو **Microsoft Entra ID** لاحقاً لربط مجموعات M365.
-3. بعد نشر الـ Worker (الخطوة 4): **Access ▸ Applications ▸ Add ▸ Self-hosted** على نطاق الـ Worker (`naseej.<حسابك>.workers.dev`)، وأضف سياسة Allow لبريد كل موظف (أو نطاق `@nawaculture.org`).
+3. بعد نشر الـ Worker (الخطوة 4): **Access ▸ Applications ▸ Add ▸ Self-hosted** على نطاق الـ Worker (`naseej.nawaculture.workers.dev`)، من تبويب Workers عند الإنشاء، وأضف سياسة Allow لبريد كل موظف (أو نطاق `@nawaculture.org`).
 4. من صفحة التطبيق انسخ **Application Audience (AUD) Tag**.
 
 ## 4) النشر
-```
-npm run build
-npx wrangler deploy
-```
-ثم من لوحة Cloudflare ▸ Workers ▸ naseej ▸ **Settings ▸ Variables** أضف:
+**الطريقة المعتمدة (GitHub Actions):** كل `git push` إلى `main` ينشر تلقائياً عبر `.github/workflows/cloudflare.yml`.
+1. Cloudflare ▸ My Profile ▸ API Tokens ▸ قالب **Edit Cloudflare Workers** ▸ انسخ الرمز (لا تلصقه في أي محادثة).
+2. GitHub ▸ المستودع ▸ Settings ▸ Secrets and variables ▸ Actions ▸ سر باسم `CLOUDFLARE_API_TOKEN`.
+3. إن شككت بتسرّب الرمز: **Roll** من Cloudflare ثم حدّث السر.
 
-| المتغير | القيمة |
+(يدوياً عند الحاجة: `npm run build && npx wrangler deploy`.)
+
+ثم من لوحة Cloudflare ▸ Workers & Pages ▸ naseej ▸ **Settings ▸ Variables and secrets** أضف (تبقى محفوظة بين عمليات النشر لأن `keep_vars=true`):
+
+| المتغير | القيمة الحالية |
 |---|---|
-| `TEAM_DOMAIN` | `اسمك.cloudflareaccess.com` |
-| `POLICY_AUD` | الـ AUD Tag من الخطوة 3 |
-| `ADMIN_EMAIL` | بريد مدير النظام (يُنشأ تلقائياً بدور مدير عند أول دخول) |
+| `TEAM_DOMAIN` | `nawaculture.cloudflareaccess.com` |
+| `POLICY_AUD` | الـ AUD Tag من الخطوة 3 (تطبيق Access ▸ Additional settings) |
+| `ADMIN_EMAIL` | `t.abunimer@nawaculture.org,Tahaana96@gmail.com` (يُنشأ كل منهما مديراً عند أول دخول) |
 
 > لا تضع `DEV_EMAIL` في الإنتاج أبداً؛ هو للتطوير المحلي فقط (`.dev.vars`).
+> لا تكتب قيم هذه المتغيرات في المستودع العام.
+
+**الرابط الحالي:** `https://naseej.nawaculture.workers.dev` (النطاق الفرعي `nawaculture.workers.dev` يخص الحساب كله؛ تغييره يوقف الرابط القديم فوراً ويحتاج دقائق للانتشار).
+اسم المؤسسة في صفحة الدخول: Zero Trust ▸ Reusable components ▸ Custom pages ▸ Access login page.
 
 ## 5) الاستخدام
 - افتح رابط الـ Worker ◂ أدخل بريدك ◂ يصلك رمز ◂ تدخل.
 - من «المستخدمون» أضف الموظفين **بالبريد** مع الدور والتكليفات (مشروع + مركز + فترة).
 - من لم يُضَف يرى رسالة «حسابك غير مُضاف».
-- تحديث النظام: `git push` ثم `npm run build && npx wrangler deploy`.
+- تحديث النظام: `git push` فقط (النشر تلقائي عبر GitHub Actions).
 
 ## تجربة محلية
 ```
