@@ -32,3 +32,13 @@ test('بلا تكرار: الشخص مرة واحدة داخل النشاط وم
   r = uniqueReach(db, cx2, { from: '2027-01-01' }, 'act'); assert.equal(r.total.unique, 0); assert.equal(r.rows.length, 0);
   const s = summarize(db.sessions, cx2); assert.equal(s.sessions, 4); assert.equal(s.unique, 3); assert.equal(s.blind, 7);
 });
+test('بلا تكرار حسب تعريف المستفيد المباشر لكل مشروع (حد أدنى للجلسات)', () => {
+  const { db } = mk(); const b = db.beneficiaries.map((x) => x.id); const p = db.projects[0], a = p.activities.filter((x) => !x.ops)[0], c = db.centers[0].id;
+  db.enrollments = []; db.sessions = [
+    { id: 'r1', projectId: p.id, activityId: a.id, centerId: c, date: '2026-03-01', mode: 'roll', attendance: [b[0], b[1]], units: 1 },
+    { id: 'r2', projectId: p.id, activityId: a.id, centerId: c, date: '2026-03-08', mode: 'roll', attendance: [b[0]], units: 1 },
+  ];
+  p.directRule = { mode: 'once' }; assert.equal(uniqueReach(db, context(db), { byRule: true }, 'project').total.unique, 2);
+  p.directRule = { mode: 'threshold', minSessions: 2, minPct: 0 }; assert.equal(uniqueReach(db, context(db), { byRule: true }, 'project').total.unique, 1);
+  assert.equal(uniqueReach(db, context(db), {}, 'project').total.unique, 2);   // بلا تفعيل القاعدة: أي حضور
+});

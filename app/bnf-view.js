@@ -11,7 +11,7 @@ import { ensureEnrollment, endEnrollment, reactivate, findEnrollment } from '../
 import { putDraft, delDraft, draftsCard, newDraftId } from './drafts.js';
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const $ = (s, r = document) => r.querySelector(s);
-let ctx; const uq = { projectId: '', center: '', act: '', from: '', to: '', by: 'act' };
+let ctx; const uq = { projectId: '', center: '', act: '', from: '', to: '', by: 'act', byRule: true };
 const st = { f: {}, q: '', edit: null, keep: [], pend: [], gone: [], have: new Set() };
 export const initBnf = (c) => { ctx = c; };
 const TYPE = Object.fromEntries(ATT_TYPES);
@@ -85,7 +85,7 @@ export function vBnf() {
     <label>المشروع<select id="bf-proj" data-bf="proj"><option value="">الكل</option><option value="-">بلا مشروع</option>${ctx.db.projects.map((p) => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')}</select></label>
     <label>الحضور<select id="bf-att2" data-bf="att2"><option value="">الكل</option><option value="1">له حضور</option><option value="0">بلا حضور</option></select></label>
     <button class="sec" data-act="bfReset">مسح الفلاتر</button></div><div id="bnres"></div></div>`;
-  paintList(); paintUq(); document.querySelectorAll('[data-uq]').forEach((e) => (e.onchange = () => { uq[e.dataset.uq] = e.value; if (e.dataset.uq === 'projectId') { const ok = new Set(uqActs().map((a) => a.id)); if (uq.act && !ok.has(uq.act)) uq.act = ''; vBnf(); return; } paintUq(); }));
+  paintList(); paintUq(); document.querySelectorAll('[data-uq]').forEach((e) => (e.onchange = () => { uq[e.dataset.uq] = e.type === 'checkbox' ? e.checked : e.value; if (e.dataset.uq === 'projectId') { const ok = new Set(uqActs().map((a) => a.id)); if (uq.act && !ok.has(uq.act)) uq.act = ''; vBnf(); return; } paintUq(); }));
   const bf = { ...st.f }; for (const [k, v] of Object.entries(bf)) { const e = $('#bf-' + k); if (e) e.value = v; }
   document.querySelectorAll('[data-bf]').forEach((e) => (e.onchange = () => { st.f[e.dataset.bf] = e.value; paintList(); }));
   $('#bq').addEventListener('input', (e) => { st.q = e.target.value; clearTimeout(vBnf.t); vBnf.t = setTimeout(paintList, 200); });
@@ -97,12 +97,13 @@ const uqActs = () => ctx.db.projects.filter((p) => !uq.projectId || p.id === uq.
 function uqCard() {
   const db = ctx.db, sel = (k, v, t) => `<option value="${esc(v)}" ${uq[k] === v ? 'selected' : ''}>${esc(t)}</option>`;
   return `<div class="card" id="uqcard"><h2>المستفيدون بلا تكرار (حسب النشاط / المركز / المشروع)</h2>
-  <p class="small">يُحسب الشخص <b>مرة واحدة</b> داخل كل صف مهما تكرر حضوره في الفترة، ومرة واحدة في الإجمالي إن حضر أكثر من نشاط. الجلسات المسجلة «بالأعداد» لا هوية فيها فلا يمكن حذف تكرارها، وتظهر في عمود منفصل. اترك التاريخ فارغًا لكل الفترة.</p>
+  <p class="small">يُحسب الشخص <b>مرة واحدة</b> داخل كل صف مهما تكرر حضوره في الفترة، ومرة واحدة في الإجمالي إن حضر أكثر من نشاط. الجلسات المسجلة «بالأعداد» لا هوية فيها فلا يمكن حذف تكرارها، وتظهر في عمود منفصل. عند تفعيل «حسب تعريف المستفيد المباشر» يُحسب فقط من يبلغ حدّ التعريف المضبوط في المشروع (شاشة PTT)؛ وبتعطيله يُحسب كل من حضر ولو مرة. اترك التاريخ فارغًا لكل الفترة.</p>
   <div class="row uqf"><label>المشروع<select data-uq="projectId"><option value="">الكل</option>${db.projects.map((p) => sel('projectId', p.id, p.name)).join('')}</select></label>
   <label>المركز<select data-uq="center"><option value="">الكل</option>${db.centers.map((c) => sel('center', c.id, c.name)).join('')}</select></label>
   <label>النشاط<select data-uq="act"><option value="">الكل</option>${uqActs().map((a) => sel('act', a.id, uq.projectId ? a.name : `${a.name} — ${a.p}`)).join('')}</select></label>
   <label>من<input type="date" data-uq="from" value="${esc(uq.from)}"></label><label>إلى<input type="date" data-uq="to" value="${esc(uq.to)}"></label>
   <label>عرض حسب<select data-uq="by">${[['act', 'النشاط'], ['center', 'المركز'], ['project', 'المشروع']].map(([k, t]) => sel('by', k, t)).join('')}</select></label>
+  <label style="flex-direction:row;align-items:center;gap:6px;color:inherit"><input type="checkbox" data-uq="byRule" ${uq.byRule ? 'checked' : ''}> حسب تعريف «المستفيد المباشر» لكل مشروع</label>
   <button class="sec" data-act="uqXl">تصدير (Excel)</button></div><div id="uqres"></div></div>`;
 }
 const uqRun = () => { const db = ctx.db, cx = context(db); return { cx, r: uniqueReach(db, cx, uq, uq.by) }; };

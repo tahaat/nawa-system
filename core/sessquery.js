@@ -1,6 +1,6 @@
 // فلترة سجل الجلسات + عدد المستفيدين بلا تكرار (حسب نشاط/مركز/مشروع ضمن فترة)
 import { catOf, emptyCats } from './model.js';
-import { sessionCats, sumCats } from './aggregate.js';
+import { sessionCats, sumCats, directBeneficiaries } from './aggregate.js';
 const ci = (s) => String(s ?? '').toLowerCase();
 export const emptyF = () => ({ from: '', to: '', act: '', center: '', edu: '', mode: '', src: '', grp: '', status: '', q: '' });
 export const isActiveF = (f) => Object.values(f).some((v) => v !== '' && v != null);
@@ -30,13 +30,14 @@ export function summarize(list, cx) {
 export function uniqueReach(db, cx, f, by = 'act') {
   const rows = new Map(), total = { name: 'الإجمالي (بلا تكرار عبر كل ما ظهر)', sessions: 0, units: 0, instances: 0, blind: 0, ids: new Set() };
   const keyOf = (s) => by === 'center' ? [s.centerId, cx.ctr.get(s.centerId)?.name || '؟'] : by === 'project' ? [s.projectId, cx.proj.get(s.projectId)?.name || '؟'] : [s.activityId, cx.act.get(s.activityId)?.name || '؟'];
+  const dir = new Map(); const isDirect = (pid, id) => { if (!f.byRule) return true; if (!dir.has(pid)) { const pr = db.projects.find((x) => x.id === pid); dir.set(pid, pr ? directBeneficiaries(pr, db).direct : null); } const d = dir.get(pid); return !d || d.has(id); };
   for (const s of db.sessions) {
     if (f.projectId && s.projectId !== f.projectId) continue; if (f.center && s.centerId !== f.center) continue; if (f.act && s.activityId !== f.act) continue;
     if (f.from && s.date < f.from) continue; if (f.to && s.date > f.to) continue;
     const [k, name] = keyOf(s); const r = rows.get(k) || { key: k, name, project: cx.proj.get(s.projectId)?.name || '', sessions: 0, units: 0, instances: 0, blind: 0, ids: new Set() };
     r.sessions++; total.sessions++; r.units += s.units || 1; total.units += s.units || 1;
     if (s.mode === 'counts') { const n = sumCats(sessionCats(s, cx)); r.blind += n; total.blind += n; }
-    else for (const id of new Set(s.attendance || [])) { if (!cx.bnf.get(id)) continue; r.instances++; total.instances++; r.ids.add(id); total.ids.add(id); }
+    else for (const id of new Set(s.attendance || [])) { if (!cx.bnf.get(id) || !isDirect(s.projectId, id)) continue; r.instances++; total.instances++; r.ids.add(id); total.ids.add(id); }
     rows.set(k, r);
   }
   const fin = (r) => { const c = emptyCats(); for (const id of r.ids) { const b = cx.bnf.get(id); c[catOf(b.sex, b.disability)]++; } return { ...r, unique: r.ids.size, cats: c, ids: undefined }; };
