@@ -380,3 +380,19 @@ td:has(.xin),th:has(.xin){overflow:visible}
   .row:has(> label > select,> label > input)>label:has(> input[type=search]),.row:has(> label > select,> label > input)>label:has(> input[type=text]){grid-column:1/-1}
   label{min-width:0}
 }
+
+/* ===== مؤشر الاستهلاك ===== */
+.usage{display:inline-grid;place-items:center}
+.ucard{max-width:440px;width:min(440px,calc(100vw - 24px));border-top:4px solid var(--accent)}
+.ucard h2{margin:0 0 10px;text-align:center}
+.ubig{display:flex;align-items:center;gap:14px;justify-content:center;margin:6px 0 14px}.ubig b{font-size:30px;display:block;line-height:1}.ubig small{color:var(--mut)}
+.ub{margin:10px 0}.ubh{display:flex;justify-content:space-between;gap:8px;font-size:14px;margin:6px 0 4px}.ubh small{color:var(--mut)}
+.ubt{height:10px;border-radius:6px;background:var(--line);overflow:hidden}.ubt i{display:block;height:100%;border-radius:6px}
+.uspark{display:flex;align-items:flex-end;gap:3px;height:48px;margin:8px 0 10px;padding:4px;border-bottom:1px solid var(--line)}.uspark i{flex:1;background:var(--accent);opacity:.75;border-radius:2px 2px 0 0;min-width:4px}
+
+/* الشريط الجانبي: إن لم يتسع لارتفاع الشاشة يتحرك مع الصفحة (بلا تمرير داخلي) */
+@media(min-width:801px){body.sidetall aside{position:static!important;max-height:none!important;overflow:visible!important;height:auto}}
+
+/* حقول نص ملتفّة (تُنشأ من app/ux.js) */
+textarea.wrapta{width:100%;min-width:0;resize:none;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5;min-height:38px;display:block;box-sizing:border-box}
+td textarea.wrapta{min-width:200px}

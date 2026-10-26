@@ -20,6 +20,7 @@ const [dl] = await Promise.all([pg.waitForEvent('download', { timeout: 8000 }).c
 // المستفيدون بلا تكرار
 await pg.click('a[data-go=bnf]'); await pg.waitForSelector('#uqres');
 const uqTbl = async () => pg.evaluate(() => [...document.querySelectorAll('#uqres tr')].map((r) => [...r.children].map((c) => c.textContent.trim())));
+await pg.uncheck('[data-uq=byRule]'); await pg.waitForTimeout(300);   // العدّ المستقل لا يطبّق تعريف المستفيد المباشر
 let t = await uqTbl(); log('جدول بلا تكرار يظهر (' + (t.length - 2) + ' نشاط)', t.length >= 3);
 const last = t[t.length - 1]; const uniqTotal = +last[3], sumRows = t.slice(1, -1).reduce((a, r) => a + +r[3], 0);
 log(`الإجمالي بلا تكرار ${uniqTotal} ≤ مجموع الصفوف ${sumRows}`, uniqTotal <= sumRows && uniqTotal > 0);

@@ -90,6 +90,20 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 let titleCol = false;
 async function ensureTitle(env) { if (titleCol) return; try { await env.DB.prepare('ALTER TABLE users ADD COLUMN title TEXT').run(); } catch { /* العمود موجود */ } titleCol = true; }
 
+// عدّاد الاستهلاك اليومي (تقريبي: يُدمج كل 10 طلبات أو دقيقة لتقليل كتابات D1)
+let uPend = 0, uLast = 0, uReady = false;
+const dayKey = () => new Date().toISOString().slice(0, 10);
+async function bump(env) {
+  uPend++; const now = Date.now(); if (uPend < 10 && now - uLast < 60000 && uReady) return;
+  const n = uPend; uPend = 0; uLast = now;
+  try { if (!uReady) { await env.DB.prepare('CREATE TABLE IF NOT EXISTS usage(day TEXT PRIMARY KEY, req INTEGER DEFAULT 0)').run(); uReady = true; } await run(env, 'INSERT INTO usage(day,req) VALUES(?,?) ON CONFLICT(day) DO UPDATE SET req=req+?', dayKey(), n, n); } catch { /* لا يعطّل الطلب */ }
+}
+async function usage(env) {
+  await bump(env); const rows = await all(env, 'SELECT day,req FROM usage ORDER BY day DESC LIMIT 31'), today = rows.find((r) => r.day === dayKey())?.req || 0;
+  const meta = (await env.DB.prepare('SELECT 1').run()).meta || {}, mon = dayKey().slice(0, 7);
+  return { day: dayKey(), reqToday: today + uPend, reqMonth: rows.filter((r) => r.day.startsWith(mon)).reduce((a, r) => a + r.req, 0) + uPend, last: rows.slice(0, 14).reverse(), dbBytes: meta.size_after || 0, limits: { reqDay: +env.LIMIT_REQ_DAY || 100000, dbBytes: +env.LIMIT_DB_BYTES || 500 * 1024 * 1024 } };
+}
+
 async function api(req, env, url) {
   if (url.pathname === '/api/health') return json({ ok: true });
   await ensureTitle(env);
@@ -98,10 +112,12 @@ async function api(req, env, url) {
   let user = await one(env, 'SELECT * FROM users WHERE email=?', email);
   if (!user && env.ADMIN_EMAIL && String(env.ADMIN_EMAIL).toLowerCase().split(/[,;\s]+/).includes(email)) { await run(env, "INSERT INTO users(email,name,role,centers,assignments,active) VALUES(?,?, 'admin','[]','[]',1)", email, email.split('@')[0]); user = await one(env, 'SELECT * FROM users WHERE email=?', email); }
   if (!user || !user.active) return json({ error: 'not provisioned' }, 403);
+  if (url.pathname !== '/api/usage') await bump(env);
   const POL = await getPolicy(env), mypol = POL[user.role] || {};
   const body = async () => { const t = await req.text(); if (t.length > 2e6) throw Object.assign(new Error('big'), { code: 413 }); return JSON.parse(t || '{}'); };
   try {
     const p = url.pathname, m = req.method;
+    if (p === '/api/usage') { if (!mypol.manageUsers) return json({ error: 'forbidden' }, 403); return json(await usage(env)); }
     if (p === '/api/me') { await run(env, 'UPDATE users SET last_login=? WHERE email=?', Date.now(), email); return json({ name: user.name, label: user.name, title: user.title || '', email, access: true, role: user.role, centers: userCenters(user), projects: userProjects(user), assignments: activeAssign(user), mustChange: false, seq: await curSeq(env), policy: { routes: mypol.routes || [], manageUsers: !!mypol.manageUsers, read: mypol.read || {}, write: mypol.write || {}, hidden: mypol.hidden || {} } }); }
     if (p === '/api/logout') return json({ ok: true });
     if (p === '/api/pull' && m === 'GET') return json(await pull(env, user, +url.searchParams.get('since') || 0));

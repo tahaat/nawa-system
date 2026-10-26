@@ -37,7 +37,25 @@ function cardify(root = document) {
     for (const r of rows.slice(1)) [...r.cells].forEach((c, i) => c.setAttribute('data-l', ths[i].textContent.trim()));
   });
 }
+// ---- حقول النص: تتحول إلى مربعات تلتف أسطرها فتظهر القيمة كاملة (بدل القص) ----
+const WRAP = '#view input[data-bind]:not([type]),#view input[data-bind][type=text],#view td input:not([type]),#view td input[type=text]';
+const fitTa = (t) => { if (!t.offsetParent && !t.getClientRects().length) return; t.style.height = 'auto'; const h = t.scrollHeight; if (h > 0) t.style.height = h + 2 + 'px'; };
+function wrapAll(root = document) {
+  root.querySelectorAll(WRAP).forEach((i) => {
+    if (i.matches('[list],[data-noexpand],[readonly],[disabled],.nx') || i.closest('.dlg-bg,#panel,#sfbar')) return;
+    const t = document.createElement('textarea');
+    for (const a of i.attributes) if (!['type', 'value', 'autocomplete', 'size'].includes(a.name)) t.setAttribute(a.name, a.value);
+    t.value = i.value; t.rows = 1; t.classList.add('wrapta'); i.replaceWith(t); fitTa(t);
+  });
+}
 export function initUx() {
+  document.addEventListener('input', (e) => { if (e.target.classList?.contains('wrapta')) fitTa(e.target); });
+  document.addEventListener('focusin', (e) => { if (e.target.classList?.contains('wrapta')) fitTa(e.target); });
+  document.addEventListener('keydown', (e) => { const t = e.target; if (t.classList?.contains('wrapta') && e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); t.blur(); } });
+  window.addEventListener('resize', () => document.querySelectorAll('textarea.wrapta').forEach(fitTa));
+  const v = document.getElementById('view'); let t;
+  if (v) new MutationObserver(() => { clearTimeout(t); t = setTimeout(() => { wrapAll(v); v.querySelectorAll('textarea.wrapta').forEach(fitTa); v.querySelectorAll('select[multiple]').forEach((s) => { if (s.size < 2) s.size = Math.min(Math.max(s.options.length, 2), 6); }); }, 40); }).observe(v, { childList: true, subtree: true });
+  wrapAll(v);
   document.addEventListener('focusin', (e) => expand(e.target));
   document.addEventListener('input', (e) => { if (e.target.classList?.contains('xin')) expand(e.target); }, true);
   document.addEventListener('change', (e) => { if (e.target.classList?.contains('xin')) expand(e.target); }, true);

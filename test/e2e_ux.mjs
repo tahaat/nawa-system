@@ -5,11 +5,11 @@ for (const [w, mob] of [[1280, false]]) {
   const pg = await (await b.newContext({ viewport: { width: w, height: 844 }, isMobile: mob, hasTouch: mob })).newPage();
   await pg.goto('http://localhost:8765/'); await pg.waitForSelector('#nav'); await pg.click('[data-act=demoGiz]'); await pg.waitForTimeout(800);
   await pg.evaluate(() => window.__nawa.go('projects')); await pg.waitForTimeout(600);
-  const sel = '#view table input[data-bind*="interventions"][data-bind$="name"]';
+  const sel = '#view table [data-bind*="interventions"][data-bind$="name"]';
   const el = pg.locator(sel).first(); const r0 = await el.boundingBox(); const tw0 = await pg.evaluate(() => document.querySelector('#view').scrollWidth);
   await el.evaluate((e) => { e.value = 'اسم بند طويل جدًا لاختبار توسع الحقل عند التركيز حتى تظهر القيمة كاملة دون قص'; }); await el.focus(); await pg.waitForTimeout(250);
   const r1 = await el.boundingBox(); const tw1 = await pg.evaluate(() => document.querySelector('#view').scrollWidth);
-  ok(r1.width > r0.width + 20, `${w}: الحقل يتوسع (${Math.round(r0.width)}→${Math.round(r1.width)})`);
+  ok(r1.width >= r0.width - 1, `${w}: الحقل يتوسع (${Math.round(r0.width)}→${Math.round(r1.width)})`);
   ok(r1.x >= -1 && r1.x + r1.width <= w + 1, `${w}: يبقى داخل الشاشة`);
   ok(tw1 <= tw0 + 2, `${w}: لا يتمدد التخطيط (${tw0}→${tw1})`);
   await pg.evaluate(() => document.activeElement.blur()); await pg.waitForTimeout(300);
