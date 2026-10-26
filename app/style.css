@@ -304,3 +304,79 @@ body.nonav #top .tl{padding-inline-start:46px}
 .card{min-width:0}
 @media(max-width:800px){.card{padding-inline:12px}.row{gap:8px}.row>label{flex:1 1 140px;min-width:0}.row>label input,.row>label select{width:100%}}
 @media(min-width:1700px){main{max-width:1500px;margin-inline:auto}}
+
+/* ===== نافذة توسعة حقل الإدخال ===== */
+.xp-bg{position:fixed;left:0;right:0;top:0;z-index:300;background:rgba(40,10,8,.45);display:flex;align-items:flex-start;justify-content:center;padding:10px}
+.xp{width:min(680px,100%);background:var(--card);color:var(--ink);border:1px solid var(--gold);border-top:4px solid var(--accent);border-radius:14px;box-shadow:0 14px 40px rgba(0,0,0,.35);padding:10px 12px}
+.xp-h{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px}.xp-h span{font-weight:700;color:var(--accent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.xp textarea{width:100%;font:inherit;font-size:16px;line-height:1.6;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--bg,#fff);color:var(--ink);resize:none;min-height:56px}
+.xp-ok{min-height:40px;padding:4px 20px}
+
+/* ===== جداول الإدخال كبطاقات على الشاشات الصغيرة ===== */
+@media(max-width:800px){
+  table.stk,table.stk tbody{display:block;width:100%!important;min-width:0!important;max-width:100%}
+  table.stk tr:first-child{display:none}
+  table.stk tr{display:block;margin:0 0 12px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+  table.stk td{display:flex;flex-direction:column;gap:3px;border:0;padding:5px 0;width:100%;min-width:0}
+  table.stk td::before{content:attr(data-l);font-size:12px;color:var(--mut);font-weight:600}
+  table.stk td:not([data-l])::before{display:none}
+  table.stk td input:not([type=checkbox]):not([type=radio]),table.stk td select,table.stk td textarea{width:100%!important;max-width:none!important;min-width:0}
+  table.stk td:has(input[type=checkbox]){flex-direction:row;align-items:center;gap:8px}
+  table.stk td:has(input[type=checkbox])::before{order:2}
+  table.stk td:last-child:has(button){flex-direction:row;justify-content:flex-end}
+  .tw:has(table.stk){overflow:visible}
+}
+/* فلاتر: شبكة منظمة */
+@media(max-width:800px){
+  .row.uqf,.row.flt,.filters{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .row>label:has(input[type=checkbox]){grid-column:1/-1;flex-direction:row;align-items:center;gap:10px;min-height:44px}
+  .row>label:has(input[type=checkbox]) input{flex:none;width:22px;height:22px}
+}
+/* جداول القراءة على الشاشات الصغيرة: خط وحشوة أصغر + تلميح تمرير */
+@media(max-width:800px){
+  .tw{-webkit-overflow-scrolling:touch}
+  .tw table:not(.stk) th,.tw table:not(.stk) td{font-size:12.5px;padding:6px 6px;line-height:1.45}
+  .tw table:not(.stk) .badge{font-size:11px;padding:1px 6px}
+}
+
+/* قوائم القراءة ذات الأزرار: بطاقة مدمجة (الأول عنوان، الباقي «عنوان: قيمة»، والأزرار في الأسفل) */
+@media(max-width:800px){
+  table.stk.lst tr{padding:8px 12px;margin-bottom:10px}
+  table.stk.lst td{flex-direction:row;justify-content:space-between;align-items:baseline;gap:12px;padding:5px 0;border-bottom:1px dashed var(--line);font-size:13.5px}
+  table.stk.lst td::before{flex:none;font-weight:600}
+  table.stk.lst td:first-child{font-weight:700;font-size:15px;color:var(--accent);border-bottom:1px solid var(--line)}
+  table.stk.lst td:first-child::before{display:none}
+  table.stk.lst td:empty{display:none}
+  table.stk.lst td:last-child{border-bottom:0;justify-content:flex-start;flex-wrap:wrap;gap:8px;padding-top:8px}
+  table.stk.lst td:last-child::before{display:none}
+  table.stk.lst td:last-child button{min-height:40px}
+}
+
+/* ===== توسّع حقول الإدخال عند التركيز ===== */
+.xin{position:relative;z-index:40;box-shadow:0 6px 22px rgba(80,20,15,.28);border-color:var(--accent)!important;background:var(--card);transition:width .12s ease}
+td:has(.xin),th:has(.xin){overflow:visible}
+.tw:has(.xin){overflow:visible}
+
+/* ===== جداول التحرير كبطاقات على الشاشات الضيقة ===== */
+@media(max-width:640px){
+  table.rc,table.rc tbody{display:block;width:100%}
+  table.rc tr:first-child{display:none}
+  table.rc tr{display:block;margin:0 0 12px;padding:8px 10px;border:1px solid var(--line);border-radius:12px;background:var(--card);box-shadow:0 1px 3px rgba(80,20,15,.06)}
+  table.rc td{display:grid;grid-template-columns:minmax(84px,34%) 1fr;gap:8px;align-items:center;padding:6px 0;border:0;border-bottom:1px dashed var(--line);width:auto!important;min-width:0}
+  table.rc td:last-child{border-bottom:0}
+  table.rc td:before{content:attr(data-l);font-size:12.5px;color:var(--mut);font-weight:700}
+  table.rc td:not([data-l]):before,table.rc td[data-l=""]:before{display:none}
+  table.rc td[data-l=""]{display:flex;justify-content:flex-end}
+  table.rc td input,table.rc td select{width:100%!important;min-width:0!important;max-width:100%}
+  .tw:has(table.rc){overflow:visible}
+}
+
+/* ===== شبكة المرشحات موحّدة ===== */
+@media(max-width:640px){
+  .row:has(> label > select,> label > input){display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .row:has(> label > select,> label > input)>label{min-width:0;width:100%}
+  .row:has(> label > select,> label > input)>label:has(input[type=checkbox]){grid-column:1/-1;flex-direction:row;align-items:center;gap:8px}
+  .row:has(> label > select,> label > input)>button,.row:has(> label > select,> label > input)>.btn{grid-column:auto}
+  .row:has(> label > select,> label > input)>label:has(> input[type=search]),.row:has(> label > select,> label > input)>label:has(> input[type=text]){grid-column:1/-1}
+  label{min-width:0}
+}
