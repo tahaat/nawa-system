@@ -4,6 +4,7 @@
   "description": "نظام نوى للمتابعة والتقييم وتتبّع المشاريع والمستفيدين — Nawa MEAL & Programme Tracking System — يعمل بلا إنترنت",
   "lang": "ar",
   "dir": "rtl",
+  "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
