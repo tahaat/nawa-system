@@ -259,3 +259,48 @@ body.nonav #top .tl{padding-inline-start:46px}
   .hint{min-width:32px;min-height:32px;align-items:center;justify-content:center}
   input,select,textarea{font-size:16px}
 }
+
+/* ===== هوية الحساب (الاسم + المسمى + الدور) ===== */
+.av{flex:none;width:36px;height:36px;border-radius:50%;background:var(--gold);color:#5a0e08;display:grid;place-items:center;font-weight:800;font-size:14px;font-family:var(--f-head);letter-spacing:.5px}
+.av.big{width:76px;height:76px;font-size:28px;margin:10px auto 6px;box-shadow:0 0 0 4px var(--tint,rgba(162,16,8,.1))}
+.idchip{display:inline-flex;align-items:center;gap:8px;max-width:280px;min-width:0;padding:4px 12px 4px 6px;border-radius:999px;background:var(--card);border:1px solid var(--line);color:var(--ink);cursor:pointer;text-align:start}
+.idchip:hover{border-color:var(--accent)}
+.idchip .av{width:32px;height:32px;font-size:13px}
+.idtx{display:flex;flex-direction:column;min-width:0;line-height:1.25}
+.idtx b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.idtx small{font-size:11.5px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#whoami{margin:10px 0 4px;display:flex;align-items:stretch;gap:6px}
+#whoami[hidden]{display:none}
+#whoami .who-in{flex:1;min-width:0;display:flex;align-items:center;gap:8px;padding:8px;border-radius:12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);color:#fff;text-align:start;cursor:pointer}
+#whoami .who-in:hover{background:rgba(255,255,255,.2)}
+#whoami .idtx b{color:#fff;font-size:13.5px}#whoami .idtx small{color:rgba(255,255,255,.82);white-space:normal;font-size:11.5px}#whoami .idtx .rl{color:var(--gold);font-weight:700}
+#whoami .who-out{flex:none;width:38px;border-radius:12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);color:#fff;display:grid;place-items:center;cursor:pointer;padding:0}
+#whoami .who-out:hover{background:rgba(255,255,255,.24)}
+.idcard{text-align:center;max-width:420px;width:min(420px,calc(100vw - 24px));border-top:4px solid var(--accent);max-height:calc(100vh - 24px);overflow:auto}
+.idcard .idlogo{width:64px;height:64px;object-fit:contain}
+.idcard h2{margin:6px 0 2px}.idtitle{margin:0 0 8px;color:var(--mut);line-height:1.6}
+.idrows{margin:12px 0;text-align:start}.idrow{display:flex;gap:10px;justify-content:space-between;padding:7px 2px;border-bottom:1px dashed var(--line);font-size:14px}.idrow span{color:var(--mut);flex:none}.idrow b{font-weight:600;text-align:end;overflow-wrap:anywhere}
+.idedit{text-align:start;margin:8px 0}.idedit label{display:flex;flex-direction:column;gap:2px;margin-bottom:8px}.idedit input{width:100%}
+.idbtns{justify-content:center;flex-wrap:wrap}
+@media(max-width:800px){#whoami{display:none!important}}
+
+/* ===== تجاوب: توزيع متوازن للمؤشرات وشريط الأدوات ===== */
+.kpis{display:flex!important;flex-wrap:wrap}
+.kpis>*{flex:1 1 190px;min-width:0}
+@media(max-width:800px){
+  .kpis>*{flex:1 1 calc(50% - 14px)}
+  .tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+  .tools .idchip{order:0;flex:1 1 100%;max-width:none;border-radius:14px;padding:6px 10px 6px 8px}
+  .tools .idchip .idtx b{font-size:15px}.tools .idchip .idtx small{font-size:12.5px}
+  .tools label{order:1;flex:1 1 100%}
+  .tools>button{order:2}
+}
+@media(max-width:380px){.kpis>*{flex:1 1 100%}}
+@media(min-width:801px) and (max-width:1100px){
+  .tools{flex-wrap:wrap}.tools label{flex:1 1 260px}.tools .idchip{max-width:220px}
+}
+#view,#top{min-width:0}
+#view img,#view canvas{max-width:100%}
+.card{min-width:0}
+@media(max-width:800px){.card{padding-inline:12px}.row{gap:8px}.row>label{flex:1 1 140px;min-width:0}.row>label input,.row>label select{width:100%}}
+@media(min-width:1700px){main{max-width:1500px;margin-inline:auto}}
