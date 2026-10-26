@@ -387,12 +387,21 @@ async function doSync(opts) {
 }
 function setSyncBadge(t) { const el = $('#sync'); if (!el) return; const pend = isFolder() ? (folderEngine()?.pending() || 0) : (sync.cfg.url ? engine().pending().length : 0); el.textContent = t || ((isFolder() ? !sync.handle : !sync.cfg.url) ? 'غير مرتبط بالسحابة' : syncMsg.startsWith('تعذّر') ? `⚠ غير متصل — ${pend} تغيير معلّق` : `☁ ${pend ? pend + ' تغيير معلّق' : 'متزامن'}`); }
 async function afterLogin() { try { sync.cfg.me = await engine().me(); } catch { /* */ } save(); nav(); go(Object.keys(ROUTES).find(allowed) || 'dash'); await doSync({ firstMode: db.projects.length ? 'merge' : 'replace' }); nav(); }
+// حساب Cloudflare Access صحيح لكنه غير مُضاف في النظام: شاشة حجب كاملة، بلا قوائم ولا أزرار إنشاء، ولا يكتب شيئًا محليًا
+function blockNotAdded() {
+  const en = document.documentElement.lang === 'en', d = document.createElement('div');
+  d.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;background:#faf6f4;color:#2a2323;font-family:inherit';
+  d.dir = en ? 'ltr' : 'rtl';
+  d.innerHTML = `<div style="max-width:460px;text-align:center;background:#fff;border:1px solid #eadfdf;border-top:4px solid #A21008;border-radius:12px;padding:28px 22px;box-shadow:0 4px 14px rgba(80,20,15,.08)"><img src="${document.querySelector('.logo')?.src || ''}" alt="" style="width:84px;height:84px;object-fit:contain"><h2 style="margin:10px 0 6px;color:#A21008">${en ? 'Your account is not added yet' : 'حسابك غير مُضاف إلى النظام بعد'}</h2><p style="margin:0 0 16px;line-height:1.8">${en ? 'You signed in successfully, but this email has no role in Naseej. Please ask the IT department of Nawa to add you.' : 'سجّلت الدخول بنجاح، لكن هذا البريد ليس له دور في «نَسيج». تواصل مع قسم تقنية المعلومات في جمعية نوى ليضيفك.'}</p><button id="nb-r" style="margin:4px;padding:8px 18px;border-radius:8px;border:0;background:#A21008;color:#fff;font:inherit;cursor:pointer">${en ? 'Try again' : 'إعادة المحاولة'}</button><a href="/cdn-cgi/access/logout" style="display:inline-block;margin:4px;padding:8px 18px;border-radius:8px;border:1px solid #A21008;color:#A21008;text-decoration:none">${en ? 'Sign out' : 'تسجيل الخروج'}</a></div>`;
+  document.body.append(d); d.querySelector('#nb-r').onclick = () => location.reload();
+  return new Promise(() => { /* لا يُكمل الإقلاع أبدًا */ });
+}
 async function startAuth() {
   if (IN_ARTIFACT()) return;
   if (!sync.cfg.url && document.querySelector('meta[name=nawa-server]')) { sync.cfg.url = location.origin; sync.cfg.mode = 'server'; sync.cfg.auto = true; save(); }
   if (document.querySelector('meta[name=nawa-access]')) { // الدخول عبر Cloudflare Access: الهوية من البوابة، بلا شاشة دخول ولا رموز
     Object.assign(sync.cfg, { url: location.origin, mode: 'server', auto: true, access: true, token: 'access' });
-    try { sync.cfg.me = await engine().me(); save(); await afterLogin(); } catch (e) { sync.cfg.me = null; syncMsg = e.message; toast(e.message); } return;
+    try { sync.cfg.me = await engine().me(); save(); await afterLogin(); } catch (e) { sync.cfg.me = null; syncMsg = e.message; if (/غير مُضاف/.test(e.message)) { await blockNotAdded(); } else toast(e.message); } return;
   }
   if (!sync.cfg.url || isFolder()) return;
   if (sync.cfg.token) { try { sync.cfg.me = await engine().me(); save(); return; } catch (e) { if (!/رمز/.test(e.message)) return; sync.cfg.token = ''; sync.cfg.me = null; save(); } }
