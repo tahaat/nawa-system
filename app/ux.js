@@ -48,13 +48,24 @@ function wrapAll(root = document) {
     t.value = i.value; t.rows = 1; t.classList.add('wrapta'); i.replaceWith(t); fitTa(t);
   });
 }
+// ---- قائمة متعددة الاختيار: ملخص بشرائح تلتف أسطرها + قائمة خانات اختيار عند الفتح (بدل صندوق التمرير الأصلي) ----
+const escH = (x) => String(x).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function msel(sel) {
+  if (sel.dataset.ms) return; sel.dataset.ms = '1';
+  const d = document.createElement('details'); d.className = 'msel';
+  const paint = () => { const on = [...sel.options].filter((o) => o.selected); d.querySelector('summary').innerHTML = on.length ? on.map((o) => `<span class="chip">${escH(o.text)}</span>`).join('') : '<span class="ph">— اختر —</span>'; };
+  d.innerHTML = `<summary></summary><div class="mslist">${[...sel.options].map((o, i) => `<label><input type="checkbox" data-i="${i}" ${o.selected ? 'checked' : ''}><span>${escH(o.text)}</span></label>`).join('')}</div>`;
+  d.addEventListener('change', (e) => { const c = e.target; if (c.dataset.i == null) return; e.stopPropagation(); sel.options[+c.dataset.i].selected = c.checked; paint(); sel.dispatchEvent(new Event('change', { bubbles: true })); });
+  sel.style.display = 'none'; sel.after(d); paint();
+}
 export function initUx() {
+  document.addEventListener('click', (e) => { document.querySelectorAll('details.msel[open]').forEach((d) => { if (!d.contains(e.target)) d.open = false; }); });
   document.addEventListener('input', (e) => { if (e.target.classList?.contains('wrapta')) fitTa(e.target); });
   document.addEventListener('focusin', (e) => { if (e.target.classList?.contains('wrapta')) fitTa(e.target); });
   document.addEventListener('keydown', (e) => { const t = e.target; if (t.classList?.contains('wrapta') && e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); t.blur(); } });
   window.addEventListener('resize', () => document.querySelectorAll('textarea.wrapta').forEach(fitTa));
   const v = document.getElementById('view'); let t;
-  if (v) new MutationObserver(() => { clearTimeout(t); t = setTimeout(() => { wrapAll(v); v.querySelectorAll('textarea.wrapta').forEach(fitTa); v.querySelectorAll('select[multiple]').forEach((s) => { if (s.size < 2) s.size = Math.min(Math.max(s.options.length, 2), 6); }); }, 40); }).observe(v, { childList: true, subtree: true });
+  if (v) new MutationObserver(() => { clearTimeout(t); t = setTimeout(() => { wrapAll(v); v.querySelectorAll('textarea.wrapta').forEach(fitTa); v.querySelectorAll('select[multiple][data-bind]').forEach(msel); }, 40); }).observe(v, { childList: true, subtree: true });
   wrapAll(v);
   document.addEventListener('focusin', (e) => expand(e.target));
   document.addEventListener('input', (e) => { if (e.target.classList?.contains('xin')) expand(e.target); }, true);

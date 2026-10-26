@@ -396,3 +396,14 @@ td:has(.xin),th:has(.xin){overflow:visible}
 /* حقول نص ملتفّة (تُنشأ من app/ux.js) */
 textarea.wrapta{width:100%;min-width:0;resize:none;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5;min-height:38px;display:block;box-sizing:border-box}
 td textarea.wrapta{min-width:200px}
+
+/* قائمة متعددة الاختيار (app/ux.js) */
+details.msel{border:1px solid var(--line);border-radius:10px;background:var(--card);padding:0;margin:0;min-width:220px}
+details.msel>summary{display:flex;flex-wrap:wrap;gap:4px;padding:6px 8px;cursor:pointer;list-style:none;min-height:36px;align-items:center}
+details.msel>summary::-webkit-details-marker{display:none}
+details.msel .chip{background:var(--tint,rgba(162,16,8,.1));color:var(--accent);border-radius:8px;padding:2px 8px;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+details.msel .ph{color:var(--mut)}
+details.msel[open]{box-shadow:0 0 0 2px var(--gold)}
+details.msel .mslist{display:flex;flex-direction:column;gap:2px;padding:6px 8px;border-top:1px dashed var(--line)}
+details.msel .mslist label{display:flex;gap:8px;align-items:flex-start;padding:4px 2px;cursor:pointer;line-height:1.5}
+details.msel .mslist input{margin-top:5px;flex:none}
