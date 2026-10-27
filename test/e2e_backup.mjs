@@ -10,6 +10,6 @@ for (const mu of [true, false]) {
   await p.goto('http://localhost:8765/'); await p.waitForTimeout(2200); await p.evaluate(() => window.__nawa.go('cloud')); await p.waitForTimeout(700);
   const n = await p.locator('#bkcard').count(); ok(mu ? n === 1 : n === 0, `manageUsers=${mu}: بطاقة النسخ ${mu ? 'تظهر' : 'مخفية'}`);
   if (mu) { const [d] = await Promise.all([p.waitForEvent('download', { timeout: 6000 }), p.click('[data-act=bkDl]')]); const path = await d.path(); const j = JSON.parse(readFileSync(path, 'utf8')); ok(/^naseej-backup-\d{4}-\d{2}-\d{2}\.json$/.test(d.suggestedFilename()) && j.app === 'naseej', 'تنزيل ملف النسخة: ' + d.suggestedFilename());
-    writeFileSync('/tmp/bk.json', JSON.stringify(bk)); const sql = execFileSync('node', ['scripts/backup-to-sql.mjs', '/tmp/bk.json']).toString(); ok(/INSERT INTO records/.test(sql) && /'p''1'/.test(sql) && /DELETE FROM users/.test(sql) && /NULL/.test(sql), 'تحويل النسخة إلى SQL (اقتباس وNULL)'); }
+    writeFileSync('/tmp/bk.json', JSON.stringify(bk)); const sql = execFileSync('node', ['scripts/backup-to-sql.mjs', '/tmp/bk.json', '--mode=full']).toString(); ok(/INSERT INTO records/.test(sql) && /'p''1'/.test(sql) && /DELETE FROM users/.test(sql) && /NULL/.test(sql), 'تحويل النسخة إلى SQL (اقتباس وNULL)'); }
 }
 console.log(bad ? 'FAILED ' + bad : 'OK'); await b.close(); process.exit(bad ? 1 : 0);

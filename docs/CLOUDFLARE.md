@@ -71,4 +71,6 @@ node test/worker_api.mjs        # اختبار الصلاحيات
 
 ## النسخ الاحتياطي والاستعادة
 - من «السحابة والمزامنة» (للمدير): اختر مجلدًا داخل OneDrive فتُحفظ نسخة JSON يوميًا تلقائيًا عند فتح النظام من ذلك الجهاز (Chrome/Edge)، ويُحتفظ بآخر 30 نسخة. زر «حفظ نسخة الآن» و«تنزيل ملف النسخة» متاحان دائمًا. الواجهة: `GET /api/backup` (للمدير فقط وتُسجَّل في سجل التدقيق).
-- الاستعادة: `node scripts/backup-to-sql.mjs naseej-backup-YYYY-MM-DD.json > restore.sql` ثم `npx wrangler d1 execute naseej --remote --file=restore.sql` (يستبدل records وusers وpolicy وmeta).
+- الاستعادة (سكربت `scripts/backup-to-sql.mjs`): `node scripts/backup-to-sql.mjs نسخة.json [--mode=missing|newer|full] [--coll=sessions] [--project=ID] [--since=2026-10-01] > restore.sql` ثم `npx wrangler d1 execute naseej --remote --file=restore.sql`.
+  - `missing` (الافتراضي): يعيد فقط ما حُذف أو فُقد ولا يمسّ الموجود. `newer`: يعيد أيضًا ما نسختُه أحدث. `full`: استبدال كامل.
+  - كل سجل مُعاد يأخذ تسلسلًا جديدًا ليصل لكل الأجهزة عند المزامنة.
