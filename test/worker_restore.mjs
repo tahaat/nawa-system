@@ -11,6 +11,8 @@ await push([{ coll: 'sessions', id: 's1', data: null, ts: ts + 10, baseSeq: 0 },
 const seq0 = (await call(A, '/api/me')).j.seq;
 const pv = await call(A, '/api/restore', 'POST', { backup: bk, mode: 'missing', apply: false });
 ok('المعاينة: يُسترجع s1 فقط', pv.j.preview && pv.j.counts.sessions?.revive === 1 && pv.j.total === 1);
+ok('المعاينة تُرجع قائمة السجلات', pv.j.items?.length === 1 && pv.j.items[0].id === 's1');
+ok('ids غير مطابقة ⇒ لا شيء يُعاد', (await call(A, '/api/restore', 'POST', { backup: bk, mode: 'missing', ids: ['sessions|zzz'], apply: false })).j.total === 0);
 ok('المعاينة لا تغيّر شيئًا', (await call(A, '/api/me')).j.seq === seq0);
 const ap = await call(A, '/api/restore', 'POST', { backup: bk, mode: 'missing', apply: true }); ok('التطبيق: أُعيد سجل واحد', ap.j.applied === 1);
 const pu = (await call(A, '/api/pull?since=' + seq0)).j; const got = pu.records.map((r) => r.coll + ':' + r.id + ':' + (r.deleted ? 'del' : 'live'));

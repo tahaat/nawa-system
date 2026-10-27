@@ -131,8 +131,8 @@ async function api(req, env, url) {
       const recs = (b.backup?.app === 'naseej' && b.backup.tables?.records) || null; if (!Array.isArray(recs)) return json({ error: 'bad backup' }, 400);
       const byC = {}; for (const r of recs) if (COLLS.includes(r.coll) && r.id) (byC[r.coll] ||= []).push(r.id);
       const have = new Map(); for (const [c, ids] of Object.entries(byC)) for (const [id, row] of await fetchRecs(env, c, ids)) have.set(c + '|' + id, row);
-      const pl = restorePlan(recs.filter((r) => COLLS.includes(r.coll)), have, { mode: b.mode, colls: b.colls, project: b.project, since: b.since });
-      if (!b.apply) return json({ ok: true, preview: true, total: pl.total, counts: pl.counts, at: b.backup.at });
+      const pl = restorePlan(recs.filter((r) => COLLS.includes(r.coll)), have, { mode: b.mode, colls: b.colls, project: b.project, since: b.since, ids: b.ids });
+      if (!b.apply) return json({ ok: true, preview: true, total: pl.total, counts: pl.counts, at: b.backup.at, items: pl.acts.slice(0, 5000).map(({ r, kind }) => ({ coll: r.coll, id: r.id, kind })) });
       let done = 0;
       if (pl.total) {
         const end = (await one(env, "UPDATE meta SET v=v+? WHERE k='seq' RETURNING v", pl.total)).v, first = end - pl.total;
