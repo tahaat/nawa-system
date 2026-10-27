@@ -13,6 +13,8 @@ export const sync = { cfg: { url: '', token: '', auto: true, mode: 'folder' }, m
 export const kvGet = async (k) => { try { return (await kv.kv.get(k))?.value; } catch { return undefined; } };
 export const kvSet = (k, v) => kv.kv.put({ key: k, value: JSON.parse(JSON.stringify(v)) }).catch((e) => console.warn(e));
 export const saveHandle = (h) => kv.kv.put({ key: 'folderHandle', value: h });
+export const saveBkHandle = (h) => kv.kv.put({ key: 'bkHandle', value: h });
+export const getBkHandle = async () => { try { return (await kv.kv.get('bkHandle'))?.value || null; } catch { return null; } };
 let timer;
 export async function load() {
   try { const rows = await kv.kv.toArray(); for (const r of rows) { if (r.key === 'ui') Object.assign(ui, r.value); else if (r.key === 'syncCfg') Object.assign(sync.cfg, r.value); else if (r.key === 'syncMeta') sync.meta = { ...newMeta(), ...r.value }; else if (r.key === 'folderHandle') { if (r.value && typeof r.value.queryPermission === 'function') sync.handle = r.value; } else if (r.key === 'folderMeta') sync.fmeta = { ...newFolderMeta(), ...r.value }; else if (db[r.key]) db[r.key] = r.value; } } catch (e) { console.warn('storage', e); }

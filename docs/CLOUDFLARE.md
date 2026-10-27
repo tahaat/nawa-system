@@ -68,3 +68,7 @@ node test/worker_api.mjs        # اختبار الصلاحيات
 - الـ Worker: نحو 100 ألف طلب يومياً، 10ms CPU لكل طلب؛ استعلامات D1 محدودة لكل طلب، لذا تُدفع التغييرات على دفعات من 25 سجلاً وتُسحب على دفعات من 300.
 - D1: 5GB تخزين. Access: حتى 50 مستخدماً.
 - احتفظ بنسخة احتياطية دورية: `npx wrangler d1 export naseej --remote --output=backup.sql`.
+
+## النسخ الاحتياطي والاستعادة
+- من «السحابة والمزامنة» (للمدير): اختر مجلدًا داخل OneDrive فتُحفظ نسخة JSON يوميًا تلقائيًا عند فتح النظام من ذلك الجهاز (Chrome/Edge)، ويُحتفظ بآخر 30 نسخة. زر «حفظ نسخة الآن» و«تنزيل ملف النسخة» متاحان دائمًا. الواجهة: `GET /api/backup` (للمدير فقط وتُسجَّل في سجل التدقيق).
+- الاستعادة: `node scripts/backup-to-sql.mjs naseej-backup-YYYY-MM-DD.json > restore.sql` ثم `npx wrangler d1 execute naseej --remote --file=restore.sql` (يستبدل records وusers وpolicy وmeta).

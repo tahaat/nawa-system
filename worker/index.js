@@ -117,6 +117,12 @@ async function api(req, env, url) {
   const body = async () => { const t = await req.text(); if (t.length > 2e6) throw Object.assign(new Error('big'), { code: 413 }); return JSON.parse(t || '{}'); };
   try {
     const p = url.pathname, m = req.method;
+    if (p === '/api/backup') { // نسخة كاملة من القاعدة (للمدير فقط)
+      if (!mypol.manageUsers) return json({ error: 'forbidden' }, 403);
+      const T = {}; for (const [t, sql] of [['records', 'SELECT * FROM records'], ['users', 'SELECT * FROM users'], ['policy', 'SELECT * FROM policy'], ['meta', 'SELECT * FROM meta'], ['audit', 'SELECT * FROM audit ORDER BY at DESC LIMIT 20000']]) T[t] = await all(env, sql);
+      await aud(env, user.email, 'backup', T.records.length + ' records');
+      return json({ app: 'naseej', version: 1, at: new Date().toISOString(), by: user.email, counts: Object.fromEntries(Object.entries(T).map(([k, v]) => [k, v.length])), tables: T });
+    }
     if (p === '/api/usage') { if (!mypol.manageUsers) return json({ error: 'forbidden' }, 403); return json(await usage(env)); }
     if (p === '/api/me') { await run(env, 'UPDATE users SET last_login=? WHERE email=?', Date.now(), email); return json({ name: user.name, label: user.name, title: user.title || '', email, access: true, role: user.role, centers: userCenters(user), projects: userProjects(user), assignments: activeAssign(user), mustChange: false, seq: await curSeq(env), policy: { routes: mypol.routes || [], manageUsers: !!mypol.manageUsers, read: mypol.read || {}, write: mypol.write || {}, hidden: mypol.hidden || {} } }); }
     if (p === '/api/logout') return json({ ok: true });
