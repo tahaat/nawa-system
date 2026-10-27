@@ -4,7 +4,7 @@ import { newMeta } from '../core/sync.js';
 import { eyeIcon, wireEyes } from './devrole.js';
 export const ROLE_AR = { admin: 'مدير النظام (IT)', meal: 'منسق/مسؤول المتابعة والتقييم', projects: 'مسؤول مشاريع', coordinator: 'منسق', facilitator: 'منشط / تربوي', entry: 'مدخل بيانات (المكتب)' };
 const POL_ROLES = ['facilitator', 'coordinator', 'projects', 'entry', 'meal'];
-const ACT_AR = { login: 'دخول', login_fail: 'محاولة دخول فاشلة', login_locked: 'حساب مقفل مؤقتًا', logout: 'خروج', add: 'إضافة سجل', edit: 'تعديل سجل', del: 'حذف سجل', push: 'مزامنة', add_user: 'إضافة مستخدم', edit_user: 'تعديل مستخدم', disable_user: 'تعطيل مستخدم', enable_user: 'تفعيل مستخدم', revoke_device: 'إلغاء جهاز', change_password: 'تغيير كلمة المرور', set_policy: 'تعديل الصلاحيات' };
+const ACT_AR = { backup: 'نسخ احتياطي', restore: 'استعادة من نسخة', login: 'دخول', login_fail: 'محاولة دخول فاشلة', login_locked: 'حساب مقفل مؤقتًا', logout: 'خروج', add: 'إضافة سجل', edit: 'تعديل سجل', del: 'حذف سجل', push: 'مزامنة', add_user: 'إضافة مستخدم', edit_user: 'تعديل مستخدم', disable_user: 'تعطيل مستخدم', enable_user: 'تفعيل مستخدم', revoke_device: 'إلغاء جهاز', change_password: 'تغيير كلمة المرور', set_policy: 'تعديل الصلاحيات' };
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const $ = (s, r = document) => r.querySelector(s);
 let C; const st = { au: null, rows: [], audUser: '' };

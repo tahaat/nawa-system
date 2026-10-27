@@ -1,5 +1,6 @@
 // Worker «نَسيج»: المزامنة والصلاحيات على D1 خلف Cloudflare Access.
 // الهوية تأتي من رمز Access (JWT) الموقَّع؛ لا كلمات مرور ولا رموز جلسات عندنا.
+import { plan as restorePlan } from '../core/restore.js';
 import { COLLS, DEFAULT_POLICY, projectOf, centerOf, activeAssign, userCenters, userProjects, inScope, stripHidden } from '../core/server-policy.js';
 
 const json = (obj, code = 200, h = {}) => new Response(JSON.stringify(obj), { status: code, headers: { 'content-type': 'application/json', 'cache-control': 'no-store', ...h } });
@@ -122,6 +123,25 @@ async function api(req, env, url) {
       const T = {}; for (const [t, sql] of [['records', 'SELECT * FROM records'], ['users', 'SELECT * FROM users'], ['policy', 'SELECT * FROM policy'], ['meta', 'SELECT * FROM meta'], ['audit', 'SELECT * FROM audit ORDER BY at DESC LIMIT 20000']]) T[t] = await all(env, sql);
       await aud(env, user.email, 'backup', T.records.length + ' records');
       return json({ app: 'naseej', version: 1, at: new Date().toISOString(), by: user.email, counts: Object.fromEntries(Object.entries(T).map(([k, v]) => [k, v.length])), tables: T });
+    }
+    if (p === '/api/restore' && m === 'POST') { // استعادة انتقائية من نسخة احتياطية (للمدير فقط): معاينة أو تطبيق
+      if (!mypol.manageUsers) return json({ error: 'forbidden' }, 403);
+      const t = await req.text(); if (t.length > 40e6) return json({ error: 'big' }, 413);
+      let b; try { b = JSON.parse(t); } catch { return json({ error: 'bad' }, 400); }
+      const recs = (b.backup?.app === 'naseej' && b.backup.tables?.records) || null; if (!Array.isArray(recs)) return json({ error: 'bad backup' }, 400);
+      const byC = {}; for (const r of recs) if (COLLS.includes(r.coll) && r.id) (byC[r.coll] ||= []).push(r.id);
+      const have = new Map(); for (const [c, ids] of Object.entries(byC)) for (const [id, row] of await fetchRecs(env, c, ids)) have.set(c + '|' + id, row);
+      const pl = restorePlan(recs.filter((r) => COLLS.includes(r.coll)), have, { mode: b.mode, colls: b.colls, project: b.project, since: b.since });
+      if (!b.apply) return json({ ok: true, preview: true, total: pl.total, counts: pl.counts, at: b.backup.at });
+      let done = 0;
+      if (pl.total) {
+        const end = (await one(env, "UPDATE meta SET v=v+? WHERE k='seq' RETURNING v", pl.total)).v, first = end - pl.total;
+        const stmts = pl.acts.map(({ r }, i) => q(env, 'INSERT OR REPLACE INTO records(coll,id,data,ts,deleted,seq,by_user,center,project) VALUES(?,?,?,?,0,?,?,?,?)', r.coll, r.id, r.data, r.ts || Date.now(), first + i + 1, r.by_user || user.email, r.center ?? null, r.project ?? null));
+        for (let i = 0; i < stmts.length; i += 80) await env.DB.batch(stmts.slice(i, i + 80));
+        done = pl.total;
+      }
+      await aud(env, user.email, 'restore', `${done} records (${b.mode || 'missing'}) from backup ${b.backup.at}`);
+      return json({ ok: true, applied: done, counts: pl.counts });
     }
     if (p === '/api/usage') { if (!mypol.manageUsers) return json({ error: 'forbidden' }, 403); return json(await usage(env)); }
     if (p === '/api/me') { await run(env, 'UPDATE users SET last_login=? WHERE email=?', Date.now(), email); return json({ name: user.name, label: user.name, title: user.title || '', email, access: true, role: user.role, centers: userCenters(user), projects: userProjects(user), assignments: activeAssign(user), mustChange: false, seq: await curSeq(env), policy: { routes: mypol.routes || [], manageUsers: !!mypol.manageUsers, read: mypol.read || {}, write: mypol.write || {}, hidden: mypol.hidden || {} } }); }
